@@ -25,6 +25,8 @@ WORKFLOWS = {
                   "Object, skeletal and morph clips; see animation_constraints for controls/IK. Drivers, retargeting and NLA authoring remain separate."),
     "animation_constraints": ({"create_animation_control", "inspect_animation_constraints", "configure_animation_constraint", "remove_animation_constraint", "move_animation_constraint", "sample_constraint_animation", "bake_constraint_animation"},
                               "Typed copy/limit/track constraints and bounded legacy IK; conservative object/bone dependency checks, current-timeline sampling. Independent visual pose baking with verified simple skins; keyed/driven constraint edits remain separate."),
+    "animation_curves": ({"inspect_animation_channels", "set_control_keyframes", "edit_animation_curve"},
+                         "Active-slot inspection and independent clip editing: constrained object/bone controls, constraint influence, retiming, easing and handles. Drivers/active NLA editing remain separate."),
     "rigging": ({"create_armature", "bind_mesh", "inspect_rig", "create_shape_key", "edit_shape_key",
                  "inspect_shape_keys", "set_shape_key_weights", "remove_shape_key"},
                 "Skeleton construction, binding and relative shape keys; no existing-bone or weight repair tools."),

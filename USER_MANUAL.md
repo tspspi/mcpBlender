@@ -1044,8 +1044,8 @@ This is not a comprehensive dependency solver for arbitrary imported Blender rig
 Keyed/driven constraints are inspectable but refused by these editing tools,
 including removal, to avoid orphaning animation paths. Existing simple skeletal
 clip switching/editing still refuses constraints, drivers and active NLA blending.
-Use object helper keyframes after IK setup; author bone-control clips before
-adding constraints until a dedicated constrained-channel workflow is available.
+Use guarded `set_control_keyframes` to animate object/bone controls and constraint
+influence after IK setup; it copies the active clip and preserves source channels.
 Use visual baking below to convert supported evaluated motion to a separate portable clip.
 
 `sample_constraint_animation` evaluates the **current** timeline, without changing
@@ -1066,6 +1066,103 @@ and 2000 bones per rig. Local data and Object mode are required for edits. Nativ
 values/enums/references and dependency checks are preflighted before changing the
 stack; unexpected property-application failures attempt to restore its edited
 fields or remove the new constraint. Inspect state after an unexpected failure.
+
+## Controller channels and animation curves
+
+`inspect_animation_channels` reads the named object's **active action slot**
+without switching clips. It works for object/bone transforms, keyed constraint
+influence and imported channels, even when editing is unsupported. Supply `name`,
+channel `offset`/`limit` (default 16, max 32), and per-channel `key_offset`/
+`key_limit` (default 16, max 128). Results include `animation_sha256`, action/slot,
+channel paths/components, key coordinates, interpolation/easing, handle positions/
+types, group state, curve modifiers, sample counts and pagination. `edit_blockers`
+reports binding-level restrictions; per-channel `typed_editable` additionally
+checks supported paths, locks/mutes, sampled data and modifiers. No Python
+execution or scene-edit permission is required for inspection.
+
+Both editing tools require scene-edit permission, a fresh `expected_animation`
+hash and an unused `output_clip` name (63 UTF-8 bytes). They **copy the active
+action, edit the copy and activate the result**. Existing channels and other slots
+are copied; other objects keep their original bindings. The original action is
+retained with a fake user so the previous clip survives save/reopen. A missing
+active action is allowed when inserting initial control keys. This intentionally
+creates named clip variants rather than rewriting an action shared elsewhere.
+Other objects, including a morph slot's owner, are not rebound to the new clip.
+
+The hash covers the active slot's keys, handles, samples, curve/group/modifier
+configuration, binding settings and rotation modes. It excludes current poses and
+UI selection. It is not a whole-scene or constraint-stack guard; inspect the
+constraint stack separately when changing constraints. Inspection supports 4096
+curves, 200000 key/sample points, 512 modifiers and 200000 envelope points. Editing
+copies at most 16 slots and 200000 key/sample points across the whole action.
+
+`set_control_keyframes` uses object `name`, optional pose `bone`, `property` and
+`keyframes`. Supported properties are `location`, `scale` (three components),
+`rotation_degrees` (Euler, three components), `rotation_quaternion` (normalized
+WXYZ, four components) and scalar `influence` in [0,1]. Influence additionally
+requires the named owner `constraint`. Bone values use local pose-basis axes;
+they are not world-space positions. Euler keys require an Euler rotation mode;
+quaternion keys require quaternion mode. Native property bounds are checked.
+
+```json
+{"params":{"name":"Arm","bone":"HandControl","output_clip":"Reach_Adjusted","expected_animation":"<inspection animation_sha256>","property":"location","keyframes":[{"frame":1,"value":[0,0,0]},{"frame":24,"value":[0,0.2,0.4]}],"interpolation":"BEZIER"}}
+```
+
+The tool supports up to 256 distinct frame/value entries and inserts/replaces
+only that property's specified keys. Other tracks and untouched key interpolation
+remain intact. `interpolation` is LINEAR (default), CONSTANT or BEZIER; touched
+Bézier keys get AUTO_CLAMPED handles. Constraints remain active. A keyed channel
+can still be overridden by a constraint or by connected-bone behavior: inspect
+actual evaluated motion using `sample_constraint_animation`, endpoints and meshes.
+Unlike the simple skeletal clip editor, this tool does not reset the rig pose or
+require a constraint-free rig.
+
+`edit_animation_curve` selects an inspected `data_path` and integer `component`,
+with up to 256 existing key `frames`. Paths are restricted to existing object/bone
+location, Euler/quaternion rotation, scale and named constraint influence. It
+never evaluates a Python path supplied by the caller. Its typed `settings` are:
+
+- `TRANSFORM`: `pivot_frame` (0), positive `time_scale` (1), `time_offset` (0),
+  `value_scale` (1), `value_offset` (0). Frame becomes
+  `pivot + (frame-pivot)*scale + offset`; value becomes `value*scale+offset`.
+  Key and handle coordinates are transformed together. Retiming collisions with
+  selected or untouched keys are refused. Native auto handles may recalculate.
+- `DELETE`: remove exactly the selected keys; other keys/channels remain.
+- `INTERPOLATION`: CONSTANT/LINEAR/BEZIER or SINE/QUAD/CUBIC/QUART/QUINT/EXPO/
+  CIRC/BACK/BOUNCE/ELASTIC, plus AUTO/EASE_IN/EASE_OUT/EASE_IN_OUT `easing` and
+  optional `amplitude`, `back`, `period`. These settings affect outgoing segments.
+- `HANDLES`: `left_type`/`right_type` (AUTO_CLAMPED defaults), with AUTO, VECTOR,
+  ALIGNED and FREE also available. Explicit `left`/`right` [frame,value]
+  coordinates require FREE and exactly one selected key. Times must bracket
+  the key. Coordinate editing uses native curve units: Euler values are radians,
+  unlike `set_control_keyframes`' degree convenience property.
+
+```json
+{"params":{"name":"HandGoal","output_clip":"Reach_Slower","expected_animation":"<inspection animation_sha256>","data_path":"location","component":0,"frames":[1,24],"settings":{"operation":"TRANSFORM","pivot_frame":1,"time_scale":2}}}
+```
+
+Frames may be fractional within [-1048574,1048574]. Blender stores key times as
+native floats; inspect the returned actual coordinates. Frames that collapse at
+native precision or collide during retiming are refused. Curve values/handles
+are bounded to finite magnitudes up to 1e12. Raw curve edits do not normalize an
+entire quaternion or enforce a property's evaluated range; validate playback.
+
+Editing requires a local Object-mode object/data, no object drivers, active NLA
+tracks/solo/tweak mode, or blended active action. At most one action layer and
+one keyframe strip are supported. Selected locked/muted curves/groups, sampled
+curves, modifiers and duplicate native channels are inspect-only. Unrelated
+modified curves are copied intact. Failures remove the working copy and restore
+the original action/slot, touched property and frame/subframe. Successful edits
+restore the frame/subframe and evaluate the new active clip. These bounded edits
+run synchronously; they are not a long-running simulation workflow.
+
+Save clip variants in `.blend`, inspect key/intermediate playback, then use
+visual baking for supported constrained skeletal delivery. Existing simple clip
+tools retain their constraints/drivers/NLA restrictions and reject mixed object/
+bone actions; current-timeline inspection works through the constraint sampler.
+Managed export can include previous named clip variants as well as the new one;
+inspect the delivered animation list. Drivers, NLA authoring and retargeting are
+separate remaining workflows.
 
 ## Visual skeletal animation baking
 

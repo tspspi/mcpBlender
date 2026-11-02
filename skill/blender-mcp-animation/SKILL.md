@@ -32,16 +32,37 @@ keeps its existing constraint guard. Imported ambiguous actions
 require an explicit slot from `inspect_animation`.
 
 For IK or copy/limit/track constraints, bind first, then create Empty goals/poles
-with `create_animation_control` and animate them with `set_keyframes`. Inspect
+with `create_animation_control` and animate them with guarded `set_control_keyframes`. Inspect
 `inspect_animation_constraints` for the object or pose `bone`; carry its
 `constraints_sha256` as `expected_constraints` into typed configure/remove/move
 calls. Settings replace the exposed fields, and omitted fields use defaults.
 Targets are named objects or bones. IK requires a bounded ancestor chain, the
 standard solver and preferably a bent rest chain; inspect `ik_diagnostics` endpoint
 distance and the elbow/pole direction. Native validity is not reach verification.
-Independent control bones can work in the same rig; author their ordinary clips
-before adding constraints. Keyed/driven constraint edits are refused. Dependency
+Independent control bones can work in the same rig; use `set_control_keyframes`
+after constraint setup. Configuration/removal of keyed constraints is refused,
+but their influence can be animated through the channel tool. Dependency
 checks conservatively reject cycles and unsupported reachable dependencies.
+
+Use `inspect_animation_channels` for the current object's action slot and paged
+keys/handles/modifiers; carry `animation_sha256` as `expected_animation`.
+`set_control_keyframes` supports object/bone location, scale, Euler degrees,
+normalized WXYZ quaternions and named constraint influence. Bone values use pose-
+basis axes, not world positions. Constraints stay active, so evaluate the result.
+Both it and `edit_animation_curve` require an unused `output_clip`: they copy the
+active action, activate the new clip and retain the original. Shared peers and
+morph owners keep their original bindings; this does not coordinate multi-object
+clip switching. Inspect new action/slot/hash after each edit.
+
+Use `edit_animation_curve` with inspected `data_path`, `component`, selected key
+`frames` and settings operation TRANSFORM (time/value scale and offset), DELETE,
+INTERPOLATION (including easing) or HANDLES. Explicit handle coordinates require
+FREE and one selected key. Raw curve units are native (Euler radians). Retiming
+collisions are refused; native auto handles recalculate. Imported modifiers,
+sampled/locked/muted curves, drivers, active NLA/blended actions and multilayer
+editing are inspect-only. Failures restore the original binding/frame. Inspect
+`edit_blockers` and per-channel `typed_editable` before proposing edits; validate
+key/intermediate playback. Full contracts and bounds are in USER_MANUAL.md.
 
 Use `sample_constraint_animation` to inspect the current constrained timeline at
 key/intermediate frames, including bound mesh deformation. It restores the frame

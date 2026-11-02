@@ -1,5 +1,61 @@
 # Local validation: 0.2.0
 
+## Controller channels and F-curve refinement — 2026-11-02
+
+The expanded new/legacy controller, constraint, visual-bake, skeletal animation,
+contract, capability and server suite passed **33 tests in 228.62 seconds**, with
+the existing Starlette/AnyIO deprecation warning:
+
+```sh
+MCPBLENDER_TEST_BLENDER=1 MCPBLENDER_CURVE_EVIDENCE_DIR=/tmp/mb-curves-20261102 python3 -m pytest -q tests/test_curve_contracts.py tests/test_animation_curves.py tests/test_constraint_contracts.py tests/test_constraints.py tests/test_animation_bake.py tests/test_animation_contracts.py tests/test_skeletal_animation.py tests/test_capabilities.py tests/test_server.py --tb=short --maxfail=1
+```
+
+After final strict/native-float guards and whole-action size checks, the focused
+contracts/live suite passed **5 tests in 37.27 seconds**:
+
+```sh
+MCPBLENDER_TEST_BLENDER=1 MCPBLENDER_CURVE_EVIDENCE_DIR=/tmp/mb-curves-20261102 python3 -m pytest -q tests/test_curve_contracts.py tests/test_animation_curves.py --tb=short --maxfail=1
+```
+
+MCP Python execution is disabled. A same-rig nondeforming control bone is keyed
+**after** two-bone IK setup; native endpoint samples reach three independently
+specified world goals within .015. Named constraint influence is then keyed from
+zero to one: the first endpoint returns to FK rest, the last reaches its goal.
+The new action retains the control tracks. Stale hashes are refused. Save/reopen
+retains the active named variant, source clip and paged key data. Evidence:
+`/tmp/mb-curves-20261102/controller-curves.blend`.
+
+A second object shares the original action. Successive independent variants
+change outgoing Bézier interpolation, a manual FREE handle and QUAD/EASE_IN
+playback. Native evaluated translation verifies the shaped motion. Retiming and
+value transforms produce the expected key/handle coordinates and intermediate
+playback. Collision refusal preserves the current fingerprint. An out-of-bounds
+numeric edit fails after a working action is copied/bound; rollback restores the
+source binding and frame, and the exact output name can immediately be reused.
+Deleting two keys retains the requested remaining point and unrelated channels.
+The peer's original action fingerprint and linear playback remain unchanged.
+
+A trusted external native-Blender CLI prepares imported fixtures; MCP opens them
+with Python execution off. Drivers, active NLA, locked groups, noise/envelope
+modifiers and sampled curves remain inspectable and refuse unsupported edits,
+preserving their fingerprints. Inspection reports envelope points and samples.
+An arbitrary nontransform property path is refused. WXYZ quaternion and Euler-
+degree insertion produce independently checked world rotations. Near-identical
+high-frame times that collapse to one native float are refused. Contracts cover
+value dimensions, finite/strict frames, quaternion norms, required influence
+owner, selected-key uniqueness, operation types and read-only tool visibility.
+
+Scope: active-slot copy-on-edit for local Object-mode data, with at most one
+layer/strip and bounded keys/slots. Other objects and morph-slot owners are not
+rebound; grouped multi-object editing is not qualified. Source clips are retained
+as persistent variants, not deleted temporary files. Inspection hashes are action/
+binding guards, not whole-scene guards. Raw curve edits do not certify normalized
+quaternions, evaluated constraint reach, subframe accuracy, arbitrary imported
+rig compatibility or coordinated morph delivery. Drivers, NLA authoring and
+retargeting remain separate work. No package/venv, installed service/skill, user
+GUI session or engine integration was changed; isolated background Blender only.
+
+
 ## Independent visual skeletal baking — 2026-11-02
 
 The focused contracts and real-Blender suite passed **8 tests in 31.75 seconds**:
@@ -95,8 +151,8 @@ Scope: allowlisted copy/limit/damped-track constraints and bounded LEGACY IK on
 local Object-mode data. Dependency validation is conservative and rejects unknown
 reachable behavior; it is not a comprehensive arbitrary-rig analysis. Existing
 simple clip tools retain their constraint/driver/active-NLA guards. Constrained
-channel editing, drivers, curve editing, retargeting and NLA remain
-open. See the later visual-baking qualification above for its bounded scope. Native frame evaluation blocks and cancellation checks are between frames;
+channel editing, curve refinement and visual baking were separate milestones;
+see their qualifications above. Drivers, retargeting and NLA authoring remain open. Native frame evaluation blocks and cancellation checks are between frames;
 this run does not qualify long-running sampling cancellation or large scenes.
 No packages, virtual environments, installed services/skills or engine-specific
 integrations were changed. Verification used isolated background instances.

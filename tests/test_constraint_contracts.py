@@ -26,7 +26,7 @@ def test_constraint_values_and_readonly_discovery(tmp_path):
         async with Client(server) as client:
             names={t.name for t in await client.list_tools()}
             assert {'inspect_animation_constraints','sample_constraint_animation'}<=names
-            assert not names & {'create_animation_control','configure_animation_constraint','remove_animation_constraint','move_animation_constraint'}
+            assert not names & {'create_animation_control','configure_animation_constraint','remove_animation_constraint','move_animation_constraint','bake_constraint_animation'}
     asyncio.run(run())
 
 
@@ -56,3 +56,13 @@ def test_graph_handles_diamonds_deep_chains_and_missing_targets():
     deep=[{'name':str(i),'parent':(str(i+1),None)} for i in range(1500)]+[{'name':'1500'}]
     validate_graph(deep,[('0',None)])
     with pytest.raises(ValueError,match='Missing'):validate_graph([{'name':'Root','parent':('Absent',None)}],[('Root',None)])
+
+
+def test_visual_bake_range_and_names():
+    from mcpblender.constraint_contracts import BakeAnimation
+    base = {'name':'Rig','output_rig':'Baked','clip':'Motion','frame_start':1,'frame_end':9}
+    assert BakeAnimation.model_validate(base).tolerance == .0001
+    for changes in ({'frame_end':501}, {'frame_end':0}, {'frame_start':True}, {'tolerance':float('nan')},
+                    {'meshes':[{'source':'Skin','output':'Baked'}]},
+                    {'meshes':[{'source':'Skin','output':'A'},{'source':'Skin','output':'B'}]}):
+        with pytest.raises(ValueError): BakeAnimation.model_validate(base|changes)

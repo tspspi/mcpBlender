@@ -149,8 +149,32 @@ class ConstraintSampling(Named):
         return self
 
 
+class BakeMesh(Model):
+    source: Name
+    output: ShortName
+
+
+class BakeAnimation(Named):
+    output_rig: ShortName
+    clip: ShortName
+    meshes: list[BakeMesh] = Field(default_factory=list, max_length=8)
+    frame_start: int = Field(strict=True, ge=-1048574, le=1048574)
+    frame_end: int = Field(strict=True, ge=-1048574, le=1048574)
+    tolerance: FiniteFloat = Field(default=0.0001, ge=0.000001, le=0.01)
+
+    @model_validator(mode='after')
+    def bounded(self):
+        if not 1 <= self.frame_end-self.frame_start+1 <= 500:
+            raise ValueError('Bake range must contain 1..500 integer frames')
+        names = [self.output_rig] + [m.output for m in self.meshes]
+        if len(set(names)) != len(names) or len({m.source for m in self.meshes}) != len(self.meshes):
+            raise ValueError('Bake source meshes and output object names must be unique')
+        return self
+
+
 EDIT=('allow_scene_edit',)
 COMMANDS={
+    'bake_constraint_animation':(BakeAnimation,EDIT,'Bake the current evaluated rig timeline into a separate constraint-free rig, named clip and optional independent bound meshes. Verifies every integer frame and rolls back outputs on failure/cancellation; source remains editable. Stationary object transforms and simple vertex-group skins only.'),
     'create_animation_control':(AnimationControl,EDIT,'Create a named Empty target/pole helper without selection-dependent editing. Animate its transforms using set_keyframes.'),
     'inspect_animation_constraints':(InspectConstraints,(),'Inspect object or pose-bone constraint configuration, native validity, keyed/driven paths and stack fingerprint; page large imported stacks.'),
     'configure_animation_constraint':(ConfigureConstraint,EDIT,'Create/update a typed object/bone constraint. Full settings replace supported fields. Requires current stack fingerprint and conservative dependency validation; refuses keyed/driven constraint edits.'),

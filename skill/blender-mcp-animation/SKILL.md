@@ -48,8 +48,19 @@ key/intermediate frames, including bound mesh deformation. It restores the frame
 without switching actions or resetting pose channels. It is asynchronous by
 default: poll the operation or use `wait=true` for a small sample. Native frame
 evaluation blocks; cancellation is between frames. Save/reopen and view a render.
-Constraint controls in a `.blend` are not proof of portable exported animation;
-export baking is a separate milestone. Existing `sample_animation` and simple
+For portable motion use `bake_constraint_animation` with source rig `name`, unused
+`output_rig`/`clip`, integer `frame_start`/`frame_end`, and optional `meshes` entries
+`{source, output}`. It creates independent constraint-free rig/mesh data and a
+managed quaternion clip, verifying every integer-frame bone matrix and copied
+mesh vertex against the source. Source controls/actions remain editable. Poll
+progress; cooperative cancellation/errors remove the new assets and restore the
+frame. This version requires stationary rig/mesh object transforms, single-segment
+bones and simple vertex-group skins without other modifiers, shape keys or mesh
+animation/constraints. Limits: 500 frames, 256 bones, 32768 bone-frame samples,
+eight meshes and two million vertex-frame samples. It refuses unsupported motion
+or errors above tolerance (.0001 default); subframes are not certified. Save the
+source plus baked assets, export only the baked rig/meshes, reimport and compare
+playback. Constraint controls in a `.blend` alone do not prove portable animation. Existing `sample_animation` and simple
 clip editing retain their constraints/drivers/NLA restrictions.
 
 For morphs, use `create_shape_key` / `edit_shape_key` and `inspect_shape_keys`.

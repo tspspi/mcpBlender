@@ -1,5 +1,52 @@
 # Local validation: 0.2.0
 
+## Independent visual skeletal baking — 2026-11-02
+
+The focused contracts and real-Blender suite passed **8 tests in 31.75 seconds**:
+
+```sh
+MCPBLENDER_TEST_BLENDER=1 MCPBLENDER_BAKE_EVIDENCE_DIR=/tmp/mb-visual-bake-20261102 python3 -m pytest -q tests/test_constraint_contracts.py tests/test_animation_bake.py --tb=short --maxfail=1
+```
+
+With MCP Python disabled, a translated two-bone rig and weighted skin are driven
+by an animated Empty through a copy-rotation constraint. Visual baking creates a
+separate constraint-free rig, independent mesh and managed quaternion clip.
+Native verification evaluates every integer frame and compares every bone's full
+world matrix and every copied vertex's world position, failing above .0001.
+Independent MCP samples at five key/intermediate frames verify endpoints/bounds;
+the original constraint fingerprint, selection and current frame stay unchanged.
+Save/reopen and GLB export/reimport retain the single named clip and skin; imported
+playback bounds agree with the editable source within .0002 at all five samples.
+Resampling the source after export produces its original mesh deformation digests.
+A separate preferred-bend two-bone IK fixture reproduces the evaluated chain.
+
+A moving rig-object fixture is refused during sampling; newly created objects,
+armature/mesh data and action are removed and the frame restored. Reusing the
+output names and clip succeeds on a valid single-frame range. A 64-bone,
+500-frame operation is cancelled after keying has started: it ends cancelled,
+restores frame seven, removes outputs and permits immediate reuse of the exact
+rig/clip names. Pure contracts check ranges, unique sources/output names, strict
+integer frames, finite tolerance and read-only tool visibility.
+
+The combined new/legacy constraints, skeletal animation, contracts, capability and
+server regression passed **28 tests in 132.39 seconds**, with the existing
+Starlette/AnyIO deprecation warning:
+
+```sh
+MCPBLENDER_TEST_BLENDER=1 MCPBLENDER_BAKE_EVIDENCE_DIR=/tmp/mb-visual-bake-20261102 python3 -m pytest -q tests/test_constraint_contracts.py tests/test_animation_bake.py tests/test_constraints.py tests/test_animation_contracts.py tests/test_skeletal_animation.py tests/test_capabilities.py tests/test_server.py --tb=short --maxfail=1
+```
+
+Editable source plus baked output, portable GLB and sampled JSON evidence:
+`/tmp/mb-visual-bake-20261102/`. This qualification covers stationary rig/mesh
+object transforms and single-segment bones with simple vertex-group skins;
+animated object transforms, shape keys, extra mesh modifiers and bone envelopes
+are refused. It does not establish arbitrary imported-rig compatibility, subframe
+accuracy, normal equivalence, retargeting, large-scene performance or crash-time
+in-process cleanup. Existing checkpoint/recovery remains the crash boundary.
+No packages, virtual environments, installed runtimes/skills or engine adapters
+were changed; tests used isolated source-checkout background Blender instances.
+
+
 ## Typed constraints, IK and current-timeline sampling — 2026-11-02
 
 The combined new/legacy animation, capability and server suite passed **23 tests
@@ -48,8 +95,8 @@ Scope: allowlisted copy/limit/damped-track constraints and bounded LEGACY IK on
 local Object-mode data. Dependency validation is conservative and rejects unknown
 reachable behavior; it is not a comprehensive arbitrary-rig analysis. Existing
 simple clip tools retain their constraint/driver/active-NLA guards. Constrained
-channel editing, drivers, curve editing, retargeting, NLA and export baking remain
-open. Native frame evaluation blocks and cancellation checks are between frames;
+channel editing, drivers, curve editing, retargeting and NLA remain
+open. See the later visual-baking qualification above for its bounded scope. Native frame evaluation blocks and cancellation checks are between frames;
 this run does not qualify long-running sampling cancellation or large scenes.
 No packages, virtual environments, installed services/skills or engine-specific
 integrations were changed. Verification used isolated background instances.

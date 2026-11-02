@@ -1046,7 +1046,7 @@ including removal, to avoid orphaning animation paths. Existing simple skeletal
 clip switching/editing still refuses constraints, drivers and active NLA blending.
 Use object helper keyframes after IK setup; author bone-control clips before
 adding constraints until a dedicated constrained-channel workflow is available.
-This milestone does not convert constraints or controller motion to portable clips.
+Use visual baking below to convert supported evaluated motion to a separate portable clip.
 
 `sample_constraint_animation` evaluates the **current** timeline, without changing
 active actions, NLA settings or pose channels. Supply `name`, up to 64 unique
@@ -1066,6 +1066,62 @@ and 2000 bones per rig. Local data and Object mode are required for edits. Nativ
 values/enums/references and dependency checks are preflighted before changing the
 stack; unexpected property-application failures attempt to restore its edited
 fields or remove the new constraint. Inspect state after an unexpected failure.
+
+## Visual skeletal animation baking
+
+`bake_constraint_animation` captures the **current evaluated timeline**, including
+supported controller/constraint motion, into a new independent rig and managed
+skeletal action. It requires scene-edit permission and works with MCP Python
+execution disabled. It leaves the editable source rig, constraints, actions and
+meshes in place. It does not switch the source clip or change the timeline range.
+
+```json
+{"params":{"name":"Arm","output_rig":"Arm_Baked","clip":"Reach_Baked","meshes":[{"source":"ArmSkin","output":"ArmSkin_Baked"}],"frame_start":1,"frame_end":48},"wait":true}
+```
+
+All output object names and the clip name must be unused and fit 63 UTF-8 bytes.
+`meshes` is optional; each entry names a source and a new output. Armature data,
+mesh data and the action are independent; materials remain shared. The copied
+rig has no object/pose constraints, drivers or NLA tracks. It is unparented and
+retains the source object's stationary world transform. Bone names, rest data,
+vertex groups and skin settings are retained. Every bone receives location,
+continuous-sign quaternion rotation and scale keys at every integer frame, using
+linear interpolation. The output action is active, persistent and compatible
+with existing clip inspection/sampling and managed GLB export.
+
+Before success, a second native evaluation compares every bone's full world
+matrix and every copied mesh vertex's world position against the source at each
+integer frame. `tolerance` defaults to .0001 (range .000001.. .01); it is an
+absolute limit for both world matrix components and world vertex distances.
+Results include `frame_count`, range, output names, `max_pose_matrix_error`,
+`max_vertex_world_error` and tolerance. Subframe interpolation, normals, arbitrary
+simulation history and other unexamined properties are not certified by these
+checks. An unrepresentable shear or other pose/deformation mismatch fails the
+operation instead of returning an unchecked asset.
+
+This bounded version requires Object mode, pose evaluation, single-segment bones,
+stationary rig/mesh object transforms throughout the range and simple skins:
+one enabled vertex-group Armature modifier targeting the source, with no bone
+envelopes, shape keys, mesh animation/constraints or other modifiers. Meshes must
+be unparented or object-parented to the source rig. Animated object transforms
+are explicitly refused; their motion is not silently discarded. Source rig
+constraint/driver/NLA evaluation is sampled as-is; this is not an authoring tool
+or comprehensive qualification of arbitrary imported rigs.
+
+Limits are 500 consecutive integer frames, 256 bones, 32768 bone-frame samples,
+eight meshes and two million vertex-frame comparisons. The operation submits
+asynchronously by default; poll it or use `wait=true` for short ranges. Progress
+separates baking and verification. Cooperative cancellation and ordinary errors
+remove newly created objects/data/action and restore the source frame/subframe.
+Native frame evaluation and individual key insertion block until the next check;
+process crashes are handled by existing checkpoint/recovery workflows rather
+than this in-process cleanup. No external cache bundle is created by the bake.
+
+Save the `.blend` to retain the editable source and baked assets. Select only
+the baked rig/meshes for `export_glb` or use the structured object export tool;
+otherwise exporting both versions also includes the editable source. Validate
+portable delivery by reimporting and comparing playback at key/intermediate
+frames. Shared materials remain editable through the existing material tools.
 
 ## Structured shape keys
 

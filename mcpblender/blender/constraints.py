@@ -10,7 +10,7 @@ from .rigging import armature_object
 from .simulations import props
 from mcpblender.animation_graph import SUPPORTED,validate_graph
 
-COMMANDS={'create_animation_control','inspect_animation_constraints','configure_animation_constraint','remove_animation_constraint','move_animation_constraint','sample_constraint_animation'}
+COMMANDS={'bake_constraint_animation','create_animation_control','inspect_animation_constraints','configure_animation_constraint','remove_animation_constraint','move_animation_constraint','sample_constraint_animation'}
 NATIVE={'COPY_LOCATION':'CopyLocationConstraint','COPY_ROTATION':'CopyRotationConstraint','COPY_TRANSFORMS':'CopyTransformsConstraint','LIMIT_LOCATION':'LimitLocationConstraint','LIMIT_ROTATION':'LimitRotationConstraint','LIMIT_SCALE':'LimitScaleConstraint','DAMPED_TRACK':'DampedTrackConstraint','IK':'KinematicConstraint'}
 
 
@@ -230,6 +230,9 @@ def sample(p):
 
 
 def dispatch(command,p):
+    if command=='bake_constraint_animation':
+        from .animation_bake import bake
+        return bake(p)
     if command=='inspect_animation_constraints':return inspect(p)
     if command=='sample_constraint_animation':return sample(p)
     if command=='create_animation_control':

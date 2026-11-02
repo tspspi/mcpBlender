@@ -1448,6 +1448,81 @@ otherwise exporting both versions also includes the editable source. Validate
 portable delivery by reimporting and comparing playback at key/intermediate
 frames. Shared materials remain editable through the existing material tools.
 
+## Skin-weight inspection and refinement
+
+Use `inspect_skin_weights` with mesh `name` and optional matching `armature`.
+It reports deform bones, group locks, nondeform groups, binding settings, shared
+mesh users, normalization/influence/invalid-weight issue counts and paged raw
+vertices. `offset`/`limit` (maximum 256) paginate; `issues_only=true` filters the
+rows and `max_influences` defines the inspection threshold. Nonfinite stored
+weights are reported as JSON null and flagged invalid. Indices refer to the
+mesh's raw basis, not evaluated modifier output or a posed surface.
+
+Carry `weights_sha256` as `expected_weights` into every edit. The guard covers
+all memberships, group names/locks, raw basis coordinates/topology, rig rest
+matrices/deform flags, mesh-to-rig transform and binding settings. Changes to
+those inputs require inspection again. It does not freeze animation, arbitrary
+external dependencies, other modifiers or evaluated deformation.
+
+- `set_skin_weights`: `weights=[{"vertex":0,"weights":{"Root":0.3,"Arm":0.7}}]`
+  replaces that vertex's deform influences. Omitted unlocked deform groups are
+  removed. `normalize=true` scales the unlocked remainder after locked weights;
+  `normalize=false` preserves supplied magnitudes. Empty/partial rows need
+  `allow_unweighted=true` when they cannot fill the normalized budget.
+- `repair_skin_weights`: optional unique `vertices` selects a subset; otherwise
+  all raw vertices. `threshold` prunes small influences; `max_influences` retains
+  the strongest, counting locked positive influences. Normalize the remainder
+  without changing locked weights. `unweighted` defaults to ERROR; KEEP permits
+  empty/partly filled vertices, FALLBACK needs `fallback_bone`, and NEAREST fills
+  missing weight with the nearest unlocked deform rest-bone segment. NEAREST
+  uses raw basis points transformed to current armature-local coordinates and
+  deterministic bone-name tie breaking; it is a heuristic, not automatic
+  anatomical weighting.
+- `smooth_skin_weights`: the repair options plus `iterations` and `strength`.
+  Each iteration blends the current row with the mean of raw edge neighbors,
+  then prunes/normalizes it. All selected vertices read frozen inputs within an
+  iteration. Unselected neighbors influence the mean but remain unchanged.
+- `mirror_skin_weights`: optional destination `vertices`, `axis`, `plane`,
+  `space` ARMATURE (default) or MESH, `tolerance`, `direction`
+  POSITIVE_TO_NEGATIVE/NEGATIVE_TO_POSITIVE/SWAP, and explicit
+  `bone_pairs=[{"left":"Arm.L","right":"Arm.R"}]`. Unpaired names retain
+  their identity. Matching uses reflected basis positions; missing matches or
+  equally close candidates with differing weights refuse the entire edit.
+  More than 256 candidates within tolerance is refused. Centerline vertices
+  within tolerance remain unchanged. Sources are frozen, including for SWAP.
+- `configure_skin_binding`: configure the existing unique Armature modifier's
+  `use_vertex_groups`, `use_bone_envelopes`, `preserve_volume`, mask `vertex_group`
+  and `invert_vertex_group`. Exposed settings replace their previous values;
+  omitted fields use defaults. It does not recompute weights or rebind a rig.
+
+Weight operations preserve nondeform groups such as physics pins. Existing
+`lock_weight` flags are respected by default, including absent memberships;
+`respect_locks=false` explicitly overrides weight protection without changing
+those flags. Locked sums above one or too many locked influences refuse repair.
+These tools do not author UI group locks or infer bilateral bone names.
+
+Editing requires a local Object-mode mesh and one Armature modifier pointing to
+an Object-mode rig in the current scene. Weight edits require group-based
+binding enabled. The rig world transform must be invertible. Animated poses and
+relative morphs can stay active; verify their evaluated deformation afterward.
+Shared mesh data requires explicit `make_single_user=true`; otherwise edits
+refuse. Ordinary edits preserve mesh/shape IDs and references; isolation copies
+mesh data and its shape data. Materials and rig remain shared.
+
+Set/repair/smooth/mirror default to queued operations. Use `wait=true` for a
+blocking response, or poll/wait/cancel the returned operation. Progress includes
+storage information; membership writes check cancellation in bounded chunks.
+Plans are completed before membership writes. Cooperative cancellation or
+ordinary errors roll back changed rows, new groups and any owned data copy.
+This is an in-process rollback, not a crash-durable transaction; retain normal
+recovery checkpoints. A native API call itself cannot be interrupted.
+
+Limits: 200,000 vertices, 2,048 groups, 512 rig bones, two million memberships;
+explicit edits accept 10,000 unique vertex rows. Smoothing is bounded to two
+million selected vertex-iterations. Mesh topology and rest bones remain unchanged.
+Always inspect issue counts and sample the posed/animated result; normalized
+weights alone do not establish good deformation.
+
 ## Motion retargeting between skeletons
 
 `inspect_animation_retarget` plans transfer from armature `source` to target

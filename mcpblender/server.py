@@ -416,7 +416,7 @@ def build_server(config: Config):
 
     def domain_tool(command):
         model, _, description = COMMANDS[command]
-        default_wait = command not in ("render_animation", "render_video", "render_animation_preview", "download_asset", "upload_asset", "request_asset_api", "sample_rigid_bodies", "bake_rigid_bodies", "sample_simulation", "bake_simulation", "bake_fluid", "bake_textures", "sample_constraint_animation", "bake_constraint_animation", "configure_nla_strip", "remove_nla_strip", "move_nla_track", "configure_nla_playback", "retarget_animation")
+        default_wait = command not in ("render_animation", "render_video", "render_animation_preview", "download_asset", "upload_asset", "request_asset_api", "sample_rigid_bodies", "bake_rigid_bodies", "sample_simulation", "bake_simulation", "bake_fluid", "bake_textures", "sample_constraint_animation", "bake_constraint_animation", "configure_nla_strip", "remove_nla_strip", "move_nla_track", "configure_nla_playback", "retarget_animation", "set_skin_weights", "repair_skin_weights", "smooth_skin_weights", "mirror_skin_weights")
 
         async def operation(params=None, wait: bool = default_wait, request_id: str | None = None) -> dict:
             values = params.model_dump(exclude_none=True) if params is not None else {}

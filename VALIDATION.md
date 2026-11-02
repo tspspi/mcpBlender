@@ -1,5 +1,51 @@
 # Local validation: 0.2.0
 
+## Guarded skin-weight refinement — 2026-11-02
+
+System Python 3.11 and installed FreeBSD Blender 5.0.1, source checkout,
+isolated background instances; no packages, environments or installed runtime
+changes. Focused qualification:
+
+```sh
+MCPBLENDER_TEST_BLENDER=1 python3 -m pytest -q tests/test_skin_contracts.py tests/test_skin_weights.py tests/test_skin_native.py --tb=short --maxfail=1
+```
+
+**7 passed in 75.65 seconds.** MCP fixtures disable arbitrary Python execution.
+They exercise missing/unnormalized weights, nearest-rest-segment fallback,
+strongest-influence pruning, stale guards, failed-plan atomicity, frozen-input
+edge smoothing, actual changed posed deformation, bilateral mirror and SWAP,
+shared mesh refusal/isolation and unchanged peer fingerprint/deformation,
+binding settings and invalid-mask refusal, conflicting/missing geometric
+matches, and edited weight persistence through save/reopen. A 10,000-vertex,
+32-bone asynchronous edit is cancelled after membership writes have started;
+progress contains storage, rollback restores the exact initial fingerprint,
+scene frame/active selection and subsequent editability.
+
+A separate native Blender probe constructs UI-locked deform groups, a nondeform
+pin mask and a driven shape key. It checks locked normalization budgets, absent
+locked memberships through smoothing, unchanged mask values, unchanged mesh/Key/
+driver identity for ordinary edits, explicit lock override retaining UI flags,
+and deterministic cancellation after 128 writes with newly created group cleanup.
+Shared-copy cancellation restores the original pointer and mesh/Key counts;
+successful isolation retains original peer data and its shape driver. Native
+fixture setup is not an MCP arbitrary-code feature.
+
+Existing skeletal/morph/capability/server regression:
+
+```sh
+MCPBLENDER_TEST_BLENDER=1 python3 -m pytest -q tests/test_animation_contracts.py tests/test_skeletal_animation.py tests/test_morph_contracts.py tests/test_shape_keys.py tests/test_capabilities.py tests/test_server.py --tb=short --maxfail=1
+```
+
+**26 passed in 206.19 seconds**, with the existing Starlette/AnyIO deprecation
+warning. Bundled animation skill validation and staged whitespace/privacy checks
+passed. No rendering or new post-refinement GLB comparison is claimed here.
+Nearest weighting is geometric, not anatomical; good deformation is not implied
+by normalization. General arbitrary imported rigs, maximum-scale performance,
+all mirror spaces/transforms, invalid native file corruption, other Blender
+versions and crash-time atomicity remain unqualified. Existing-bone rest/hierarchy
+authoring remains a separate milestone. The full workflow backlog remains open.
+
+
 ## Explicit rest-aware retargeting and root-motion delivery — 2026-11-02
 
 The combined retarget/NLA/driver/controller/constraint/bake/skeletal/morph/

@@ -20,6 +20,17 @@ per-vertex influences. Inspect coverage and weight sums with `inspect_rig`.
 Existing bindings/group conflicts are refused; shared mesh edits need explicit
 isolation. Unweighted vertices are an error by default.
 
+For existing skins, use `inspect_skin_weights` and carry `weights_sha256` as
+`expected_weights` into set/repair/smooth/mirror or binding configuration. These
+use raw basis indices, not evaluated vertices. Repair supports prune/influence
+limits and explicit ERROR/KEEP/FALLBACK/nearest-rest-segment policies; nearest is
+a heuristic. Mirror needs explicit bilateral bone pairs and a chosen plane/space.
+Locks and nondeform masks survive by default; shared data requires explicit
+`make_single_user=true`. Edits default to queued operations with progress/storage
+and cooperative rollback. Inspect issues again and sample deformation at meaningful
+poses; normalized weights do not prove a useful bend. Existing rest-bone editing
+is separate. See USER_MANUAL.md for limits and exact replacement semantics.
+
 Clips name the armature in `name` and the action in `clip`; tracks specify a
 `bone`, `property` and vector `keyframes`. Bone `rotation_degrees` uses XYZ Euler
 degrees relative to rest-bone axes, unlike object `set_keyframes` rotations in

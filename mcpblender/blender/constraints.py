@@ -137,7 +137,7 @@ def properties(p,obj,target):
     return v
 
 
-def dependency_records(obj,target,name,values,kind):
+def dependency_records(obj=None,target=None,name=None,values=None,kind=None,include_drivers=True):
     if len(bpy.context.scene.objects)>5000:raise ValueError('Constraint dependency inspection supports up to 5000 scene objects')
     records=[]
     for other in bpy.context.scene.objects:
@@ -145,7 +145,7 @@ def dependency_records(obj,target,name,values,kind):
         if other.parent:
             if other.parent_type not in {'OBJECT','BONE'}:item['blocked']='Vertex-parented dependencies are unsupported'
             item['parent']=(other.parent.name,other.parent_bone if other.parent_type=='BONE' else None)
-        if other.animation_data and other.animation_data.drivers:item['blocked']='Driver dependencies require a specialized workflow'
+        if include_drivers and other.animation_data and other.animation_data.drivers:item['blocked']='Driver dependencies require a specialized workflow'
         owners=[(None,other)]
         if other.type=='ARMATURE':
             if len(other.pose.bones)>2000:raise ValueError('Constraint dependency inspection supports up to 2000 bones per rig')

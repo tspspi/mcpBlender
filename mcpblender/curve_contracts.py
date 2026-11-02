@@ -33,7 +33,8 @@ class ControlKey(Model):
 class ControlKeys(NewClip):
     bone: Name | None = None
     constraint: ShortName | None = None
-    property: Literal['location', 'rotation_degrees', 'rotation_quaternion', 'scale', 'influence']
+    custom_property: Annotated[str,Field(min_length=1,max_length=63,pattern=r'^[A-Za-z][A-Za-z0-9_]*$')] | None = None
+    property: Literal['location', 'rotation_degrees', 'rotation_quaternion', 'scale', 'influence', 'custom_scalar']
     keyframes: list[ControlKey] = Field(min_length=1, max_length=256)
     interpolation: Interpolation = 'LINEAR'
 
@@ -43,10 +44,14 @@ class ControlKeys(NewClip):
             raise ValueError('Key frames must be unique')
         if (self.property == 'influence') != bool(self.constraint):
             raise ValueError('Constraint must be specified exactly for influence keys')
+        if (self.property=='custom_scalar') != bool(self.custom_property):
+            raise ValueError('custom_property is required exactly for custom_scalar keys')
         for key in self.keyframes:
             if self.property == 'influence':
                 if isinstance(key.value, list) or not 0 <= key.value <= 1:
                     raise ValueError('Influence values must be scalars in [0,1]')
+            elif self.property=='custom_scalar':
+                if isinstance(key.value,list):raise ValueError('Custom control values must be scalars')
             elif not isinstance(key.value, list) or len(key.value) != (4 if self.property == 'rotation_quaternion' else 3):
                 raise ValueError('Transform keys require three components, or four quaternion components')
             elif self.property == 'rotation_quaternion' and abs(sum(v*v for v in key.value)-1) > 1e-5:
@@ -107,6 +112,6 @@ class EditCurve(NewClip):
 EDIT = ('allow_scene_edit',)
 COMMANDS = {
     'inspect_animation_channels': (InspectChannels, (), 'Inspect the active object action slot, paged F-curves/keys/handles/modifiers and binding fingerprint. Read-only; no clip switching.'),
-    'set_control_keyframes': (ControlKeys, EDIT, 'Key object/bone transforms or named constraint influence into a NEW clip copied from the active action. Preserves source clip and unrelated channels; activates the independent result. Requires current animation fingerprint, no drivers or active NLA blending.'),
+    'set_control_keyframes': (ControlKeys, EDIT, 'Key object/bone transforms, numeric custom controls or named constraint influence into a NEW clip copied from the active action. Preserves source clip and unrelated channels; activates the independent result. Requires current animation fingerprint, no drivers or active NLA blending.'),
     'edit_animation_curve': (EditCurve, EDIT, 'Transform/retime, delete, interpolate/ease or edit handles of selected existing F-curve keys in a NEW independent active clip. Native channel units (radians for rotations). Guarded whitelist, source fingerprint and collision checks; source action remains unchanged.'),
 }

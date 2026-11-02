@@ -59,10 +59,32 @@ Use `edit_animation_curve` with inspected `data_path`, `component`, selected key
 INTERPOLATION (including easing) or HANDLES. Explicit handle coordinates require
 FREE and one selected key. Raw curve units are native (Euler radians). Retiming
 collisions are refused; native auto handles recalculate. Imported modifiers,
-sampled/locked/muted curves, drivers, active NLA/blended actions and multilayer
+sampled/locked/muted curves, unsupported drivers, active NLA/blended actions and multilayer
 editing are inspect-only. Failures restore the original binding/frame. Inspect
 `edit_blockers` and per-channel `typed_editable` before proposing edits; validate
 key/intermediate playback. Full contracts and bounds are in USER_MANUAL.md.
+
+For driver controls, create a numeric `set_animation_property` on an object/bone,
+then key it through `set_control_keyframes` using `property="custom_scalar"` and
+`custom_property`. Inspect `inspect_animation_drivers`; carry `drivers_sha256`
+as `expected_drivers` when configuring/removing an explicit typed `channel`.
+Channels cover transform components (Euler radians/WXYZ), scalar controls, named
+constraint influence and relative non-Basis shape weights on independent meshes.
+Use named PROPERTY/SHAPE_KEY inputs for raw values or TRANSFORM inputs for native
+evaluated spaces. Formulas use native simple numeric expressions, up to eight
+inputs; no arbitrary Python calls or attributes. Typical bone rotation formula:
+`bend*pi/2`, with a PROPERTY input from the rig's `Bend` scalar.
+
+Managed drivers can remain while keying upstream controls on the same object;
+directly driven channels cannot also be keyed. Create/configure constraints before
+drivers because constraint editing retains conservative driver dependency guards.
+Dependency checks distinguish raw scalar values from solved transforms and reject
+feedback; imported/externally changed drivers remain inspect-only. Metadata is
+matched against native variables, not trusted as a dependency declaration. Check
+native validity and sampled endpoints/deformation, including input extremes;
+current-frame validity does not guarantee every future value is valid. Save/reopen
+and use visual baking for supported skeletal delivery. Morph/object-motion baking,
+NLA and retargeting remain separate workflows. Full contracts: USER_MANUAL.md.
 
 Use `sample_constraint_animation` to inspect the current constrained timeline at
 key/intermediate frames, including bound mesh deformation. It restores the frame
@@ -109,7 +131,7 @@ inspect the combined result at key/intermediate frames. It restores weights,
 actions, slots, frame and the explicitly sampled rig pose even on cancellation.
 Without skeletal_clip, the chosen armature's current action/pose is used.
 
-Use `execute_code`, when allowed, for unsupported constraints, drivers, absolute shape keys, animation
+Use `execute_code`, when allowed, for unsupported constraints/driver repairs, absolute shape keys, animation
 layers or geometry nodes not yet exposed by structured tools. Return inspection
 data in `result` and check success/traceback. API details depend on Blender version.
 

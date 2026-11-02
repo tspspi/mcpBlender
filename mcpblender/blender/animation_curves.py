@@ -76,6 +76,10 @@ def allowed_paths(obj):
         for prop, size in (('location',3),('rotation_euler',3),('rotation_quaternion',4),('scale',3)):
             result[target.path_from_id(prop)] = size
         for constraint in target.constraints: result[constraint.path_from_id('influence')] = 1
+        from .drivers import scalar
+        for key in target.keys():
+            try:result[scalar(target,key)]=1
+            except ValueError:pass
     return result
 
 
@@ -83,7 +87,8 @@ def edit_blockers(obj, anim, action):
     result=[]
     if obj.library or obj.override_library or (obj.data and (obj.data.library or obj.data.override_library)):
         result.append('Local non-overridden object/data required')
-    if anim and (anim.drivers or anim.use_tweak_mode or any(not t.mute or t.is_solo for t in anim.nla_tracks)
+    from .drivers import owned
+    if anim and (any(not owned(obj,c) for c in anim.drivers) or anim.use_tweak_mode or any(not t.mute or t.is_solo for t in anim.nla_tracks)
                  or anim.action_blend_type != 'REPLACE' or abs(anim.action_influence-1) > 1e-6):
         result.append('Channel editing requires no drivers, active NLA or blended active action')
     if action and not hasattr(action,'fcurves') and (len(action.layers)>1 or any(len(l.strips)>1 for l in action.layers)):
@@ -147,6 +152,10 @@ def control_target(obj, p):
     if p.get('bone'):
         if obj.type!='ARMATURE' or p['bone'] not in obj.pose.bones: raise ValueError('Control bone not found')
         target = obj.pose.bones[p['bone']]
+    if p.get('custom_property'):
+        from .drivers import scalar
+        scalar(target,p['custom_property'])
+        return target,'['+json.dumps(p['custom_property'])+']'
     if p.get('constraint'):
         if p['constraint'] not in target.constraints: raise ValueError('Control constraint not found')
         return target.constraints[p['constraint']], 'influence'
@@ -162,7 +171,7 @@ def dispatch(command, p):
     obj, anim, source, slot = preflight(p)
     source_curves = channels(source,slot)
     if command=='set_control_keyframes':
-        target, prop = control_target(obj,p); path = target.path_from_id(prop)
+        target, prop = control_target(obj,p); custom=prop.startswith('['); path = ('' if isinstance(target,bpy.types.Object) else target.path_from_id())+prop if custom else target.path_from_id(prop)
         for c in source_curves:
             if c.data_path==path: editable(c)
         if any(sum(c.data_path==path and c.array_index==i for c in source_curves)>1 for i in range(4)):
@@ -175,16 +184,18 @@ def dispatch(command, p):
                 for frame in native_frames:
                     if any(1e-5<=abs(k.co.x-frame)<1e-4 for k in c.keyframe_points):
                         raise ValueError('New key nearly collides with an existing key')
-        native = target.bl_rna.properties[prop]
+        if anim and any(c.data_path==path for c in anim.drivers):raise ValueError('Selected property is driven; key an upstream control instead')
+        native = None if custom else target.bl_rna.properties[prop]
         for key in p['keyframes']:
             values = key['value'] if isinstance(key['value'],list) else [key['value']]
             if p['property']=='rotation_degrees': values=[math.radians(v) for v in values]
-            if any(not native.hard_min<=v<=native.hard_max for v in values): raise ValueError('Key value exceeds native property limits')
+            if native and any(not native.hard_min<=v<=native.hard_max for v in values): raise ValueError('Key value exceeds native property limits')
     else:
         path=p['data_path']; size=allowed_paths(obj).get(path)
         if size is None or p['component']>=size: raise ValueError('Channel must be an existing object/bone transform or constraint influence path')
         matches=[c for c in source_curves if c.data_path==path and c.array_index==p['component']]
         if len(matches)!=1: raise ValueError('Choose exactly one existing channel')
+        if anim and any(c.data_path==path and c.array_index==p['component'] for c in anim.drivers):raise ValueError('Selected channel is driven; edit an upstream control instead')
         c=matches[0]; editable(c); selected=find_keys(c,p['frames']); settings=p['settings']; op=settings['operation']
         if op=='TRANSFORM':
             destinations=[native_float(settings['pivot_frame']+(k.co.x-settings['pivot_frame'])*settings['time_scale']+settings['time_offset']) for k in selected]
@@ -197,7 +208,7 @@ def dispatch(command, p):
                 if (settings.get('left') and settings['left'][0]>k.co.x) or (settings.get('right') and settings['right'][0]<k.co.x):
                     raise ValueError('Left/right handle times must bracket their key')
     saved_frame=bpy.context.scene.frame_current, bpy.context.scene.frame_subframe
-    saved_value = getattr(target,prop) if command=='set_control_keyframes' else None
+    saved_value = (target[p['custom_property']] if custom else getattr(target,prop)) if command=='set_control_keyframes' else None
     if hasattr(saved_value,'copy'): saved_value=saved_value.copy()
     had_animation=anim is not None; working=None; committed=False
     try:
@@ -211,7 +222,8 @@ def dispatch(command, p):
             for key in p['keyframes']:
                 value=key['value']
                 if p['property']=='rotation_degrees': value=[math.radians(v) for v in value]
-                setattr(target,prop,value)
+                if custom:target[p['custom_property']]=value
+                else:setattr(target,prop,value)
                 if not target.keyframe_insert(data_path=prop,frame=native_float(key['frame'])): raise RuntimeError('Blender refused a control key')
             for c in channels(working,getattr(anim,'action_slot',None)):
                 if c.data_path==path:
@@ -249,7 +261,9 @@ def dispatch(command, p):
         if source: source.use_fake_user=True
         committed=True
     finally:
-        if command=='set_control_keyframes': setattr(target,prop,saved_value)
+        if command=='set_control_keyframes':
+            if custom:target[p['custom_property']]=saved_value
+            else:setattr(target,prop,saved_value)
         if not committed:
             if had_animation:
                 anim.action=source

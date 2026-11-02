@@ -1099,7 +1099,8 @@ copies at most 16 slots and 200000 key/sample points across the whole action.
 `set_control_keyframes` uses object `name`, optional pose `bone`, `property` and
 `keyframes`. Supported properties are `location`, `scale` (three components),
 `rotation_degrees` (Euler, three components), `rotation_quaternion` (normalized
-WXYZ, four components) and scalar `influence` in [0,1]. Influence additionally
+WXYZ, four components), scalar `influence` in [0,1], and `custom_scalar` with
+`custom_property` naming an existing numeric control. Influence additionally
 requires the named owner `constraint`. Bone values use local pose-basis axes;
 they are not world-space positions. Euler keys require an Euler rotation mode;
 quaternion keys require quaternion mode. Native property bounds are checked.
@@ -1119,7 +1120,8 @@ require a constraint-free rig.
 
 `edit_animation_curve` selects an inspected `data_path` and integer `component`,
 with up to 256 existing key `frames`. Paths are restricted to existing object/bone
-location, Euler/quaternion rotation, scale and named constraint influence. It
+location, Euler/quaternion rotation, scale, named constraint influence and numeric
+custom control properties. It
 never evaluates a Python path supplied by the caller. Its typed `settings` are:
 
 - `TRANSFORM`: `pivot_frame` (0), positive `time_scale` (1), `time_offset` (0),
@@ -1147,8 +1149,10 @@ native precision or collide during retiming are refused. Curve values/handles
 are bounded to finite magnitudes up to 1e12. Raw curve edits do not normalize an
 entire quaternion or enforce a property's evaluated range; validate playback.
 
-Editing requires a local Object-mode object/data, no object drivers, active NLA
-tracks/solo/tweak mode, or blended active action. At most one action layer and
+Editing requires a local Object-mode object/data, no unsupported object drivers,
+active NLA tracks/solo/tweak mode, or blended active action. Verified managed
+drivers are retained; directly driven target channels are refused, so key their
+upstream control properties instead. At most one action layer and
 one keyframe strip are supported. Selected locked/muted curves/groups, sampled
 curves, modifiers and duplicate native channels are inspect-only. Unrelated
 modified curves are copied intact. Failures remove the working copy and restore
@@ -1161,8 +1165,115 @@ visual baking for supported constrained skeletal delivery. Existing simple clip
 tools retain their constraints/drivers/NLA restrictions and reject mixed object/
 bone actions; current-timeline inspection works through the constraint sampler.
 Managed export can include previous named clip variants as well as the new one;
-inspect the delivered animation list. Drivers, NLA authoring and retargeting are
-separate remaining workflows.
+inspect the delivered animation list. Driver configuration is described below;
+NLA authoring and retargeting remain separate workflows.
+
+## Structured animation drivers
+
+Driver tools use named inputs and native simple numeric expressions. They work
+with MCP Python execution disabled. No expression is passed to Python `eval` by
+the MCP server. `inspect_animation_drivers` is read-only; configuration, removal
+and numeric control creation require scene-edit permission.
+
+Create a scalar control using `set_animation_property`: object `name`, optional
+pose `bone`, ASCII identifier `property`, `value`, `minimum`/`maximum` (0..1
+by default) and optional `description`. Values/ranges are finite and bounded to
+1e12 in magnitude; property names are at most 63 ASCII characters and cannot
+start with the reserved `mcpblender_` prefix. Existing nonnumeric, keyed or driven
+properties are refused. Native UI ranges are hints for other Blender editing;
+this tool enforces its supplied bounds on the value being set. It does not
+create a constraint or change arbitrary RNA fields.
+
+Animate an existing scalar with `set_control_keyframes`, using
+`property="custom_scalar"` and `custom_property="Bend"`. Managed drivers may
+remain active on the same object, allowing a rig's own control to drive a bone.
+Directly driven channels cannot also be keyed by the guarded channel tools.
+
+```json
+{"params":{"name":"Arm","property":"Bend","value":0}}
+```
+
+Inspect `inspect_animation_drivers` with object `name` and optional `offset`/
+`limit` (default 32, max 64). It covers object/pose drivers and the mesh's
+shape-key datablock. Results include `drivers_sha256`, native paths/components,
+expression, variables/ID references/spaces, mapping-curve/modifier configuration,
+validity, `is_simple_expression`, `typed_editable` and per-driver `edit_blockers`. Supply that hash as
+`expected_drivers` to `configure_animation_driver` or `remove_animation_driver`.
+The hash describes configuration, not current animated control values or validity.
+
+Both edits select an explicit typed `channel`:
+
+- `TRANSFORM`: optional `bone`, `property` location/rotation_euler/
+  rotation_quaternion/scale and zero-based `component`. Euler outputs use radians;
+  quaternion components use WXYZ and require quaternion rotation mode. The tool
+  does not normalize a complete quaternion automatically.
+- `PROPERTY`: optional `bone` and existing numeric custom `property`.
+- `CONSTRAINT`: optional `bone` and named `constraint`, driving its influence.
+- `SHAPE_KEY`: named relative shape `key` on the mesh; Basis, shared mesh data,
+  linked/overridden keys and mismatched managed topology are refused.
+
+```json
+{"params":{"name":"Arm","expected_drivers":"<inspection drivers_sha256>","channel":{"kind":"TRANSFORM","bone":"Forearm","property":"rotation_euler","component":0},"settings":{"expression":"bend*pi/2","variables":[{"kind":"PROPERTY","name":"bend","object":"Arm","property":"Bend"}]}}}
+```
+
+`settings.variables` contains up to eight distinct named inputs:
+
+- `PROPERTY`: `object`, optional `bone`, numeric custom `property`.
+- `SHAPE_KEY`: mesh `object` and relative shape `key`.
+- `TRANSFORM`: `object`, optional `bone`, LOC_X/Y/Z, ROT_X/Y/Z or SCALE_X/Y/Z
+  `transform`, native WORLD_SPACE (default), LOCAL_SPACE or TRANSFORM_SPACE
+  `space`, and AUTO/default or Euler `rotation_mode`. Rotation inputs are radians.
+
+PROPERTY and SHAPE_KEY use native single-property variables. TRANSFORM uses the
+native evaluated transform variable; spaces follow Blender's driver semantics.
+Input objects must belong to the current scene. Existing scalar values need not
+be world coordinates; a bone custom property is independent of its solved pose.
+
+Expressions are at most 255 UTF-8 bytes and 128 syntax nodes. They support numeric
+constants (up to 1e12), named inputs, `pi`, `e`, `frame`, arithmetic + - * / ** %,
+comparisons, Boolean operations and conditional expressions. Available numeric
+functions are radians, degrees, abs/fabs, floor/ceil/trunc/round/int, sin/cos/tan,
+asin/acos/atan/atan2, exp/log/sqrt/pow/fmod, lerp/clamp/smoothstep and min/max.
+Attribute access, indexing, strings, comprehensions, keyword calls and arbitrary
+functions are refused. Names are ASCII identifiers; reserved functions/constants
+and Python keywords cannot name variables. Native function arity and evaluation
+still matter: installed Blender must accept the expression as simple and valid
+at the current frame. Formulas such as division by zero fail and roll back.
+Future inputs can still make a previously valid formula invalid; inspect validity
+and sample the animated result. Expressions do not clamp influence, shape or
+quaternion values automatically: use `clamp` or suitable formulas as needed.
+
+Typed drivers use direct expression output, without a second F-curve mapping,
+modifier or sampled curve. Blender's default identity mapping points are removed
+on creation. The original target must not already have action/NLA keys for the
+same component. Other action tracks are retained. Configuration changes only the
+selected managed driver; it does not copy an object or rename its action.
+
+Dependency checks combine raw property nodes with evaluated object/bone nodes,
+parents, supported constraints and IK ancestor effects. A scalar on a rig can
+safely drive its bone; feedback through that bone's solved transform is refused.
+Unknown reachable constraints, external driver configurations or unsupported
+parenting are conservatively refused. Unrelated unsupported components do not
+block an independent raw input. This is not a comprehensive arbitrary-rig solver.
+Existing constraint configuration still conservatively refuses driver-bearing
+reachable objects; create/configure constraints before installing their drivers.
+
+Ownership metadata is checked against real native paths, expressions, variables,
+references and curve configuration. Imported, externally changed or no-longer-
+resolving drivers are inspect-only; metadata alone cannot claim a different
+source dependency. Restore their inputs/configuration or use an explicitly
+permitted specialized Python workflow for unsupported repairs. Managed removal
+requires the current fingerprint and preserves the current driven property
+value; it deletes neither input controls nor source clips.
+
+Unexpected configuration/evaluation failures attempt to restore the previous
+driver, or remove the new one and restore its property's previous value. These
+bounded operations run synchronously. Inspection allows 256 drivers per datablock,
+32 variables/curve modifiers and 10000 mapping/sample/envelope points per imported
+driver; authoring has at most eight variables. Graph traversal allows 4096 total
+scene drivers, 5000 scene objects and 2000 bones per rig. Validate actual evaluated
+motion, skin/morph deformation and save/reopen before delivery. Skeletal drivers
+can use visual baking below; morph/object-motion baking remains separate work.
 
 ## Visual skeletal animation baking
 

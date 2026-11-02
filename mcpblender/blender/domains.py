@@ -19,6 +19,7 @@ from . import uv
 from . import textures
 from . import constraints
 from . import animation_curves
+from . import drivers
 from .capabilities import workflow_support, DISCOVERY_NOTE
 
 COMMANDS = {"get_capabilities", "inspect_resources", "create_primitive", "create_mesh",
@@ -40,6 +41,7 @@ COMMANDS.update(uv.COMMANDS)
 COMMANDS.update(textures.COMMANDS)
 COMMANDS.update(constraints.COMMANDS)
 COMMANDS.update(animation_curves.COMMANDS)
+COMMANDS.update(drivers.COMMANDS)
 
 
 def strips(editor):
@@ -64,6 +66,8 @@ def curves(action, slot):
 
 
 def dispatch(command, p):
+    if command in drivers.COMMANDS:
+        return drivers.dispatch(command, p)
     if command in animation_curves.COMMANDS:
         return animation_curves.dispatch(command, p)
     if command in constraints.COMMANDS:

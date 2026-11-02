@@ -1,5 +1,71 @@
 # Local validation: 0.2.0
 
+## Typed native drivers and animated scalar controls — 2026-11-02
+
+The combined driver/controller/constraint/visual-bake/skeletal/morph/capability/
+server regression passed **50 tests in 287.90 seconds**, with the existing
+Starlette/AnyIO deprecation warning:
+
+```sh
+MCPBLENDER_TEST_BLENDER=1 MCPBLENDER_DRIVER_EVIDENCE_DIR=/tmp/mb-drivers-20261102 python3 -m pytest -q tests/test_driver_contracts.py tests/test_animation_drivers.py tests/test_curve_contracts.py tests/test_animation_curves.py tests/test_constraint_contracts.py tests/test_constraints.py tests/test_animation_bake.py tests/test_animation_contracts.py tests/test_skeletal_animation.py tests/test_morph_contracts.py tests/test_shape_keys.py tests/test_capabilities.py tests/test_server.py --tb=short --maxfail=1
+```
+
+Final driver contracts/live checks passed **7 tests in 41.03 seconds**, including
+pose-bone scalar animation and shared shape-data refusal after the last guards:
+
+```sh
+MCPBLENDER_TEST_BLENDER=1 MCPBLENDER_DRIVER_EVIDENCE_DIR=/tmp/mb-drivers-20261102 python3 -m pytest -q tests/test_driver_contracts.py tests/test_animation_drivers.py --tb=short --maxfail=1
+```
+
+With MCP Python disabled, a scalar on a translated two-bone rig drives tip
+rotation using `bend*pi/2`. The scalar is keyed after installing the driver on
+the same rig. Native samples at three frames verify independently computed
+endpoints and distinct skin deformations. Visual baking checks every bone matrix
+and skin vertex over nine frames against an independent constraint-free rig.
+Save/reopen preserves the native driver, ownership and configuration fingerprint.
+Updating its expression changes the measured reach; stale removal is refused,
+and guarded removal succeeds. A pose-bone custom scalar is independently keyed
+and drives that bone, with its endpoint checked against sin/cos(.5).
+
+Native transform variables drive object location. WORLD_SPACE minus
+TRANSFORM_SPACE/LOCAL_SPACE on a parented helper gives the independently expected
+parent translation. Constraint influence controlled by a scalar produces half/
+full follow, and changing its input leaves the configuration fingerprint stable.
+Cycle refusals cover a rig control reading its driven bone, a parent feedback
+loop and influence feedback through its solved owner. Pure property/evaluated
+node controls verify safe same-rig raw inputs and unrelated blocked components.
+
+A relative shape-key driver changes actual mesh bounds as its scalar changes;
+a shape-weight input also drives another object's scale. Shared mesh data is
+reported as an edit blocker and refused for shape-driver changes. Division by
+zero and sqrt(-1) fail native evaluation: the prior driver or a new target's
+nonzero original property value is restored, with the fingerprint unchanged.
+Blender's native driver creation adds identity mapping points on this build;
+typed creation removes them and uses direct expression output. Installed native
+source confirms the no-points identity evaluation and 255-byte expression limit.
+
+A trusted external native-Blender fixture supplies ownership metadata with a
+correct native hash but a false source declaration. MCP inspection exposes the
+real variables and marks it inspect-only; direct replacement and a consumer
+through its evaluated transform are refused without changing the fingerprint.
+An unrelated scalar input remains usable. Native metadata is therefore matched
+against real paths/variables rather than accepted as the dependency authority.
+Contracts reject arbitrary calls/attributes/indexing/strings/comprehensions,
+unknown/reserved variables, oversized formulas/constants, reserved control names
+and invalid bounds. Read-only discovery exposes inspection and hides edits.
+
+Evidence: `/tmp/mb-drivers-20261102/drivers.blend` contains the editable keyed rig,
+native driver, source skin and independently verified baked skeleton/skin/clip.
+Qualification is bounded to the typed object/pose/scalar/influence/relative-shape
+surface and tested Blender 5.0.1. It does not establish arbitrary RNA/material-
+node drivers, every native variable type/space/rotation combination, future-input
+validity, unsupported-driver repair, large-scene latency or morph/object-motion
+baking. Constraint configuration retains its earlier conservative driver guard;
+create constraints before drivers. NLA authoring and retargeting remain open.
+No package, venv, installed runtime/skill, user GUI or engine integration changed;
+verification used isolated source-checkout background Blender instances.
+
+
 ## Controller channels and F-curve refinement — 2026-11-02
 
 The expanded new/legacy controller, constraint, visual-bake, skeletal animation,
@@ -51,8 +117,8 @@ rebound; grouped multi-object editing is not qualified. Source clips are retaine
 as persistent variants, not deleted temporary files. Inspection hashes are action/
 binding guards, not whole-scene guards. Raw curve edits do not certify normalized
 quaternions, evaluated constraint reach, subframe accuracy, arbitrary imported
-rig compatibility or coordinated morph delivery. Drivers, NLA authoring and
-retargeting remain separate work. No package/venv, installed service/skill, user
+rig compatibility or coordinated morph delivery. Driver authoring was a separate milestone; see its qualification above.
+NLA authoring and retargeting remain separate work. No package/venv, installed service/skill, user
 GUI session or engine integration was changed; isolated background Blender only.
 
 
@@ -152,7 +218,7 @@ local Object-mode data. Dependency validation is conservative and rejects unknow
 reachable behavior; it is not a comprehensive arbitrary-rig analysis. Existing
 simple clip tools retain their constraint/driver/active-NLA guards. Constrained
 channel editing, curve refinement and visual baking were separate milestones;
-see their qualifications above. Drivers, retargeting and NLA authoring remain open. Native frame evaluation blocks and cancellation checks are between frames;
+see their qualifications above. Driver authoring was subsequently qualified above; retargeting and NLA authoring remain open. Native frame evaluation blocks and cancellation checks are between frames;
 this run does not qualify long-running sampling cancellation or large scenes.
 No packages, virtual environments, installed services/skills or engine-specific
 integrations were changed. Verification used isolated background instances.

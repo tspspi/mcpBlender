@@ -21,6 +21,7 @@ from . import constraints
 from . import animation_curves
 from . import drivers
 from . import nla
+from . import rest_edit
 from . import skin_weights
 from . import retarget
 from .capabilities import workflow_support, DISCOVERY_NOTE
@@ -48,6 +49,7 @@ COMMANDS.update(drivers.COMMANDS)
 COMMANDS.update(nla.COMMANDS)
 COMMANDS.update(retarget.COMMANDS)
 COMMANDS.update(skin_weights.COMMANDS)
+COMMANDS.update(rest_edit.COMMANDS)
 
 
 def strips(editor):
@@ -72,6 +74,8 @@ def curves(action, slot):
 
 
 def dispatch(command, p):
+    if command in rest_edit.COMMANDS:
+        return rest_edit.dispatch(command, p)
     if command in skin_weights.COMMANDS:
         return skin_weights.dispatch(command, p)
     if command in retarget.COMMANDS:

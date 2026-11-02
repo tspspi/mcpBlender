@@ -1448,6 +1448,78 @@ otherwise exporting both versions also includes the editable source. Validate
 portable delivery by reimporting and comparing playback at key/intermediate
 frames. Shared materials remain editable through the existing material tools.
 
+## Existing skeleton and rest-hierarchy refinement
+
+`inspect_armature_rest` reads an Object-mode armature's rest bones without
+switching modes. Use `offset`/`limit` (up to 512) for pages. It reports heads/tails,
+roll in degrees, parents/connections, deform and inheritance flags, data users,
+known skin bindings, bone-parented objects, constraint consumers and current
+animation/pose indicators. `edit_blockers` explains linked/overridden data,
+armature-data animation or visibility/selection limits. Discovery is not a claim
+that every external dependency or resulting motion has been validated.
+
+Carry `rest_sha256` as `expected_rest` into `edit_armature_rest`. Use `bones` for
+partial patches of existing bones and `add_bones` for complete new definitions:
+
+```json
+{
+  "name": "CharacterRig",
+  "expected_rest": "<rest_sha256>",
+  "allow_deformation_change": true,
+  "bones": [{"name": "UpperArm", "tail": [1.2, 0, 1.5], "roll_degrees": 15}],
+  "add_bones": [{"name": "HandControl", "head": [1.2, 0, 1.5], "tail": [1.4, 0, 1.5], "parent": "UpperArm", "connected": true, "deform": false}]
+}
+```
+
+Coordinates are armature-local rest coordinates. Patch fields `head`, `tail`,
+`roll_degrees`, `parent`, `connected`, `deform`, `inherit_scale`,
+`inherit_rotation` and `local_location` are optional; omitted/null fields keep
+their current values. Use `parent=""` and `connected=false` to unparent a bone.
+Added bone names are limited to 63 UTF-8 bytes. Added bones require head/tail
+and default to no parent, disconnected, deforming,
+zero roll, FULL scale inheritance and enabled rotation/local-location inheritance.
+Scale inheritance also supports FIX_SHEAR, ALIGNED, AVERAGE, NONE and NONE_LEGACY.
+New pose bones use XYZ Euler mode; existing modes and named channels remain.
+Explicit roll values wrap modulo a full turn.
+
+The complete planned hierarchy is validated before writes, including names,
+cycles and nonzero bone lengths after conversion to native float coordinates.
+Connected child heads follow the planned parent tail; their tails stay at the
+planned positions. An explicitly supplied connected head must already match
+that joint, otherwise the plan refuses. Moving a parent can therefore shorten
+its connected children; supply their tails too when the entire limb should move.
+Zero-length connected results refuse rather than allowing native bone deletion.
+Bone renaming/removal, pose-to-rest conversion, automatic anatomical mapping and
+animation rebasing are separate workflows and are not performed by this tool.
+
+The guard covers rest matrices/geometry/inheritance, shared armature object users
+and the known skin/attachment/constraint-target inventory. It does not freeze
+animation keys, skin weights, arbitrary driver dependencies or every bone option.
+Inspect them separately when relevant. Bound, posed, animated, constrained or
+bone-attached rigs require explicit `allow_deformation_change=true`: existing
+weights, keyframe values, action/driver bindings and named constraint targets stay
+in place, so their evaluated deformation/motion can change. Skin rest positions
+are not reprojected. Sample important poses and check skin coverage afterward,
+especially when disabling deform flags or changing hierarchy/inheritance.
+
+A local visible/selectable Object-mode rig is required. Shared armature object
+users require explicit `make_single_user=true`, which copies armature data for
+this rig; other rigs keep their data. External references to the old data ID are
+not automatically remapped. Ordinary edits retain the original data ID. Native
+edit-mode round trips preserve existing pose metadata and references; new bones
+are additive. Direct armature-data animation is inspect-only, while object/pose
+animation, drivers and constraints may stay active with the deformation flag.
+
+Edits default to queued operations and report progress/storage. `wait=true`
+returns the completed result. Cooperative cancellation or ordinary native errors
+restore snapshotted rest fields, remove new bones and discard an owned shared-
+data copy. Object selection, active bone and existing bone selection are retained.
+Native mode changes/evaluation cannot be interrupted internally; rollback is not
+crash-durable. At most 512 total bones are supported. Result verification checks
+native heads/tails, roll matrices, hierarchy and inheritance against the plan;
+it does not establish that all existing animations still perform their intended
+motion. Save recovery checkpoints and review evaluated poses before delivery.
+
 ## Skin-weight inspection and refinement
 
 Use `inspect_skin_weights` with mesh `name` and optional matching `armature`.

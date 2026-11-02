@@ -28,8 +28,18 @@ a heuristic. Mirror needs explicit bilateral bone pairs and a chosen plane/space
 Locks and nondeform masks survive by default; shared data requires explicit
 `make_single_user=true`. Edits default to queued operations with progress/storage
 and cooperative rollback. Inspect issues again and sample deformation at meaningful
-poses; normalized weights do not prove a useful bend. Existing rest-bone editing
-is separate. See USER_MANUAL.md for limits and exact replacement semantics.
+poses; normalized weights do not prove a useful bend. See USER_MANUAL.md for
+limits and exact replacement semantics.
+
+For rest-skeleton changes, inspect `inspect_armature_rest` and carry `rest_sha256`
+as `expected_rest` into `edit_armature_rest`. `bones` patches existing rest fields;
+`add_bones` is additive. Heads/tails are armature-local; connected child heads
+follow parent tails while child tails stay fixed, and explicit conflicting heads
+refuse. Use `parent=""` with `connected=false` to unparent. Shared data needs
+explicit isolation. Existing skinning/animation/attachments require
+`allow_deformation_change=true`: channels and weights keep their values, so motion
+can change. Compare evaluated poses, not only rest geometry. Renaming/removal and
+pose-to-rest/animation rebasing are separate; read manual limits before editing.
 
 Clips name the armature in `name` and the action in `clip`; tracks specify a
 `bone`, `property` and vector `keyframes`. Bone `rotation_degrees` uses XYZ Euler

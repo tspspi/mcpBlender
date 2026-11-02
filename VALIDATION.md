@@ -1,5 +1,54 @@
 # Local validation: 0.2.0
 
+## Existing skeleton/rest-hierarchy refinement — 2026-11-02
+
+FreeBSD Blender 5.0.1 and system Python, isolated source-checkout background
+fixtures; MCP arbitrary code execution disabled. Final focused qualification:
+
+```sh
+MCPBLENDER_TEST_BLENDER=1 python3 -m pytest -q tests/test_rest_contracts.py tests/test_rest_edit.py tests/test_rest_native.py --tb=short --maxfail=1
+```
+
+**5 passed in 54.88 seconds.** Typed tests cover guarded existing head/tail/roll
+patches, connected-head following with stationary child tails, additions,
+reparenting/unparenting, scale/rotation/local-location inheritance, pagination,
+stale/cycle/connected-head/zero-length refusal, native float-collapse/overflow
+preflight, wrapped rolls, UTF-8 new-name bounds and read-only tool visibility.
+Real Blender checks preserve object selection/frame, original data ID for normal
+edits, and shared peer rest geometry/data when explicit isolation is requested.
+Bound/animated rigs refuse without the explicit deformation-change flag. A posed
+skinned limb retains its original action-channel fingerprint and weights; moving
+the Tip joint from height 1 to 1.5 changes a 90-degree pose vertex from
+`[9.8, -1, 0.8]` to `[9.8, -0.5, 1.3]` as analytically expected, with unchanged
+rest geometry and persistence through save/reopen.
+
+A native probe uses oblique rolled bones, nonidentity pose channels, a pose
+driver/constraint, custom bone properties, bone selection and a bone-parented
+attachment. Deterministic cooperative cancellation after rest writes restores
+the original rest fingerprint, removes the new bone, and retains original
+armature/driver/constraint identities and attachment targets. A cancelled shared
+copy restores its original pointer and armature count; successful isolation
+retains pose metadata/references. Armature-data animation remains inspectable but
+refuses editing. Blender 5 pose-bone selection and legacy bone selection are
+handled by available properties; only the installed Blender 5 host is qualified.
+
+Combined regression during implementation:
+
+```sh
+MCPBLENDER_TEST_BLENDER=1 python3 -m pytest -q tests/test_rest_contracts.py tests/test_rest_edit.py tests/test_rest_native.py tests/test_skin_contracts.py tests/test_skin_weights.py tests/test_skin_native.py tests/test_capabilities.py tests/test_constraint_contracts.py tests/test_constraints.py tests/test_retarget_contracts.py --tb=short --maxfail=1
+```
+
+**24 passed in 139.26 seconds**, followed by the final five-test run above after
+native-precision/name handling was finalized. Bundled animation skill validation
+and staged whitespace/privacy checks passed. No new render/export comparison,
+maximum-scale performance, arbitrary imported control rigs, all constraint types,
+all inheritance enum variants, animation rebasing, pose-to-rest conversion,
+rename/removal or crash-time rollback is qualified here. Native verification is
+of rest fields/matrices, not preservation of intended animated motion. Existing
+animation/skin values intentionally stay unchanged; evaluated motion may change.
+No installed runtime/skill/service, packages, environments or normal GUI changes.
+
+
 ## Guarded skin-weight refinement — 2026-11-02
 
 System Python 3.11 and installed FreeBSD Blender 5.0.1, source checkout,

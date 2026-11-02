@@ -974,6 +974,99 @@ read-only keys but needs a local rig for temporary evaluation and can mark Blend
 dirty. Use sampled vertices/bounds as deformation evidence; inserted keys alone
 do not prove skinning is correct. `inspect_rig` gives the current pose and weights.
 
+## Constraint controls, IK and current-timeline sampling
+
+These typed tools work with MCP Python execution disabled. Use
+`create_animation_control` for a named Empty goal or pole helper (`location`,
+`display`, `size`). Animate its location, Euler rotation or scale with
+`set_keyframes`; those rotations are radians. Helper creation preserves selection
+and refuses existing names. Helpers and new constraints require scene-edit
+permission; inspection and transient sampling are available to read-only keys.
+
+`inspect_animation_constraints` takes object `name` and optional pose `bone`.
+It reports constraint order, native properties/references/validity, keyed or driven
+paths, and `constraints_sha256`. Carry that hash as `expected_constraints` into
+`configure_animation_constraint`, `remove_animation_constraint` or
+`move_animation_constraint`, naming the `constraint` explicitly. Inspection pages
+with `offset`/`limit`; the fingerprint still covers the entire stack. It binds
+configuration, animation paths, owner parenting and rig rest schema, excluding
+animated object/pose transforms and UI expansion/active flags. Reinspect after
+edits. Current keyed influence values can change the configuration fingerprint.
+
+Supported settings use a `type` discriminator:
+
+- `COPY_LOCATION`: named `target`, axis `axes`/`invert` flags and `use_offset`.
+- `COPY_ROTATION`: target, axis flags and native `mix_mode`.
+- `COPY_TRANSFORMS`: target, native `mix_mode` and `remove_target_shear`.
+- `LIMIT_LOCATION` / `LIMIT_SCALE`: `minimum`, `maximum`, `use_min`, `use_max`
+  vectors and optional `use_transform_limit`.
+- `LIMIT_ROTATION`: `minimum_degrees`, `maximum_degrees`, `axes` and optional
+  `use_transform_limit`. Enabled minima must not exceed maxima.
+- `DAMPED_TRACK`: target and `track_axis`, such as `TRACK_Y` or `TRACK_NEGATIVE_Z`.
+- `IK`: pose-bone owner, target, optional `pole`, `pole_angle_degrees`,
+  `chain_count` (1–32), `iterations` (1–1000), `use_tail` and `use_stretch`.
+
+All settings have `influence` (0–1) and `mute`. Target references are
+`{"name":"Goal"}` or `{"name":"Rig","bone":"Control"}`. Copy/track tools
+support WORLD/LOCAL object spaces and WORLD/LOCAL/POSE/LOCAL_WITH_PARENT bone
+spaces; they target a bone's head, without custom-space or B-Bone shape mapping.
+Bounds have `owner_space`. IK uses the standard LEGACY positional solver and
+requires enough ancestors for its explicit chain length. Settings are complete
+for the exposed fields: omitted supported fields take their model defaults.
+Other unexposed native settings are not an arbitrary RNA editing surface.
+Changing a constraint's type requires explicit removal first. Removal/reordering
+is by name with a current guard; reordering uses the absolute `index` in the stack.
+
+For example, after binding the mesh and inspecting the tip bone:
+
+```json
+{"params":{"name":"Arm","bone":"Forearm","constraint":"Reach","expected_constraints":"<inspection constraints_sha256>","settings":{"type":"IK","target":{"name":"HandGoal"},"pole":{"name":"ElbowPole"},"chain_count":2,"pole_angle_degrees":0,"use_stretch":false}}}
+```
+
+Prefer a slightly bent rest chain or another deliberately established preferred
+bend. A perfectly collinear chain can be singular in Blender's native solver.
+IK inspection adds `ik_diagnostics`: current endpoint/target positions and their
+distance, chain length and a collinear-rest warning. Native `is_valid` alone does
+not prove that a goal is reachable or that the bend looks right. Inspect the
+elbow/pole direction and skin deformation at key and intermediate frames.
+
+Dependency validation models object transforms, individual bones, hierarchy,
+constraint targets/poles and IK's effects on chain ancestors. An Empty parented
+to the armature object can be safe; a target depending on a solved chain bone
+can create a cycle. Independent control bones in the same rig are supported.
+The check is conservative: hierarchy dependencies are included even when local
+spaces might permit a more specialized setup. Reachable driver dependencies,
+custom-space/B-Bone dependencies, unsupported constraints/IK modes and vertex
+parenting are refused. Any unsupported constraint on a reachable armature blocks
+that rig's dependency closure. Unrelated unsupported graphs do not block edits.
+This is not a comprehensive dependency solver for arbitrary imported Blender rigs.
+
+Keyed/driven constraints are inspectable but refused by these editing tools,
+including removal, to avoid orphaning animation paths. Existing simple skeletal
+clip switching/editing still refuses constraints, drivers and active NLA blending.
+Use object helper keyframes after IK setup; author bone-control clips before
+adding constraints until a dedicated constrained-channel workflow is available.
+This milestone does not convert constraints or controller motion to portable clips.
+
+`sample_constraint_animation` evaluates the **current** timeline, without changing
+active actions, NLA settings or pose channels. Supply `name`, up to 64 unique
+`frames`, optional `bones` (up to 32), up to eight bound `meshes`, and `sample_limit`.
+It reports evaluated world matrices/bone endpoints and mesh samples/bounds/digests,
+restoring the original frame/subframe even after an error or cooperative
+cancellation. No clip is switched. It submits asynchronously by default; poll the
+operation or use `wait=true` for a small sample. Native evaluation of one frame
+can block the Blender thread; cancellation is checked between frames. Evaluation
+can mark the project dirty. Use dedicated sequential simulation/cache tools when
+physics history matters rather than treating arbitrary frame samples as a bake.
+
+Typed creation allows at most 64 constraints per owner; imported stacks can be
+inspected up to 256, with at most 128 results per page. Constraint/helper names
+must fit 63 UTF-8 bytes. Dependency inspection allows up to 5000 scene objects
+and 2000 bones per rig. Local data and Object mode are required for edits. Native
+values/enums/references and dependency checks are preflighted before changing the
+stack; unexpected property-application failures attempt to restore its edited
+fields or remove the new constraint. Inspect state after an unexpected failure.
+
 ## Structured shape keys
 
 `create_shape_key`, `edit_shape_key`, `inspect_shape_keys`,

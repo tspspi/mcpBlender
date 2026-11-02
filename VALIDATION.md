@@ -1,5 +1,60 @@
 # Local validation: 0.2.0
 
+## Typed constraints, IK and current-timeline sampling — 2026-11-02
+
+The combined new/legacy animation, capability and server suite passed **23 tests
+in 134.24 seconds**, with the existing Starlette/AnyIO warning:
+
+```sh
+MCPBLENDER_TEST_BLENDER=1 MCPBLENDER_CONSTRAINT_EVIDENCE_DIR=/tmp/mb-constraints-20261102 python3 -m pytest -q tests/test_constraint_contracts.py tests/test_constraints.py tests/test_animation_contracts.py tests/test_skeletal_animation.py tests/test_capabilities.py tests/test_server.py --tb=short --maxfail=1
+```
+
+Real Blender 5.0.1, with MCP Python execution disabled, binds a slightly bent
+two-bone limb and creates animated Empty goals/poles and a two-bone IK constraint.
+The helper safely parents to the rig object's transform. At three keys and two
+intermediate frames the tip reaches its interpolated goal within .015 world
+units, with five distinct finite mesh deformation digests. Reversing the pole
+changes the elbow position while retaining the goal; influence zero restores the
+FK rest endpoint. Sampling restores the frame and does not switch the action.
+Save/reopen retains the controls and reach. Its Cycles preview was opened and
+inspected; an independent decoded-PNG control requires over 300 blue-dominant
+pixels. Editable `.blend`, PNG and sampled JSON: `/tmp/mb-constraints-20261102/`.
+
+A separate animated nondeforming control bone in the same rig drives IK while its
+ordinary managed clip stays active. The original perfectly collinear fixture
+stalled in the native solver; a direct native probe confirmed accurate reach with
+a preferred rest bend. Inspection now reports endpoint distance and the
+collinear-rest warning; a native straight-chain fixture verifies that diagnostic.
+This is not a promise that arbitrary pole angles or unreachable targets solve.
+
+Object fixtures verify actual copy location/rotation/transforms, location/rotation/
+scale bounds and damped-track direction. Reordering changes the result as
+expected. Stale hashes, type changes and dependency cycles are refused without
+changing the stack. A reverse dependency from the helper to an IK ancestor is
+also refused. Pure graph controls cover same-rig independent bone targets,
+ancestor effects, unrelated unsupported dependencies, diamonds, missing references
+and a 1500-object chain without Python recursion overflow. Read-only policy keeps
+inspection/sampling available and hides the editing tools.
+
+A fixture prepared outside MCP using the native Blender CLI supplies an imported
+keyed constraint, a driven target and an unsupported armature constraint. MCP
+opens it with code execution disabled. Inspection reports keyed paths and refuses
+configuration/removal, driver dependency traversal and the unsupported reachable
+armature, preserving the original fingerprint. This qualifies refusal/preservation;
+it does not claim typed authoring of keyed constraints or drivers. Legacy skeletal
+binding, clips, independent deformation, rendering and GLB checks also pass.
+
+Scope: allowlisted copy/limit/damped-track constraints and bounded LEGACY IK on
+local Object-mode data. Dependency validation is conservative and rejects unknown
+reachable behavior; it is not a comprehensive arbitrary-rig analysis. Existing
+simple clip tools retain their constraint/driver/active-NLA guards. Constrained
+channel editing, drivers, curve editing, retargeting, NLA and export baking remain
+open. Native frame evaluation blocks and cancellation checks are between frames;
+this run does not qualify long-running sampling cancellation or large scenes.
+No packages, virtual environments, installed services/skills or engine-specific
+integrations were changed. Verification used isolated background instances.
+
+
 ## Isolated high-to-low texture bundles — 2026-11-02
 
 Expanded texture/UV/capability/shader-contract/server/storage checks passed

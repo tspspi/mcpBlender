@@ -26,8 +26,31 @@ degrees relative to rest-bone axes, unlike object `set_keyframes` rotations in
 radians. Clips persist while inactive. Duplicate clip names are refused; use
 `set_pose_keyframes` to edit keys. Clip switching resets unkeyed channels to rest.
 Ordinary single-action rigs and muted glTF NLA stashes are supported; constraints,
-drivers and active NLA blending need another workflow. Imported ambiguous actions
+drivers and active NLA blending need another workflow. Constraint controls and
+current-timeline sampling are described below; ordinary clip switching/editing
+keeps its existing constraint guard. Imported ambiguous actions
 require an explicit slot from `inspect_animation`.
+
+For IK or copy/limit/track constraints, bind first, then create Empty goals/poles
+with `create_animation_control` and animate them with `set_keyframes`. Inspect
+`inspect_animation_constraints` for the object or pose `bone`; carry its
+`constraints_sha256` as `expected_constraints` into typed configure/remove/move
+calls. Settings replace the exposed fields, and omitted fields use defaults.
+Targets are named objects or bones. IK requires a bounded ancestor chain, the
+standard solver and preferably a bent rest chain; inspect `ik_diagnostics` endpoint
+distance and the elbow/pole direction. Native validity is not reach verification.
+Independent control bones can work in the same rig; author their ordinary clips
+before adding constraints. Keyed/driven constraint edits are refused. Dependency
+checks conservatively reject cycles and unsupported reachable dependencies.
+
+Use `sample_constraint_animation` to inspect the current constrained timeline at
+key/intermediate frames, including bound mesh deformation. It restores the frame
+without switching actions or resetting pose channels. It is asynchronous by
+default: poll the operation or use `wait=true` for a small sample. Native frame
+evaluation blocks; cancellation is between frames. Save/reopen and view a render.
+Constraint controls in a `.blend` are not proof of portable exported animation;
+export baking is a separate milestone. Existing `sample_animation` and simple
+clip editing retain their constraints/drivers/NLA restrictions.
 
 For morphs, use `create_shape_key` / `edit_shape_key` and `inspect_shape_keys`.
 Coordinates are mesh-local; OFFSET values are displacements from Basis and do
@@ -54,7 +77,7 @@ inspect the combined result at key/intermediate frames. It restores weights,
 actions, slots, frame and the explicitly sampled rig pose even on cancellation.
 Without skeletal_clip, the chosen armature's current action/pose is used.
 
-Use `execute_code`, when allowed, for constraints, drivers, absolute shape keys, animation
+Use `execute_code`, when allowed, for unsupported constraints, drivers, absolute shape keys, animation
 layers or geometry nodes not yet exposed by structured tools. Return inspection
 data in `result` and check success/traceback. API details depend on Blender version.
 

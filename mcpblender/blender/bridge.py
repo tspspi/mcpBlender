@@ -375,6 +375,7 @@ class BridgeServer:
                 reads.update({"inspect_simulations", "validate_simulation_bake", "sample_simulation"})
                 reads.update({"inspect_fluids", "validate_fluid_bake", "bake_fluid", "cleanup_fluid_job"})
                 reads.update({"inspect_fluid_job", "recover_fluid_job", "inspect_uv_layout"})
+                reads.update({"inspect_animation_constraints", "sample_constraint_animation"})
                 reads.update({"inspect_texture_bake", "bake_textures", "validate_texture_bake", "inspect_texture_job", "recover_texture_job", "cleanup_texture_job"})
                 mutates = self.active["command"] not in reads
                 if self.active["command"] == "run_action":

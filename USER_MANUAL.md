@@ -525,6 +525,82 @@ checks (maximum 200000), 128 island samples (maximum 512), up to 100000 faces an
 layout check, not a guarantee of target-engine texture quality. High-to-low
 texture baking is a separate workflow.
 
+## Texture baking and PBR bundles
+
+Use `inspect_texture_bake` with a low target `name`, optional high `sources`
+(up to 16), target `uv_map` and optional matching `cage`. Inspection fingerprints
+the evaluated meshes/transforms/UVs/normals/material slots and supported source
+shader graphs/images at the current frame. The target needs a nondegenerate,
+nonoverlapping unit-tile UV layout with a complete bounded overlap check. A cage
+must match the evaluated target's topology and vertex order. Source materials
+must connect directly to Principled BSDF; supported procedural/image nodes are
+inspected, while groups, external coordinate objects, linked materials and
+animated material graphs are refused. Source images must be saved, packed,
+single-frame images with no unsaved pixel edits.
+
+Pass `bake_sha256` as `expected_bake` to `bake_textures`, using the same target,
+sources, cage and UV map plus a **new** library-relative `directory`. With no
+sources, it bakes the target's own material/surface. The default maps are
+`NORMAL`, `AO`, `BASE_COLOR`, `ROUGHNESS` and `METALLIC`; optional maps are
+`EMISSION` (emission color) and `ALPHA`. For example:
+
+```json
+{"params":{"name":"Low","sources":["High"],"uv_map":"GameUV","expected_bake":"<inspection bake_sha256>","directory":"bakes/prop","width":1024,"height":1024,"samples":32,"cage_extrusion":0.1,"max_ray_distance":1},"wait":false,"request_id":"prop-textures-v1"}
+```
+
+The operation returns a tracked job by default. Poll `get_operation` or
+`wait_operation`; reuse the same request ID to recover the existing operation.
+An owned background Blender loads a saved source copy with script execution
+disabled, verifies the source binding and freezes evaluated geometry before
+baking. The editing scene/path/frame remain unchanged. The resulting `asset.blend`
+is a **static, current-frame low mesh**, with a new PBR material referencing
+relative PNG paths. Original editable rigs/modifiers remain in `source.blend` and
+the live project. Requested channels transfer; unrequested channels use ordinary
+PBR defaults. This does not reproduce arbitrary shader lobes, glass or HDR output.
+
+Maps are 8-bit PNG: normal/AO/roughness/metallic/alpha use Non-Color, base color
+and emission use sRGB. Normal maps are tangent-space with positive Y. AO measures
+opaque geometry occlusion; alpha is transferred separately, without cutout-aware
+AO. Native normal transfer retains a connected source normal/bump input. The
+baked material includes the glTF occlusion settings group, so AO, normal and PBR
+textures can be embedded by `export_objects_glb`. `maps` returns paths, dimensions,
+color spaces and channel statistics; `material` names the new material.
+
+High-to-low jobs first bake zero-margin UV and geometry-hit masks. `projection`
+reports hit pixels divided by rasterized target pixels. Jobs below
+`min_projection_coverage` (default .99) fail with partial files preserved: adjust
+sources, `cage_extrusion`, `max_ray_distance` or the explicit cage. Lowering the
+threshold explicitly accepts incomplete transfer. This is a pixel-sampled check
+at the requested resolution, not a continuous coverage proof. Padding is excluded
+from the comparison. The two diagnostic PNGs remain in the bundle.
+
+Supported dimensions are 32–4096 per axis and at most 4194304 pixels total;
+samples 1–256, padding `margin` 0–64 pixels, worker threads 1–16. Evaluated inputs
+are limited to 250000 vertices/1000000 corners per object and 500000 vertices in
+total. Each source image is limited to 4194304 pixels. These are workload limits,
+not a global memory cap. `max_bytes` defaults to 2 GiB (maximum 64 GiB), with a
+pixel/map/snapshot storage estimate and live free-space/output-size checks.
+`timeout_seconds` defaults to 1800 (maximum 86400). Estimates are heuristics;
+monitoring may overshoot between checks and does not reserve filesystem space.
+
+Cancellation terminates/reaps the owned bake child; individual native map calls
+are blocking inside that child. Source snapshot saving in the editing instance
+is also blocking. Broker restarts preserve the running operation. If its editing
+parent dies, a watchdog stops the child; `recover_texture_job` reconciles the
+owned directory after both recorded processes are gone, adopting a complete
+file-bound result or marking partial output interrupted, without replay.
+`inspect_texture_job` reports process liveness and output bytes.
+
+Open the bundle's `asset.blend`, then run `validate_texture_bake` to verify file
+hashes and the native mesh/UV/material/image binding. Moving the whole bundle
+preserves relative image references. Node UI labels/selection are excluded from
+shader content guards; changing geometry or shading invalidates the binding.
+`cleanup_texture_job` defaults to a dry run and only removes owned failed or
+cancelled partial bundles. Interrupted bundles require `include_interrupted=true`;
+successful deliverables, current-project/image references, symlinks and unknown
+files are protected. These explicit output bundles are not temporary retention
+artifacts. Keep wanted source projects/maps before removing partial work.
+
 ## Mesh element editing and cleanup
 
 Use `inspect_mesh_elements` with `domain=VERTEX`, `EDGE` or `FACE` to page the

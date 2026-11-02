@@ -196,6 +196,8 @@ class State:
                 raise ValueError("Embedded bake snapshot must end in .blend")
         if command in {"bake_fluid", "validate_fluid_bake", "cleanup_fluid_job", "inspect_fluid_job", "recover_fluid_job"}:
             params["directory"] = str(self.library_path(params["directory"], write=command == "bake_fluid", directory=True))
+        if command in {"bake_textures", "validate_texture_bake", "cleanup_texture_job", "inspect_texture_job", "recover_texture_job"}:
+            params["directory"] = str(self.library_path(params["directory"], write=command == "bake_textures", directory=True))
         if command == "configure_material" and params.get("image_path"):
             params["image_path"] = str(self.library_path(params["image_path"]))
         if command in {"configure_shader_graph", "configure_shader_node"}:
@@ -414,7 +416,7 @@ def build_server(config: Config):
 
     def domain_tool(command):
         model, _, description = COMMANDS[command]
-        default_wait = command not in ("render_animation", "render_video", "render_animation_preview", "download_asset", "upload_asset", "request_asset_api", "sample_rigid_bodies", "bake_rigid_bodies", "sample_simulation", "bake_simulation", "bake_fluid")
+        default_wait = command not in ("render_animation", "render_video", "render_animation_preview", "download_asset", "upload_asset", "request_asset_api", "sample_rigid_bodies", "bake_rigid_bodies", "sample_simulation", "bake_simulation", "bake_fluid", "bake_textures")
 
         async def operation(params=None, wait: bool = default_wait, request_id: str | None = None) -> dict:
             values = params.model_dump(exclude_none=True) if params is not None else {}

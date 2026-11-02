@@ -46,6 +46,16 @@ layout. Use `activate_uv_map` to select the named map for rendering/export.
 These UV-only tools preserve geometry, shape keys and skinning; shared meshes
 still need explicit isolation. Native unwrap/packing cannot cancel mid-call.
 
+For high-to-low textures, inspect `inspect_texture_bake` with the low `name`,
+high `sources`, target `uv_map` and optional topology-matched `cage`. Carry its
+`bake_sha256` as `expected_bake` into `bake_textures` with a new output directory.
+The default normal/AO/base-color/roughness/metallic maps form a PBR bundle;
+alpha and emission-color maps are optional. Check projection coverage and channel
+statistics, open `asset.blend`, then `validate_texture_bake` before GLB delivery.
+The baked asset is a static current-frame mesh; the original rig/modifiers remain
+in the live scene and source snapshot. See `blender-mcp-render` for job/cancellation
+and shading limits. Successful bundles are explicit protected deliverables.
+
 For procedural geometry, discover `geometry_node_catalog` and inspect named
 groups with `inspect_geometry_graph`. `configure_geometry_graph` builds supported
 typed nodes/links with automatic Geometry interface sockets; use typed exposed

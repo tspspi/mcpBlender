@@ -73,6 +73,21 @@ def layout(mesh,layer,matrix,width,height):
     return coordinates,list(islands.values()),triangles
 
 
+def overlaps(triangles,budget):
+    active=[];pairs=set();comparisons=0;complete=True
+    for tri in sorted(triangles,key=lambda t:t[0]):
+        active=[q for q in active if q[1]>tri[0]]
+        for other in active:
+            if comparisons>=budget:
+                complete=False;break
+            comparisons+=1
+            if other[3]<=tri[2] or tri[3]<=other[2]:continue
+            if triangle_overlap(tri[5],other[5])>1e-12:pairs.add(tuple(sorted((tri[4],other[4]))))
+        if not complete:break
+        active.append(tri)
+    return {'complete':complete,'comparisons':comparisons,'face_pair_count':len(pairs),'face_pairs':[list(v) for v in sorted(pairs)[:128]],'pairs_truncated':len(pairs)>128}
+
+
 def inspect(p):
     obj=mesh_object(p['name']);mesh=obj.data;check_size(mesh)
     layer=mesh.uv_layers.get(p['uv_map'])
@@ -84,24 +99,14 @@ def inspect(p):
             'density_units':'pixels per Blender world unit','texture_size':[p['texture_width'],p['texture_height']]}
     if not layer:return result
     coords,islands,triangles=layout(mesh,layer,obj.matrix_world,p['texture_width'],p['texture_height'])
-    active=[];pairs=set();comparisons=0;complete=True
-    for tri in sorted(triangles,key=lambda t:t[0]):
-        active=[q for q in active if q[1]>tri[0]]
-        for other in active:
-            if comparisons>=p['overlap_budget']:
-                complete=False;break
-            comparisons+=1
-            if other[3]<=tri[2] or tri[3]<=other[2]:continue
-            if triangle_overlap(tri[5],other[5])>1e-12:pairs.add(tuple(sorted((tri[4],other[4]))))
-        if not complete:break
-        active.append(tri)
+    overlap=overlaps(triangles,p['overlap_budget'])
     shown=[]
     for island in islands[:p['island_limit']]:
         shown.append({k:v for k,v in island.items() if k not in {'loops','faces'}}|{'face_count':len(island['faces']),'first_face':island['faces'][0]})
     result.update(island_count=len(islands),islands=shown,islands_truncated=len(islands)>len(shown),
                   bounds={'min':[min((v[a] for v in coords),default=0) for a in (0,1)],'max':[max((v[a] for v in coords),default=0) for a in (0,1)]},
                   degenerate_islands=sum(i['uv_area']<=1e-20 or i['world_area']<=1e-20 for i in islands),
-                  overlap={'complete':complete,'comparisons':comparisons,'face_pair_count':len(pairs),'face_pairs':[list(v) for v in sorted(pairs)[:128]],'pairs_truncated':len(pairs)>128})
+                  overlap=overlap)
     return result
 
 

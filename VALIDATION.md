@@ -1,5 +1,71 @@
 # Local validation: 0.2.0
 
+## Isolated high-to-low texture bundles — 2026-11-02
+
+Expanded texture/UV/capability/shader-contract/server/storage checks passed
+**25 tests in 147.38 seconds**, with the existing Starlette/AnyIO warning.
+After excluding node UI fields from content binding, normalizing output node
+names and fixing a real atomic-status-file inventory race, the final focused run
+passed **9 tests in 81.05 seconds**. A final rendered-color control passed
+**1 test in 22.70 seconds**:
+
+```sh
+MCPBLENDER_TEST_BLENDER=1 MCPBLENDER_TEXTURE_EVIDENCE_DIR=/tmp/mb-textures-20261102 python3 -m pytest -q tests/test_texture_contracts.py tests/test_texture_baking.py tests/test_capabilities.py --tb=short --maxfail=1
+MCPBLENDER_TEST_BLENDER=1 MCPBLENDER_TEXTURE_EVIDENCE_DIR=/tmp/mb-textures-20261102 python3 -m pytest -q tests/test_texture_baking.py::test_high_low_maps_reopen_glb_and_binding --tb=short --maxfail=1
+```
+
+With MCP Python disabled, real Blender 5.0.1 projects a 17x17 detailed surface
+onto a one-face low plane. Seven maps cover tangent normal, geometry AO, base
+color, roughness, metallic, emission color and alpha. Source fingerprint/path
+remain unchanged. Masks report 100 percent projected coverage at the fixture's
+96x96 resolution. Normal channels vary, AO includes dark and unoccluded regions,
+the procedural checker transfers both colors, and scalar means match .3/.7/.8.
+The baked low mesh has a PBR material with relative texture paths and a glTF
+occlusion settings group. Its actual Cycles preview was opened and inspected;
+the final control independently decodes the PNG and requires over 200 red-dominant
+and over 200 blue-dominant pixels. GLB has embedded base/metallic-roughness,
+normal, occlusion and emission textures.
+
+Opening and relocating the bundle preserves native validation. Geometry edits
+and actual PNG corruption invalidate it, while changing a shader node UI label
+does not. A custom matching cage succeeds; a deliberately too-short projection
+ray fails the coverage threshold with a readable error and preserved partial
+output. Self baking from a saved packed PNG produces flat normals, white AO,
+transferred alpha and varying color. This also exercises packed input image
+binding across the isolated source snapshot.
+
+During a real 1024x1024 AO bake, broker restart preserves the editing instance;
+cancellation stops/reaps its owned child and reusing the request ID does not
+replay. Progress contains free bytes, the estimate, phase/map and output bytes.
+Dry-run cleanup preserves files; applying it refuses current project references
+and unknown entries before removing the owned cancelled partial. Success is
+protected. A complete genuine output with metadata modeling the narrow
+post-worker/pre-publication crash window is adopted only after recorded processes
+are gone, then reopened and natively validated.
+
+A separate fixture actually SIGKILLs its isolated editing instance during baking.
+The operation becomes interrupted, its child watchdog exits, and a fresh instance
+reconciles partial files without replay. Cleanup requires explicit inclusion of
+interrupted work. A deterministic file-reader test reproduces a temporary status
+entry disappearing during atomic rename; inventory tolerates that event while
+continuing to reject symlinks, nonregular and unknown files. Both bundled design
+and render skills validate. No packages, virtual environments, installed runtime
+or installed skills were changed. One early integration attempt never reached
+baking because host swap pressure delayed broker startup; its fixture-owned
+late broker was stopped before retry. Existing user applications were untouched.
+
+Scope: current-frame evaluated local meshes and direct static Principled source
+graphs; bounded saved/packed single-image inputs. Output is 8-bit PNG and a static
+low asset. Original rig/modifier editing remains in the live/source project.
+AO treats geometry as opaque, not alpha-cutout foliage. Emission transfers color,
+not arbitrary HDR radiance or shader lobes. Projection validation samples output
+pixels, and bounds/storage estimates are not global memory caps or filesystem
+reservations. Native map calls block only the owned child; source snapshot saving
+in the editing instance remains blocking. Other versions/platforms, larger
+workloads and production asset qualification remain unproven.
+Evidence: `/tmp/mb-textures-20261102/`.
+
+
 ## UV seam/layout/density tools — 2026-11-02
 
 The expanded UV/contracts/capability/server suite passed **25 tests in 80.15

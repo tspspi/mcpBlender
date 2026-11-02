@@ -38,6 +38,8 @@ WORKFLOWS = {
     "simulation_baking": ({"bake_rigid_bodies", "validate_rigid_bake", "clear_rigid_bake","bake_simulation","validate_simulation_bake","clear_simulation_cache",
                            "bake_fluid", "validate_fluid_bake", "inspect_fluid_job", "recover_fluid_job", "cleanup_fluid_job"},
                           "Embedded rigid/cloth/soft/particle snapshots; fluid external bundles use isolated worker, manifest validation, interrupted-job reconciliation and guarded cleanup."),
+    "texture_baking": ({"inspect_texture_bake", "bake_textures", "validate_texture_bake", "inspect_texture_job", "recover_texture_job", "cleanup_texture_job"},
+                       "Isolated evaluated-mesh normal/AO/PBR PNG bundles, source guards, native asset binding and owned-worker lifecycle; static direct Principled shader graphs."),
     "compositing": (set(), "No structured compositor graph authoring yet."),
     "rendering": ({"configure_render", "render_animation", "render_video", "render_animation_preview"},
                   "Rendering uses the connected Blender instance; no separate render workers yet."),

@@ -27,6 +27,25 @@ need replace_existing=true to replace. Graph edits preflight on a temporary copy
 rare application failures can still leave partial edits. Script nodes, arbitrary
 RNA, linked materials and animated shader graphs are excluded. Procedural shaders
 and glass need target-engine review/baking; the textured PBR export is qualified.
+Use `inspect_texture_bake` then guarded `bake_textures` for normal, opaque-geometry
+AO and supported direct-Principled shader-property maps. Sources need packed,
+saved input images and a clean low-target UV tile. The isolated worker preserves
+the editing scene, producing PNGs plus a static current-frame PBR asset. Check
+`projection.fraction`, map statistics and an actual render; a completed job is
+not visual qualification. Masks detect geometry projection misses at the output
+resolution. Tangent normals use positive Y; data maps are Non-Color, color maps
+sRGB. Output is 8-bit PNG, not HDR or arbitrary shader-lobe equivalence. Alpha is
+separate and AO does not account for cutouts. The output PBR material carries
+glTF AO metadata. Reopen its asset and call `validate_texture_bake` before export.
+
+Poll the tracked operation/storage fields during baking. Cancel stops its owned
+child; broker restart preserves it. After parent death, `inspect_texture_job` and
+`recover_texture_job` reconcile without replay once recorded processes are gone.
+`cleanup_texture_job` defaults to inspection and protects successful/referenced
+outputs; removing interrupted partials needs explicit inclusion. Snapshot saving
+in the editing instance remains blocking. Never replay an uncertain bake solely
+because a call timed out.
+
 For a standard persistent preview stage, discover and plan `preview_setup`, then
 run it with `inputs` containing mesh `objects` and a fresh `prefix`. It fits an
 active camera and creates key/fill/rim area lights around evaluated bounds, leaving

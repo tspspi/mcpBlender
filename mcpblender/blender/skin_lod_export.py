@@ -63,7 +63,10 @@ def plan(p):
             'deformation':'SKINNED' if meta.get('skin') else 'MORPH' if meta.get('morph') else 'STATIC','animations':bool(meta.get('skin') and p.get('animations',True)),
             'animation_sha256':None,'clips':[],'reference_frame':bpy.context.scene.frame_current+bpy.context.scene.frame_subframe}
     if bpy.context.mode!='OBJECT':result['blockers'].append('Object mode required for LOD bundle export');result['can_export']=False
-    if meta.get('morph'):result['blockers'].append('Validated morph bundles require dedicated morph replay validation');result['can_export']=False
+    if meta.get('morph'):
+        from .morph_lod_export import plan as morph_plan
+        return morph_plan(p)
+    if p.get('timeline_clips'):result['blockers'].append('timeline_clips is supported by morph-bearing bundles only');result['can_export']=False
     if meta.get('skin') and not issues:
         try:
             rig=bpy.data.objects[meta['skin']['rig']];editable_rig(rig);choices=clips(rig) if p.get('animations',True) else {}

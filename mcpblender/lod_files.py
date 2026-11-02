@@ -7,6 +7,7 @@ import struct
 
 MARKER='mcpblender-static-lod-v1'
 SKIN_MARKER='mcpblender-animated-lod-v1'
+MORPH_MARKER='mcpblender-morph-bundle-v1'
 
 
 def file_hash(path):
@@ -90,19 +91,25 @@ def validate(directory):
     root=Path(directory);manifest=root/'manifest.json'
     if manifest.is_symlink() or not manifest.is_file() or manifest.stat().st_size>8*1024**2:raise ValueError('Missing/oversized LOD manifest')
     doc=json.loads(manifest.read_text())
-    if doc.get('format') not in {MARKER,SKIN_MARKER} or not 2<=len(doc.get('levels',[]))<=8:raise ValueError('Invalid LOD manifest')
+    if doc.get('format') not in {MARKER,SKIN_MARKER,MORPH_MARKER} or not 2<=len(doc.get('levels',[]))<=8:raise ValueError('Invalid LOD manifest')
     files=[]
     for i,level in enumerate(doc['levels']):
         if level.get('file')!=f'level_{i:02}.glb':raise ValueError('Unexpected LOD member path')
         path=root/level['file']
         if path.is_symlink() or not path.is_file() or path.stat().st_size>512*1024**2 or file_hash(path)!=level['sha256']:raise ValueError('LOD member missing or hash mismatch')
-        skinned=doc['format']==SKIN_MARKER
-        report=glb_report(path,skinned=skinned)
+        morphs=doc['format']==MORPH_MARKER
+        skinned=doc['format'] in {SKIN_MARKER,MORPH_MARKER}
+        report=glb_report(path,skinned=skinned,morphs=morphs)
         if skinned:
             from .skin_glb import Document
-            skin=Document(path)
+            skin=Document(path,morphs=morphs)
             if skin.report()!=level['skin']:raise ValueError('Skin/animation inventory differs from manifest')
+            if morphs:
+                from .morph_bundle import validate_proofs
+                validate_proofs(doc,level,skin)
         if report['triangles']!=level['triangles'] or report['triangles']>level['triangle_budget']:raise ValueError('GLB triangle count/budget mismatch')
+        bounds=level['position_bounds']
+        if any(not isinstance(bounds.get(key),list) or len(bounds[key])!=3 or any(type(v) not in (int,float) or not math.isfinite(v) for v in bounds[key]) for key in ('min','max')):raise ValueError('Invalid recorded LOD bounds')
         if any(abs(a-b)>1e-5+abs(b)*1e-7 for key in ('min','max') for a,b in zip(report['position_bounds'][key],level['position_bounds'][key])):raise ValueError('Exported position bounds differ from native LOD')
         if level['uv_required'] and any('TEXCOORD_0' not in p['uv_sets'] for p in report['primitives']):raise ValueError('Expected exported UV coordinates')
         if skinned:

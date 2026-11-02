@@ -83,7 +83,7 @@ anim=source_keys.animation_data;anim.action=None;track=anim.nla_tracks.new();str
 bpy.context.scene.frame_set(5);bpy.context.view_layer.update();assert abs(far.data.shape_keys.key_blocks['Stretch'].value-stretch.value)<1e-6 and stretch.value>.99
 current=lods.inspect_chain({'chain':'MorphLOD'});assert current['valid']
 sampled=morph_lods.sample({'chain':'MorphLOD','expected_chain':current['chain_sha256'],'pose_frames':[1,5,9],'error_samples':64,'max_pose_error':.1});assert sampled['worst_relative_error']<.1
-plan=lods.dispatch('inspect_lod_export',{'chain':'MorphLOD','animations':True});assert not plan['can_export'] and any('morph' in b for b in plan['blockers'])
+plan=lods.dispatch('inspect_lod_export',{'chain':'MorphLOD','animations':True});assert plan['can_export'] and plan['export_profile']=='BAKED_MORPH_TIMELINE'
 # Corrupted generated key data must invalidate ownership.
 point=far.data.shape_keys.key_blocks['Relative'].data[0];old=point.co.copy();point.co.z+=.01
 assert not lods.inspect_chain({'chain':'MorphLOD'})['valid'];point.co=old

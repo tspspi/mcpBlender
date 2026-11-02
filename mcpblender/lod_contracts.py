@@ -1,4 +1,4 @@
-"""Asset LOD generation, managed selection and independent static/skin GLB bundles."""
+"""Asset LOD generation, managed selection and validated static/skin/morph bundles."""
 from typing import Literal
 from pydantic import Field,FiniteFloat,model_validator
 from .config import Model
@@ -42,7 +42,25 @@ class Chain(Model):
     chain: SafeName
 
 
-class ExportPlan(Chain):
+class TimelineClip(Model):
+    name: SafeName
+    frame_start: int = Field(strict=True,ge=-1048574,le=1048574)
+    frame_end: int = Field(strict=True,ge=-1048574,le=1048574)
+    @model_validator(mode='after')
+    def span(self):
+        if not 1<=self.frame_end-self.frame_start<=10000:raise ValueError('Timeline clips require 2..10001 integer frames')
+        return self
+
+
+class Timeline(Model):
+    timeline_clips: list[TimelineClip] | None = Field(default=None,min_length=1,max_length=32)
+    @model_validator(mode='after')
+    def names(self):
+        if self.timeline_clips and len({c.name for c in self.timeline_clips})!=len(self.timeline_clips):raise ValueError('Timeline clip names must be distinct')
+        return self
+
+
+class ExportPlan(Chain,Timeline):
     animations: bool = True
 
 
@@ -64,7 +82,7 @@ class SampleSkin(Guard):
         return self
 
 
-class Export(Guard):
+class Export(Guard,Timeline):
     directory: str = Field(min_length=1)
     animations: bool = True
     animation_samples: int = Field(default=3,ge=3,le=9)
@@ -92,7 +110,7 @@ COMMANDS={
  'sample_lod_chain':(SampleSkin,(),'Sample current-timeline deformation of a SKINNED or MORPH LOD chain versus its source. Reports bounded bidirectional surface error at chosen/recommended poses, restores frame/visibility and refuses stale guards or excessive error; does not switch clips.'),
  'inspect_lod_chain':(Chain,(),'Inspect managed LOD meshes, recipes/budgets, sampled quality, source staleness and current-content fingerprint. Invalid or modified chains are not silently exportable.'),
  'activate_lod_level':(Activate,('allow_scene_edit',),'Select one managed LOD representation by viewport/render visibility, preserving source objects and geometry. Requires a current chain fingerprint.'),
- 'inspect_lod_export':(ExportPlan,(),'Plan a static or skeletal LOD bundle: current chain guard, compatible clip inventory, bind-only option, export blockers and full animation guard. Does not write files or switch clips.'),
- 'export_lod_chain':(Export,('allow_library_write',),'Export each static or skeletal LOD into a GLB plus checked manifest. Skin bundles validate joints/weights/curves and compare independent decoded playback with native poses; compatible integer-frame clips use zero-based seconds. Restore state and publish only after validation.'),
+ 'inspect_lod_export':(ExportPlan,(),'Plan a static, skeletal or timeline-baked morph LOD bundle: current chain guard, compatible clip inventory, bind-only option, export blockers and full animation guard. Does not write files or switch clips.'),
+ 'export_lod_chain':(Export,('allow_library_write',),'Export each static, skeletal or morph LOD into a GLB plus checked manifest. Morphs bake explicit current-timeline ranges (drivers/NLA/constraints) onto owned proxies; source controls remain intact. Skin bundles validate joints/weights/curves and compare independent decoded playback with native poses; compatible integer-frame clips use zero-based seconds. Restore state and publish only after validation.'),
  'validate_lod_export':(Validate,(),'Independently re-read a generated LOD bundle, verify hashes, GLB triangle/attribute/dependency inventory and recorded skin replay fingerprints. No engine or silhouette certification.'),
 }

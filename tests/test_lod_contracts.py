@@ -44,3 +44,12 @@ def test_deformation_read_path_and_limits(tmp_path):
     with pytest.raises(ValueError,match='end'):state.prepare('inspect_glb_deformation',{'path':'scene.blend'})
     for patch in ({'limit':9},{'animation_samples':2},{'sample_limit':17},{'offset':33}):
         with pytest.raises(ValueError):InspectGLB.model_validate({'path':'asset.glb'}|patch)
+
+
+def test_morph_timeline_clip_contracts():
+    from mcpblender.lod_contracts import ExportPlan,Export
+    base={'chain':'Asset','timeline_clips':[{'name':'Walk','frame_start':-2,'frame_end':8}]}
+    assert ExportPlan.model_validate(base).timeline_clips[0].frame_start==-2
+    assert Export.model_validate(base|{'expected_chain':'a'*64,'directory':'bundle'}).timeline_clips
+    for clips in ([{'name':'Walk','frame_start':1,'frame_end':1}],[{'name':'Walk','frame_start':1.5,'frame_end':9}],base['timeline_clips']*2,[{'name':'Walk','frame_start':0,'frame_end':10001}]):
+        with pytest.raises(ValueError):ExportPlan.model_validate(base|{'timeline_clips':clips})

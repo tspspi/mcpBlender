@@ -121,8 +121,14 @@ and mutes, preserving source clips/drivers/NLA as the shared controller. Keep th
 source dependency in editable Blender delivery; animate the source, not driven LOD
 weights. Review every-key and timeline surface checks and resample after control
 changes. Modified source keys/masks or generated links invalidate the chain.
-Validated morph GLB bundles remain separate: plan/export reports a blocker. See
-the manual for limits and key ordering.
+For detached morph GLB bundles, plan/export with the same named `timeline_clips`
+(start/end integer frames, inclusive). The planner identifies BAKED_MORPH_TIMELINE;
+carry both guards into export. The current source timeline, including drivers/NLA
+and solved rig constraints/root motion, bakes onto temporary independent copies.
+Inactive actions are not switched automatically. Every baked proxy frame and
+sampled decoded playback must match native evaluation before publication. Use
+`animations=false` without ranges for rest-bound morph delivery. Validate/re-import
+and review; see the manual for limits, reference-frame mapping and key ordering.
 
 For file inspection, call `inspect_glb_deformation` on a library `.glb` path.
 It queues by default: poll/wait, or pass `wait=true`. Read target/joint/clip inventory,
@@ -132,7 +138,7 @@ sample uses stored default weights. This reads the file without importing it or
 changing the scene; it does not compare to authored Blender geometry or certify
 all-frame/appearance/engine fidelity. The native profile is one mesh, optional skin,
 up to 63 morphs; normalized/compressed/instanced/multiple-mesh assets are outside it.
-Morph LOD bundle publication and controller-graph baking remain separate work.
+Morph LOD bundles bake explicit current-timeline ranges and validate native/file correspondence; general graph serialization and inactive-action batching remain separate.
 
 Prefer structured tools for the supported pipeline, including when Python
 execution is disabled: `create_primitive` / `create_mesh`, `configure_modifier`,

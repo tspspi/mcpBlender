@@ -292,7 +292,7 @@ def replay_digest(replay):
 
 def check_recorded_samples(document,samples):
     for sample in samples:
-        replay=document.replay(sample['clip'],sample['time'],document.representatives(sample['point_limit']))
+        replay=document.replay(sample['clip'],sample['time'],document.representatives(sample['point_limit']),morph_weights=sample.get('morph_weights'))
         if replay_digest(replay)!=sample['replay_sha256']:raise ValueError('Decoded skin replay differs from manifest')
 
 

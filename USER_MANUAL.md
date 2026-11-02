@@ -1621,7 +1621,7 @@ cooperative cancellation. Generation failure removes all owned meshes/groups/
 collection/root while retaining source data and rig/clip bindings. Native calls
 are noninterruptible internally; crash-time atomicity is not implied.
 
-For validated skeletal delivery, call `inspect_lod_export` with `chain` and
+For validated skeletal delivery without morph targets, call `inspect_lod_export` with `chain` and
 `animations` (default true). This read-only planner reports export blockers,
 compatible clips, the reference frame, `chain_sha256` and `animation_sha256`.
 Carry those fingerprints as `expected_chain` and `expected_animation` into
@@ -1644,7 +1644,7 @@ controlled rigs whose live animation cannot pass the simple-clip checks. The rig
 and meshes use the captured reference frame's object transforms with the rest
 skeleton; unkeyed object channels in animated clips retain that reference baseline.
 Moving the existing rig moves the generated meshes. This workflow reduces meshes,
-not skeletons. Morph-bearing chains use the editable Blender delivery described below; validated morph bundles remain separate.
+not skeletons. Morph-bearing chains can use the timeline-baked delivery described below.
 
 The independent decoder checks every exported weight, named joints, inverse binds,
 curves and finite normalized skin data. It replays the rest pose plus 3–9 sampled
@@ -1718,13 +1718,82 @@ transferred geometry usable but can make stored pose measurements stale;
 `pose_validation_inputs_changed` compares the recorded controller snapshot.
 Arbitrary external dependencies are not frozen. Inspect and resample after edits.
 
-Use `save_blend` for current morph-chain delivery. `inspect_lod_export` reports a
-blocker for morph-bearing chains, and `export_lod_chain` refuses them before output:
-independent GLB morph replay/bundle validation is a subsequent milestone. This
-also applies to bind-only export of a chain containing morphs. Source snapshots,
-failed generation and cancellation remove owned temporary meshes/Key data; source
-animation is never cleared or switched during transfer. Crash-time recovery is
-separate from ordinary failure cleanup.
+Use `save_blend` to preserve the authored morph chain and its shared controller.
+For detached GLB delivery, use the timeline-baked bundle workflow below. Source
+snapshots, failed generation and cancellation remove owned temporary meshes/Key
+data; source animation is never cleared or switched during transfer. Crash-time
+recovery is separate from ordinary failure cleanup.
+
+## Timeline-baked morph LOD bundles
+
+`inspect_lod_export` and `export_lod_chain` support morph-only and combined
+skeletal/morph chains. The planner returns `export_profile="BAKED_MORPH_TIMELINE"`,
+current chain/animation guards, chosen clips, reference frame and blockers. Carry
+`chain_sha256`/`animation_sha256` as `expected_chain`/`expected_animation` into export,
+with a fresh `directory` under the library. Use the same `timeline_clips` in both
+calls, for example `[{"name":"Walk","frame_start":1,"frame_end":33}]`.
+
+Each named range samples the **currently evaluated timeline**: active source
+clips, NLA composition, driver controls, solved rig constraints and rig object
+motion. It does not switch to inactive actions or infer a batch of all authored
+clips. Select/compose the intended source timeline before planning. Up to 32
+uniquely named ranges can overlap or start at negative frames. Endpoints are
+strict integers, inclusive, within native frame limits; each range spans 2–10001
+frames. When omitted, animated export uses one `Timeline` range from the scene
+playback bounds. `timeline_clips` is specific to morph-bearing bundles; passing it
+to static/simple skeletal bundles refuses rather than ignoring it.
+
+The exporter creates owned temporary mesh/Key and optional rig copies. It flattens
+relative morph deltas onto Basis while retaining target names and already-baked
+masks, clears copied drivers/constraints, and keys visual object/bone transforms
+and effective morph weights at every integer frame. Quaternions maintain sign
+continuity and keyed interpolation is linear. Native proxy evaluation must match
+the original level's evaluated vertices and all joint matrices at every baked
+frame within `skin_tolerance` (default 0.001). The authored rig, Key controls,
+actions, drivers, NLA and masks remain intact. The exported files have baked
+animation and embedded textures, without the source Key/controller dependency.
+
+The first range's starting frame supplies the bind reference for animated export.
+Each clip starts at zero seconds: native frame = `frame_start + time * fps` using
+manifest metadata. `animations=false` produces a bind-only morph bundle with no
+clips, preserving the original fractional reference frame and effective morph
+weights; the skeleton is exported in rest binding. Omit `timeline_clips` in that
+mode. This is not a static snapshot of a constrained bone pose.
+
+Before publication, independent binary decoding checks every exported Basis
+vertex, each target offset, optional normalized skin weights and inverse binds
+against native rest data. Matching coincident vertices must agree in target
+coefficients and weights. It then compares decoded world vertices and joint
+matrices against the original evaluated timeline at 3–9 integer frames per clip
+(`animation_samples`, default 3). Default-weight and isolated-target playback
+fingerprints cover every target, including ones absent from current motion.
+`skin_tolerance` gates vertex distances and matrix-component errors; the existing
+0.0004 allowance for native tiny-weight filtering remains separately reported.
+
+The manifest records hashes, target/clip inventory, native frame ranges/FPS,
+reference, all-frame proxy errors, sampled decoded errors and per-target proofs.
+`validate_lod_export` independently replays them and checks their inventory, time
+mapping, durations, bounds and declared error limits. Missing/duplicate target or
+animation proofs and inconsistent FPS/frame metadata refuse validation. This
+rechecks recorded file evidence without rerunning the authored Blender graph.
+
+Baking is limited to ten million native vertex-frame samples and 32768 bone-frame
+samples per level, and two million morph weight keys. Existing geometry/target/
+file limits apply. Skin meshes must keep a constant mesh-to-rig transform over
+requested ranges; object or bone basis shear that cannot be represented by TRS
+refuses. Controls requiring other modifier stacks or absolute shape keys remain
+outside LOD generation. Integer-frame keys and sampled file checks do not certify
+subframe fidelity, every decoded frame, shading, silhouette or target-engine
+behavior. Review representative motion and appearance before delivery.
+
+Export reports progress, current free storage and a geometry/key/texture size
+estimate. The estimate is heuristic. It restores selection, active object,
+visibility and the original fractional frame, deletes owned proxies/actions/data,
+and removes staging output on ordinary failure or cooperative cancellation.
+Only a validated bundle is published, into a new directory. Native export calls
+cannot cancel internally. Process crashes can leave staging directories; their
+reconciliation/retention remains separate. Explicitly delivered bundles are not
+temporary-retention targets.
 
 ## Independent GLB deformation inspection
 
@@ -1770,9 +1839,10 @@ Inspection proves what this decoder can read and sample from that file. It does
 not compare the file to an authored Blender model, evaluate procedural shaders,
 certify every frame/vertex or establish target-engine behavior. Native comparison
 fixtures qualify selected exports; ordinary inspection is not that comparison.
-Validated morph LOD bundle publication and baking/detaching the shared source
-controller graph remain subsequent work. Current morph-chain delivery stays an
-editable `.blend` with its source Key dependency.
+Timeline-baked morph LOD bundles use this decoder for independent comparison and
+readback. Editable morph chains retain their source Key dependency; baked bundle
+files contain their sampled animation. Inactive-action batch selection and general
+controller-graph serialization are separate from evaluated-timeline baking.
 
 ## Existing skeleton and rest-hierarchy refinement
 

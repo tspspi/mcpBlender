@@ -301,7 +301,10 @@ def export(p):
     from .bridge import check_cancelled,report_progress,_bridge
     from .workflows import export_objects_glb
     _,_,objects,meta,records,_,signature=guarded(p);directory=Path(p['directory'])
-    if meta.get('morph'):raise ValueError('Validated morph bundles require dedicated morph replay validation; use editable Blender delivery for now')
+    if meta.get('morph'):
+        from .morph_lod_export import export as export_morph
+        return export_morph(p)
+    if p.get('timeline_clips'):raise ValueError('timeline_clips is supported by morph-bearing bundles only')
     if meta.get('skin'):
         from .skin_lod_export import export as export_skin
         return export_skin(p)

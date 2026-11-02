@@ -56,13 +56,22 @@ weights follow the original Key controller, including actions/drivers/NLA and mu
 Animate the source and retain that Key dependency in editable `.blend` delivery.
 Every isolated key and sampled current-timeline deformation undergo surface-error
 checks; resample after animation changes. Source key/mask or output link edits
-invalidate ownership. Morph GLB bundles remain a separate validation milestone;
-planner/export refuses morph-bearing chains, including bind-only output. For validated bundles, call `inspect_lod_export`, carry its chain and
-animation fingerprints into `export_lod_chain` (`expected_chain`,
-`expected_animation`), and choose a fresh directory. All compatible simple local
-rig clips export with full integer frame ranges, starting at zero seconds; use
-manifest native frame starts/FPS when comparing original playback. Constraints,
-drivers and active NLA require a prior bake. `animations=false` delivers bind-only
+invalidate ownership. For morph bundles, pass explicit named `timeline_clips`
+(`frame_start`/`frame_end`, inclusive integers) to planner and exporter. These bake
+the current evaluated source timeline, including driver/NLA controls, solved rig
+constraints and root motion, onto temporary independent copies. Inactive actions
+are not switched automatically. The BAKED_MORPH_TIMELINE profile verifies native
+proxy poses at every keyed frame and decoded file poses at sampled frames before
+publication. Its bind reference is the first range's start; zero-based clip time
+maps back through manifest FPS/frame starts. `animations=false` without ranges
+delivers rest-bound geometry with current morph defaults.
+
+For bundles without morphs, the existing simple-rig profile exports compatible
+local rig clips with full integer frame ranges. Constraints, drivers and active
+NLA need a prior bake in that profile. For every bundle, call `inspect_lod_export`,
+carry its chain/animation fingerprints into `export_lod_chain` (`expected_chain`,
+`expected_animation`), and choose a fresh directory. Use manifest native frame
+starts/FPS when comparing zero-based exported playback. `animations=false` delivers bind-only
 geometry even for controlled rigs. The decoder compares all joint matrices and
 sampled corresponding vertices at 3–9 frames per clip; this is not every-frame
 motion or appearance proof. Run `validate_lod_export`, then re-import/sample and
@@ -76,7 +85,7 @@ sample uses stored default weights. This reads the file without importing it or
 changing the scene; it does not compare to authored Blender geometry or certify
 all-frame/appearance/engine fidelity. The native profile is one mesh, optional skin,
 up to 63 morphs; normalized/compressed/instanced/multiple-mesh assets are outside it.
-Morph LOD bundle publication and controller-graph baking remain separate work.
+Morph LOD bundles bake requested current-timeline ranges; serialization of a general controller graph and automatic inactive-action batching remain separate.
 
 Clips name the armature in `name` and the action in `clip`; tracks specify a
 `bone`, `property` and vector `keyframes`. Bone `rotation_degrees` uses XYZ Euler

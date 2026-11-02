@@ -1,5 +1,71 @@
 # Local validation: 0.2.0
 
+## Timeline-baked morph LOD bundles — 2026-11-02
+
+Final focused gate:
+
+```sh
+MCPBLENDER_TEST_BLENDER=1 MCPBLENDER_MORPH_LOD_EVIDENCE_DIR=/tmp/mb-morph-bundle-structured-20261102 MCPBLENDER_MORPH_BUNDLE_EVIDENCE_DIR=/tmp/mb-morph-bundle-20261102 python3 -m pytest -q tests/test_morph_lods.py tests/test_morph_bundle_native.py tests/test_lod_contracts.py tests/test_morph_glb.py tests/test_skin_glb.py --tb=short --maxfail=1
+```
+
+Result: **29 passed in 64.73s**. The structured fixture uses arbitrary Python
+execution disabled, creates a textured 540-triangle prop and transfers morphs to
+250/120-triangle LODs. Two explicitly named current-timeline ranges export with
+embedded textures and independently checked manifests. Queued export reports
+current storage. Native re-imported far-LOD playback at frames 0/4/8 matches the
+original far level at frames 1/5/9 within 0.001. Editable save/reopen and subsequent
+source clip changes remain covered. The worst sampled decoded vertex error in
+this textured fixture is 2.39e-7.
+
+The native fixture covers morph-only and combined skeletal/morph spheres, reduced
+720→400 triangles. A masked key relative to another non-Basis key is flattened
+only on export copies. Active source NLA, an external-property driver, a rig
+constraint, root motion, unused nondeforming bone masks and negative-start ranges
+bake into independent files. Every integer-frame proxy vertex/joint comparison
+passes; decoded samples, all rest vertices/target offsets, default weights, skin
+weights and inverse binds agree with native data. Worst decoded vertex errors are
+4.92e-7 (morph-only) and 9.69e-7 (combined); worst all-frame native proxy error is
+7.16e-7. These are fixture measurements, not general fidelity bounds.
+
+Cancellation during timeline baking and after decoded proof removes staging and
+all proxy object/mesh/armature/Key/action IDs. An injected decoder position error
+refuses publication; retry succeeds. Exact ID counts, source controller/NLA/driver
+state, selection, active object, chain guard and fractional frame restore. Both
+modes also produce validated bind-only bundles at the fractional reference frame.
+Corrupt FPS, missing target proofs and nonfinite recorded bounds refuse readback.
+Contracts reject duplicate clip names, fractional endpoints and oversized ranges.
+
+Existing LOD/static/skin/bundle/inspection/server/capability regression:
+
+```sh
+MCPBLENDER_TEST_BLENDER=1 python3 -m pytest -q tests/test_lods.py tests/test_lod_native.py tests/test_skin_lods.py tests/test_skin_lod_native.py tests/test_skin_lod_export.py tests/test_skin_bundle_native.py tests/test_morph_lod_native.py tests/test_glb_deformation.py tests/test_server.py tests/test_capabilities.py --tb=short --maxfail=1
+```
+
+Result: **21 passed in 128.68s**, with the existing Starlette/AnyIO deprecation
+warning. A final native edge-case rerun passed in **9.54s** after separating
+object/bone quaternion continuity bookkeeping and explicitly rejecting every
+nonfinite matrix component. It uses a bone named `object`, restores a hidden/
+unselectable rig, rejects a stale controller guard before output and rejects a
+nonfinite pose on an unused bone without retaining proxy data or a bundle. Standalone system Python validates all three retained bundles
+without importing `bpy`.
+
+Evidence: `/tmp/mb-morph-bundle-20261102/{MorphOnlyBundle/,SkinMorphBundle/}` and
+`/tmp/mb-morph-bundle-structured-20261102/{morph-lods.blend,morph-bundle/,morph-proof.json}`.
+Both bundled design/animation skills pass validation. No new render, system
+installation, package/venv change, installed-skill update, service or user GUI
+change is claimed.
+
+This qualifies explicit current-timeline baking, including solved controls, not
+automatic selection of all inactive authored actions or serialization of a general
+controller graph. Source graphs stay intact in the editable project; exported
+files contain integer-frame linear baked animation. Every native proxy frame is
+checked, but decoded file comparison is sampled (3–9 frames per clip), with no
+exhaustive subframe/appearance/engine guarantee. Skin mesh-to-rig layout must be
+constant; unrepresentable object/bone basis shear refuses. Limits are ten million
+vertex-frame samples, 32768 bone-frame samples and two million weight keys per
+level, plus existing geometry/morph/file bounds. Staging crash reconciliation,
+retention integration and broader LOD management remain separate.
+
 ## Independent morph/skin GLB replay and inspection — 2026-11-02
 
 Final focused gate:
@@ -1611,6 +1677,6 @@ Native blocking operations are not forcibly cancellable, and arbitrary Python
 cannot be assigned a reliable storage estimate. Recovery preserves the completed
 checkpoint, not edits after it, and does not imply rollback or power-failure proof.
 
-Absolute shape-key animation, fluid/external-cache bakes, constraints/drivers/active NLA blending, other Blender/platform versions,
+Absolute shape-key animation, general external-cache bakes, arbitrary constraint/driver/NLA combinations outside the documented profiles, other Blender/platform versions,
 long-duration workloads, external HTTPS deployment, Godot behavior and real
 external generation services are not qualified by this suite.

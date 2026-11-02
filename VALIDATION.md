@@ -1,5 +1,83 @@
 # Local validation: 0.2.0
 
+## Explicit rest-aware retargeting and root-motion delivery — 2026-11-02
+
+The combined retarget/NLA/driver/controller/constraint/bake/skeletal/morph/
+capability/server regression passed **63 tests in 346.57 seconds**, with the
+existing Starlette/AnyIO warning:
+
+```sh
+MCPBLENDER_TEST_BLENDER=1 MCPBLENDER_RETARGET_EVIDENCE_DIR=/tmp/mb-retarget-20261102 python3 -m pytest -q tests/test_retarget_contracts.py tests/test_retarget.py tests/test_nla_contracts.py tests/test_nla.py tests/test_driver_contracts.py tests/test_animation_drivers.py tests/test_curve_contracts.py tests/test_animation_curves.py tests/test_constraint_contracts.py tests/test_constraints.py tests/test_animation_bake.py tests/test_animation_contracts.py tests/test_skeletal_animation.py tests/test_morph_contracts.py tests/test_shape_keys.py tests/test_capabilities.py tests/test_server.py --tb=short --maxfail=1
+```
+
+Final focused contracts/live checks passed **7 tests in 49.02 seconds**, including
+the composite NLA/driver/IK source, small object units and native source/target
+scene guards:
+
+```sh
+MCPBLENDER_TEST_BLENDER=1 MCPBLENDER_RETARGET_EVIDENCE_DIR=/tmp/mb-retarget-20261102 python3 -m pytest -q tests/test_retarget_contracts.py tests/test_retarget.py --tb=short --maxfail=1
+```
+
+Two targeted final checks passed: **1 in 13.86 seconds** for copied-morph cleanup,
+source-preserving failure/cancellation and ignored singular source-object scale;
+**1 in 13.46 seconds** for integer/fractional time remapping, scale modes, unmapped
+bones and independent static morph copies. Installed native source confirms that
+Mesh ID deletion also deletes its owned shape-key ID; there is no separate
+`bpy.data.shape_keys.remove` collection API on this build.
+
+MCP Python execution is disabled. A named source chain drives a differently named
+target with segment lengths two and three instead of one and one. Its median
+translation ratio is 2.5. Analytic endpoints at three frames combine scaled bone
+translation, target segment geometry and source object locomotion. Output skin
+deformation changes; original source/target fingerprints and skin digests remain
+unchanged after transfer. Save/reopen retains the result. GLB has one mesh, one
+skin and the named motion; reimported playback bounds match within .0003,
+including object motion. The copied target PBR material renders as a blue bent
+limb; decoded pixels verify its presence, and the preview was visually inspected.
+The preview is rendered before reimport to avoid coincident comparison geometry.
+
+A second fixture changes target rest direction/roll. ARMATURE_DELTA keeps an
+armature-space rotation axis as expected, whereas LOCAL_POSE bends in the target
+joint's own axes. An explicit local correction turns the motion into a twist,
+retaining its endpoint. A partial mapping into an offset root verifies that root
+head displacement does not invent translation when that source joint rotates
+about its own rest head. Unmapped target bones follow rest hierarchy. Ignoring
+versus copying local stretch yields independently checked target lengths.
+Time remapping covers target frames 101..105/source 1..9 and fractional source
+1.25,1.75,2.25, with analytic scale/endpoints. Static relative shapes copy
+independently and remain editable without changing the original target mesh.
+
+A source action is layered through NLA into a scalar, driving IK influence on a
+bent chain. Retargeting samples that evaluated timeline into a different target
+at remapped times. Independent matrix multiplication/transposition checks joint-
+local rotations at three source/target frame pairs; copied skin has distinct
+finite deformation digests. This qualifies evaluated-source transfer, not contact
+preservation on different limb proportions.
+
+Stale fingerprints refuse before editing. Unsupported animated source object
+scale fails after output creation: new rig/skin/morph/action data is removed and
+frame restored. Exact output names can be reused. Explicit IGNORE permits source
+object scaling, including a singular reference when local bone poses remain
+valid. A real 64-bone/500-frame transfer is cancelled after key insertion begins;
+progress includes storage, outputs are removed, frame restored and exact rig/
+clip names reusable. Pure contracts cover mapping uniqueness, finite scales,
+time bounds, safe output names and read-only plan visibility.
+
+Evidence: `/tmp/mb-retarget-20261102/retarget.blend`, `retarget.glb`,
+`retarget.png`, `comparison.json`. Verification is every integer target frame
+against defined transfer math plus finite evaluated skin scans; independent
+fixtures test the expected semantics. It does not prove automatic anatomical
+mapping, foot/contact locking, complete control-rig/morph-clip transfer, winding/
+subframe fidelity, arbitrary B-Bones/nonrepresentable shear, large-scene latency
+or process-kill rollback. Static extra surface modifiers beyond tested simple
+skins are exposed but not each visually qualified. Rig fingerprints are not a
+whole-scene/external-control/mesh/material snapshot. Existing simple clip tools
+retain their mixed-channel guard; tagged mixed clips export through the managed
+exporter, with object transform/mode snapshots restored. No packages/venvs,
+installed runtime/skills, user GUI or engine integration changed; isolated
+source-checkout background Blender only.
+
+
 ## NLA composition, generated shape base and composite delivery — 2026-11-02
 
 The combined NLA/driver/controller/constraint/bake/skeletal/morph/capability/server
@@ -132,7 +210,7 @@ surface and tested Blender 5.0.1. It does not establish arbitrary RNA/material-
 node drivers, every native variable type/space/rotation combination, future-input
 validity, unsupported-driver repair, large-scene latency or morph/object-motion
 baking. Constraint configuration retains its earlier conservative driver guard;
-create constraints before drivers. Core NLA authoring was subsequently qualified above; retargeting and advanced strip controls remain open.
+create constraints before drivers. Core NLA authoring was subsequently qualified above; core retargeting was subsequently qualified above; contact-aware transfer and advanced strip controls remain open.
 No package, venv, installed runtime/skill, user GUI or engine integration changed;
 verification used isolated source-checkout background Blender instances.
 
@@ -189,7 +267,7 @@ as persistent variants, not deleted temporary files. Inspection hashes are actio
 binding guards, not whole-scene guards. Raw curve edits do not certify normalized
 quaternions, evaluated constraint reach, subframe accuracy, arbitrary imported
 rig compatibility or coordinated morph delivery. Driver authoring was a separate milestone; see its qualification above.
-NLA authoring was subsequently qualified above; advanced strip controls and retargeting remain separate work. No package/venv, installed service/skill, user
+NLA authoring was subsequently qualified above; advanced strip controls and contact-aware/control-rig transfer remain separate work. No package/venv, installed service/skill, user
 GUI session or engine integration was changed; isolated background Blender only.
 
 

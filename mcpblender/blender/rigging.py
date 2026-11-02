@@ -208,7 +208,7 @@ def simple_animation(rig):
         raise ValueError("Structured clip tools require a rig without constraints, drivers or active NLA tracks")
 
 
-def action_slot(rig, action, identifier=None):
+def action_slot(rig, action, identifier=None, allow_object_motion=False):
     from .domains import curves
     owner = action.get("mcpblender_target")
     if owner and owner != rig.name:
@@ -230,7 +230,8 @@ def action_slot(rig, action, identifier=None):
         raise ValueError("Clip has no animation channels")
     for channel in channels:
         # Skeletal tools intentionally exclude object transforms/custom properties.
-        if not channel.data_path.startswith("pose.bones["):
+        object_motion = allow_object_motion and action.get("mcpblender_object_motion") and channel.data_path in {"location", "rotation_quaternion", "scale"}
+        if not channel.data_path.startswith("pose.bones[") and not object_motion:
             raise ValueError("Clip contains non-skeletal channels; use a specialized animation workflow")
         try:
             rig.path_resolve(channel.data_path)
@@ -241,7 +242,8 @@ def action_slot(rig, action, identifier=None):
 
 def animation_snapshot(rig):
     anim = rig.animation_data
-    return {"had_animation": anim is not None, "action": anim.action if anim else None,
+    return {"object_rotation_mode":rig.rotation_mode, "object_transform": {key:list(getattr(rig,key)) for key in ("location","rotation_euler","rotation_quaternion","rotation_axis_angle","scale")},
+            "had_animation": anim is not None, "action": anim.action if anim else None,
             "slot": getattr(anim, "action_slot", None) if anim else None,
             "settings": {key: getattr(anim, key) for key in ("action_blend_type", "action_extrapolation", "action_influence", "use_nla")} if anim else {},
             "pose": {b.name: {key: list(getattr(b, key)) for key in
@@ -267,6 +269,8 @@ def assign_action(rig, action, slot=None):
 
 
 def restore_animation(rig, saved):
+    rig.rotation_mode=saved["object_rotation_mode"]
+    for key,value in saved["object_transform"].items():setattr(rig,key,value)
     if saved["had_animation"]:
         anim = rig.animation_data_create()
         anim.action = saved["action"]
@@ -441,7 +445,7 @@ def export_managed_clips(selected_only=True):
             for action in bpy.data.actions:
                 if action.get("mcpblender_target") != rig.name or action in existing:
                     continue
-                slot = action_slot(rig, action)
+                slot = action_slot(rig, action, allow_object_motion=True)
                 track = rig.animation_data_create().nla_tracks.new()
                 tracks.append((rig, track))
                 track.name, track.mute = action.name, True

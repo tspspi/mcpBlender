@@ -115,6 +115,35 @@ clips does not prove the composite was exported. Mute NLA layers before using
 simple clip-edit tools; source edits require a fresh stack hash. Full contracts,
 limits and native influence-envelope semantics: USER_MANUAL.md.
 
+For motion retargeting, call `inspect_animation_retarget` with source rig `source`,
+target `name` and explicit `{source,target,rotation_correction_degrees?}` mappings.
+Use exact-name suggestions as suggestions; do not invent anatomical equivalence.
+Review rest/parent differences, skipped ancestors, connected translation roots
+and median length-ratio translation scale. LOCAL_POSE copies joint-local basis
+motion into target axes; ARMATURE_DELTA transfers armature-space rest-relative
+rotations. Unmapped ancestors can matter; per-map axis corrections are explicit.
+
+`retarget_animation` requires fresh expected_source_rig/expected_target_rig hashes,
+unused output_rig/clip, frame_start/end and optional target skin `{source,output}`
+entries. It reads the current evaluated source, including NLA/drivers/IK, and
+creates independent target-derived skeleton/skin data and quaternion keys. ROOT
+translation applies at mapping roots; IGNORE/default local scale preserves target
+proportions. Source_start/playback_speed remap time; reference_frame anchors object
+placement. COPY/default object motion transfers rigid locomotion, while IGNORE
+keeps the output stationary. Animated object scale/shear is refused. Copied
+relative shapes freeze at reference values; materials stay shared. Source assets
+remain editable and the original frame is restored.
+
+Poll transfer/verification/storage progress. Every integer target frame checks
+keyed matrices against recomputed transfer, with finite skin scans; this does not
+prove anatomical mapping, contact, weights or subframe winding. Inspect the rig's
+binding and key/intermediate deformation, render a preview and save/reopen. Export
+only the transferred rig/skins, reimport and compare root movement/playback. Mixed
+object/skeletal clips use current-timeline tools rather than simple clip switching.
+Dense output reports within_nla_key_limit; direct rendering/export remains possible.
+Limits and supported surface/shape handling are in USER_MANUAL.md. Contact-aware
+retargeting, complete control-rig and morph-clip transfer remain separate work.
+
 Use `sample_constraint_animation` to inspect the current constrained timeline at
 key/intermediate frames, including bound mesh deformation. It restores the frame
 without switching actions or resetting pose channels. It is asynchronous by

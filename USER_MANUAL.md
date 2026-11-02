@@ -1448,6 +1448,131 @@ otherwise exporting both versions also includes the editable source. Validate
 portable delivery by reimporting and comparing playback at key/intermediate
 frames. Shared materials remain editable through the existing material tools.
 
+## Motion retargeting between skeletons
+
+`inspect_animation_retarget` plans transfer from armature `source` to target
+armature `name`. Both must be in the current scene and Object mode. It is
+read-only and does not seek frames or switch actions. Supply explicit `mappings`
+with `source`/`target` bone names and optional `rotation_correction_degrees`.
+If omitted, inspection lists exact-name suggestions; execution never guesses
+humanoid anatomy from names. Each source and target bone may occur only once.
+
+Results include `source_rig_sha256`/`target_rig_sha256`, rest matrices/parents,
+length ratios, unmapped bones, mapping roots, connected translation roots and
+hierarchy warnings. A mapping root has no mapped target ancestor; it can still
+have an unmapped native parent. Inspect skipped source ancestors before choosing
+local transfer. The proposed `translation_scale` is the median mapped target/
+source rest-bone length ratio, not a guaranteed anatomical height/contact scale.
+Override it explicitly when needed (finite, positive, up to 1e12).
+
+`retarget_animation` requires nonempty mappings and both fresh hashes as
+`expected_source_rig`/`expected_target_rig`. It creates unused `output_rig` and
+`clip` names, plus optional `meshes` entries naming a target `source` mesh and
+independent `output`. Output object/clip names fit 63 UTF-8 bytes. It copies the
+target skeleton's rest data and vertex groups, clears runtime pose/object
+constraints, drivers and NLA from the new rig, and activates a persistent managed
+quaternion clip. Both input rigs, their actions and target skins remain editable.
+It does not temporarily activate another source clip; it samples the source's
+**current evaluated timeline**, including NLA, drivers and IK.
+
+```json
+{"params":{"source":"MotionRig","name":"CharacterRig","mappings":[{"source":"Hip","target":"Pelvis"},{"source":"LowerArm","target":"Forearm"}],"output_rig":"Character_Walk","clip":"Walk_Transferred","meshes":[{"source":"CharacterSkin","output":"WalkSkin"}],"frame_start":1,"frame_end":48,"expected_source_rig":"<plan source_rig_sha256>","expected_target_rig":"<plan target_rig_sha256>"},"wait":true}
+```
+
+Choose the transfer semantics explicitly:
+
+| `rotation_mode` | Meaning |
+| --- | --- |
+| LOCAL_POSE (default) | Copy each evaluated joint-local pose-basis rotation into the target bone's own axes. Its rest orientation and attachments remain those of the target. Motion in unmapped source ancestors is omitted. |
+| ARMATURE_DELTA | Transfer each bone's armature-space rotation relative to its own source rest orientation, then apply it relative to the target rest orientation. Useful for explicit rest/axis alignment and hierarchy differences. |
+
+`alignment_degrees` is a source-to-target armature-axis rotation for
+ARMATURE_DELTA and object motion. LOCAL_POSE uses the bones' local axes instead.
+Per-map `rotation_correction_degrees` conjugates the transferred rotation in the
+target bone's local axes; in armature mode that correction is expressed through
+the target rest basis. Corrections do not automatically identify anatomical
+flexion axes. Preview the result rather than assuming similar names imply a
+suitable mapping.
+
+`translation` is ROOT (default), NONE or ALL. ROOT transfers location only for
+mapping roots; ALL additionally transfers each mapped joint's own translation.
+LOCAL_POSE scales the source pose-basis translation, applying its per-map axis
+correction. In ARMATURE_DELTA, a mapping root receives the scaled source head
+displacement from its rest head; child translations add the source's own local
+pose contribution expressed in armature coordinates. Unmapped target bones stay
+at identity local pose and follow their target parents. Connected target joints
+can prevent requested translations: map their parents, choose NONE, or inspect
+and revise the mapping. A verification mismatch refuses the output.
+
+`scale_mode="IGNORE"` preserves target proportions and reports mapped source
+bones whose local stretch was ignored. COPY_LOCAL transfers mapped local scale
+channels instead. Source pose scales must be finite, positive and nondegenerate;
+collapsed/mirrored pose scales and multi-segment B-Bones are unsupported here.
+Native bone inheritance is used to solve target pose-basis keys. Unrepresentable
+shear or other reconstruction differences fail verification.
+
+`frame_start`/`frame_end` are inclusive integer target frames. Source time is
+`source_start + (target_frame-frame_start)*playback_speed`; source_start defaults
+to frame_start, speed to one. Fractional source sampling is supported. Times must
+fit [-1048574,1048574]. `reference_frame` defaults to source_start and establishes
+both the source object-motion reference and the target's placement. Rest bone
+data remains the reference for joint rotation; this does not subtract an
+arbitrary animated pose at reference_frame.
+
+`object_motion="COPY"` (default) transfers rigid source object translation/
+rotation relative to that reference, aligned and translation-scaled into the
+target's reference placement. Initial source placement is not copied onto the
+target. Static object scales/units are supported when native inverses and output
+transforms are representable. Animated object scale/shear relative to reference
+is refused; choose IGNORE to keep a stationary target object. Bone motion remains
+independent of that choice. COPY produces mixed object/skeletal channels; the
+managed exporter supports this tagged clip, while simple skeletal clip editing/
+switching retains its non-skeletal-channel guard. Use current-timeline sampling,
+NLA or the generic render commands for these results.
+
+Target skins need one enabled Armature modifier referencing the target rig.
+Supported additional surface modifiers are BEVEL, SUBSURF, WEIGHTED_NORMAL,
+TRIANGULATE, SOLIDIFY and DECIMATE. Mesh objects/data must have no animation or
+object constraints and must be unparented or object-parented to that target.
+Copies are parented to the new output rig so object root motion carries the
+skin. Relative shape data is copied independently and frozen at its reference-
+frame values; source morph animation/drivers are retained only on the original.
+The copied shapes remain editable. Materials remain shared; this does not clone
+or rewrite shader graphs. Unsupported dynamic geometry requires a separate bake.
+
+Each target frame gets location/quaternion/scale bone keys with continuous-sign
+quaternions and linear interpolation. A second evaluation recomputes the transfer
+from the live source and compares all keyed output bone/world matrices with it.
+Copied evaluated skins are scanned for finite world vertices and sampled bounds/
+digests. Default absolute `tolerance` is .0001 (range .000001.. .01), applying to
+matrix components including world translations. This verifies the chosen transfer
+math, not anatomical correctness, skin weights, foot locking or subframe/spin
+winding accuracy. Inspect binding, key/intermediate poses and rendered motion.
+
+Results include actual translation scale, frame/key counts,
+`max_world_matrix_error`, ignored-stretch bones and three representative skin
+samples. `within_nla_key_limit` reports whether the generated clip fits the
+current 200000-key NLA/channel inspection bound; dense output can still be
+rendered/exported directly. Inputs also inherit existing NLA/driver inspection
+bounds. Rig hashes cover rest/hierarchy/inheritance and direct rig animation/
+constraint/driver configuration; they do not freeze external control objects,
+mesh/material data, current poses or evaluated reference placement.
+
+The operation submits asynchronously by default and reports transfer/verification
+progress with storage. Limits are 256 bones per input, 500 target frames, 32768
+target bone-frame samples, eight skins and ten million raw/evaluated vertex-frame
+samples. Cancellation checks between frames and before success; ordinary failures
+or cancellation remove newly created rig/mesh/shape/action data and restore the
+original frame/subframe. Individual native frame evaluation/key insertion blocks
+until the next check. Process failures use existing checkpoint/recovery rather
+than this in-process cleanup.
+
+Save `.blend` for editable source/target/result, and select only the transferred
+rig/skins for GLB delivery. Reimport and compare actual playback, including root
+movement. Retargeting does not transfer a complete control rig, infer humanoid
+roles, enforce contact/IK goals on different proportions, or transfer morph clips.
+Those remain distinct animation/rig refinement work.
+
 ## Structured shape keys
 
 `create_shape_key`, `edit_shape_key`, `inspect_shape_keys`,

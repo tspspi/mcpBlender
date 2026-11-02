@@ -9,6 +9,37 @@ execution disabled verifies structured mesh/shader discovery, explicit Python-on
 gaps, and no checkpoint mutation. Inventory describes worker implementation;
 caller permissions and feature qualification remain separate concerns.
 
+## Geometry Nodes foundation — 2026-11-02
+
+The initial combined Geometry Nodes/capability/server suite passed **13 tests in
+43.11 seconds**. Expanded focused checks then passed **6 tests in 44.54 seconds**:
+
+```sh
+MCPBLENDER_TEST_BLENDER=1 MCPBLENDER_GEOMETRY_EVIDENCE_DIR=/tmp/mb-geometry-20261102 python3 -m pytest -q tests/test_geometry_contracts.py tests/test_geometry.py tests/test_capabilities.py --tb=short --maxfail=1
+```
+
+Real Blender 5.0.1 runs with Python execution disabled. Every catalog node is
+instantiated. A reusable floor-array group attaches to two objects; per-modifier
+integer inputs produce independently verified 5/3-floor meshes. Graph inspection
+reads back both values. The graph, material references, input values and evaluated
+geometry survive save/reopen; detaching one modifier leaves the other intact.
+A Cycles preview was opened and visually inspected. Evidence includes the PNG,
+editable project and explicit-object GLB.
+
+The fixture found that ordinary GLB export omits procedural modifiers by default.
+Explicit `apply_modifiers=true` now exports evaluated static geometry without
+changing the source. GLB accessors verify the intended five-floor height and the
+material reference. Evaluated export refuses shape-key meshes, while the normal
+export retains a morph target. Other checks cover float/vector/boolean interfaces,
+Euler rotation and multi-input geometry joins; invalid replacements, socket types,
+properties, cycles, cardinalities and stale guards preserve existing results.
+Read-only policy hides/denies graph edits. The bundled design skill validates.
+
+This qualifies bounded managed groups and the tested combinations, not every
+node combination, imported nested graphs, field workload limits, simulation zones,
+reusable procedural presets or separate render workers. The installed user service
+and installed skills were not changed; no dependency/environment changes occurred.
+
 ## Structured shaders and material presets
 
 On 2026-11-01, `MCPBLENDER_TEST_BLENDER=1 python3 -m pytest -q
@@ -53,7 +84,20 @@ local Object-mode meshes without shape keys/armature deformation, not sculpting,
 retopology or arbitrary imported dependency graphs. Generated UV quality still
 needs review. The installed user service/skills were not upgraded or restarted.
 
-## Latest complete regression
+## Latest complete regression — 2026-11-02
+
+```sh
+MCPBLENDER_TEST_BLENDER=1 python3 -m pytest -q --tb=short --maxfail=1
+```
+
+**103 tests passed in 424.37 seconds**, with the existing host Starlette/AnyIO
+deprecation warning. This source-checkout run covers the mesh editing, capability
+and Geometry Nodes foundations alongside the existing recovery, retention,
+modeling, materials, skeletal/morph animation and video workflows. The expanded
+Geometry Nodes fixture also passed separately as documented above. No installed
+service deployment or Godot work was performed.
+
+## Previous complete regression — 2026-11-01
 
 On 2026-11-01, after the installation-driven recovery and splash changes:
 

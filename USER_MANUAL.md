@@ -516,6 +516,71 @@ materials and renders after editing. Mesh edits are limited to one million
 vertices/faces; native operations are not forcibly interruptible. Ordinary
 operation IDs, request-ID deduplication and broker reconnection apply.
 
+## Structured Geometry Nodes
+
+These tools accept `params` and work with Python execution disabled. Use
+`geometry_node_catalog` to discover supported node types and up to 128 existing
+groups; request a `node_type` for installed socket identifiers and property choices.
+`inspect_mesh` includes the group name for Geometry Nodes modifiers.
+
+`configure_geometry_graph` creates a named persistent group with automatic
+Geometry input/output sockets and optional FLOAT, INT, BOOLEAN or VECTOR inputs.
+Each input supplies a name, type and default. Nodes use catalog types, named
+instances, allowlisted properties and typed input values. Socket references are
+identifiers, unambiguous names or nonnegative indexes. Rotations use XYZ Euler
+radians. `GeometryNodeSetMaterial` accepts a named existing `material`; assigning a
+material slot on the original mesh does not color newly generated primitives.
+
+For example, a reusable parameterized box:
+
+```json
+{"params":{
+  "group":"ParametricBox",
+  "inputs":[{"name":"Size","type":"VECTOR","default":[2,3,4]}],
+  "nodes":[
+    {"name":"Parameters","type":"NodeGroupInput"},
+    {"name":"Box","type":"GeometryNodeMeshCube"},
+    {"name":"Output","type":"NodeGroupOutput"}],
+  "links":[
+    {"from_node":"Parameters","from_socket":"Size","to_node":"Box","to_socket":"Size"},
+    {"from_node":"Box","from_socket":"Mesh","to_node":"Output","to_socket":"Geometry"}]
+}}
+```
+
+Use `attach_geometry_nodes` with `name` (mesh object), `group` and optional
+`modifier` (default `GeometryNodes`). Different objects can share a group with
+independent modifier inputs. Reattaching the same group preserves those values;
+an existing modifier pointing elsewhere is refused. `configure_geometry_inputs`
+takes `name`, `modifier`, `expected_graph` from inspection's `graph_sha256`, and
+`values` containing `socket`/`value` pairs. Interface indexes count only editable
+inputs, excluding Geometry. All values are preflighted before applying any;
+objects with animation/drivers or inputs using named attributes are refused.
+
+`inspect_geometry_graph` reports interfaces, nodes, defaults, links, users and a
+graph fingerprint. Inspection includes imported groups, but editing/attachment
+requires a local managed group without animation/drivers or unsupported nodes.
+Results are bounded to 128 nodes and 256 links; truncated/unsupported graphs have
+no usable fingerprint. Fingerprints cover supported graph configuration, including
+material references, rather than the contents of referenced materials. Groups
+have a fake user so they survive saving without a modifier attachment.
+
+Replacing a managed graph requires `replace=true`, its current `expected_graph`
+and no real users. Detach modifiers with `remove_modifier` first; this deliberately
+prevents graph replacement from silently changing multiple attached objects.
+Construction uses a temporary group; invalid nodes, properties, socket values,
+links, cycles or output wiring preserve the original. Exactly one Group Output
+with linked Geometry is required. Multi-input geometry joins are supported.
+Nested groups, object references, simulation zones and executable nodes are not
+exposed. Direct primitive counts are limited to 512 and subdivision levels to 3;
+these limits do not bound geometry generated through fields, linked inputs or
+successive modifiers. Inspect evaluated counts and render at representative sizes.
+
+For delivery, `export_objects_glb` and `export_glb` accept explicit
+`apply_modifiers=true` to include evaluated static geometry without baking the
+editable source. This mode refuses shape-key/armature-deformed meshes. The default
+keeps the existing base-mesh export behavior. Alternatively, explicitly bake a
+modifier using `apply_modifier`, then inspect the resulting mesh before export.
+
 ## Structured skeletal animation
 
 `create_armature`, `bind_mesh` and `inspect_rig` take typed `params` and work with
@@ -645,7 +710,9 @@ glTF import may create additional bone-display meshes; use this count or
 Use Blender for modeling, materials, UVs, rigging and animation; export selected
 assets with `export_glb`. The initial export uses Blender's glTF exporter, GLB,
 standard glTF +Y up, and uncompressed meshes. Animation export is configurable.
-The exporter does not forcibly apply destructive transforms or modifiers.
+Use explicit `apply_modifiers=true` for evaluated static geometry, including
+Geometry Nodes; this does not change the editable source. Shape-key and
+armature-deformed meshes require the normal animation-preserving export mode.
 
 Animated exports use native `ACTIONS` mode. Managed clips belonging to each
 exported rig or relative shape-key datablock are included through temporary muted

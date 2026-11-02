@@ -220,6 +220,10 @@ def dispatch(command, params):
             raise ValueError("No scene objects selected for export")
         if Path(path).exists() and not params.get("overwrite", False):
             raise FileExistsError(path)
+        if params.get("apply_modifiers", False):
+            targets = bpy.context.selected_objects if params.get("selected_only", True) else bpy.context.scene.objects
+            if any(obj.type == "MESH" and (obj.data.shape_keys or obj.find_armature()) for obj in targets):
+                raise ValueError("Evaluated modifier export supports static meshes without shape keys or armature deformation")
         clips = export_managed_clips(params.get("selected_only", True)) if params.get("animations", True) else contextlib.nullcontext()
         morph_clips = export_morph_clips(params.get("selected_only", True)) if params.get("animations", True) else contextlib.nullcontext()
         with gltf_compatibility() as workaround, clips, morph_clips:
@@ -227,6 +231,7 @@ def dispatch(command, params):
                                               use_selection=params.get("selected_only", True),
                                               export_draco_mesh_compression_enable=False,
                                               export_yup=True, export_animations=params.get("animations", True),
+                                              export_apply=params.get("apply_modifiers", False),
                                               export_animation_mode="ACTIONS", export_anim_single_armature=False,
                                               export_merge_animation="ACTION", export_morph=True, export_morph_animation=True)
         if "FINISHED" not in result:
@@ -362,6 +367,7 @@ class BridgeServer:
                 reads = {"get_scene_info", "get_object_info", "inspect_mesh", "inspect_mesh_elements", "inspect_shape_keys", "inspect_morph_animation", "sample_morph_animation", "inspect_rig", "inspect_animation", "sample_animation", "get_capabilities", "inspect_resources", "vse_list", "checkpoint", "shutdown_blender", "capture_viewport", "render_still", "render_animation", "render_video"}
                 reads.update({"asset_report", "preflight_game_asset", "render_animation_preview"})
                 reads.update({"shader_node_catalog", "inspect_shader_graph"})
+                reads.update({"geometry_node_catalog", "inspect_geometry_graph"})
                 mutates = self.active["command"] not in reads
                 if self.active["command"] == "run_action":
                     mutates = any(step["command"] not in reads for step in self.active["params"]["steps"])

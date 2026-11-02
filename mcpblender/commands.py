@@ -328,6 +328,7 @@ class ExportObjects(Model):
     path: str
     animations: bool = True
     overwrite: bool = False
+    apply_modifiers: bool = False
 
 
 class Bone(Model):
@@ -509,6 +510,7 @@ class Save(File):
 class Export(Save):
     selected_only: bool = True
     animations: bool = True
+    apply_modifiers: bool = False
 
 
 class Still(Model):
@@ -605,3 +607,8 @@ from .mesh_contracts import COMMANDS as MESH_COMMANDS
 
 COMMANDS.update(MESH_COMMANDS)
 DOMAIN_COMMANDS.update(MESH_COMMANDS)
+
+from .geometry_contracts import COMMANDS as GEOMETRY_COMMANDS
+
+COMMANDS.update(GEOMETRY_COMMANDS)
+DOMAIN_COMMANDS.update(GEOMETRY_COMMANDS)

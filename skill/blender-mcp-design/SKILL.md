@@ -36,6 +36,18 @@ Boolean modifiers support explicit operand objects and difference/union/intersec
 inspect the evaluated result before applying or exporting, and exclude cutters
 from deliverables unless requested. Imported dependency graphs still need review.
 
+For procedural geometry, discover `geometry_node_catalog` and inspect named
+groups with `inspect_geometry_graph`. `configure_geometry_graph` builds supported
+typed nodes/links with automatic Geometry interface sockets; use typed exposed
+inputs for reusable designs. `attach_geometry_nodes` shares a group between local
+mesh objects, while `configure_geometry_inputs` changes only the named modifier's
+values and requires `expected_graph` from `graph_sha256`. Existing attached groups
+cannot be replaced: detach their users explicitly or create a new group. Imported
+graphs are read-only. Use GeometryNodeSetMaterial with an existing material to
+color generated primitives. Inspect evaluated geometry and view a render after
+changing procedural inputs; source mesh topology may remain unchanged. These
+tools do not yet expose nested groups or simulation zones.
+
 Prefer structured tools for the supported pipeline, including when Python
 execution is disabled: `create_primitive` / `create_mesh`, `configure_modifier`,
 `apply_modifier` / `remove_modifier`, `generate_uv`, `duplicate_object`,
@@ -106,6 +118,9 @@ For Godot delivery, verify intended units, dimensions, origins, axes, selection,
 material assignments and animation clips. Save the editable `.blend` project and
 export a GLB with `export_glb` or `export_objects_glb` (explicit `objects` inside
 params, restoring selection). Include the rig and meshes for skinned delivery.
+For evaluated static Geometry Nodes/modifiers, request `apply_modifiers=true`;
+the default exports the base mesh. This explicit evaluated mode refuses shape-key
+and armature-deformed meshes. Parse or reimport the delivery to check its geometry.
 Structured file paths are relative to the active
 `library_root`. Existing project/export files require explicit `overwrite=true`;
 use it when replacement is authorized by the task. `export_glb` exports selected

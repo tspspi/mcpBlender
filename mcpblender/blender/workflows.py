@@ -152,7 +152,8 @@ def export_objects_glb(p):
             obj.select_set(True)
         bpy.context.view_layer.objects.active = targets[0]
         return core_dispatch("export_glb", {"path": p["path"], "selected_only": True,
-                            "animations": p["animations"], "overwrite": p["overwrite"]})
+                            "animations": p["animations"], "overwrite": p["overwrite"],
+                            "apply_modifiers": p.get("apply_modifiers", False)})
     finally:
         for obj in list(bpy.context.selected_objects):
             obj.select_set(False)

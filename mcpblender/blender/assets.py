@@ -78,6 +78,9 @@ def finished(result):
 
 
 def modifier_info(mod):
+    if mod.type == "NODES":
+        return {"name": mod.name, "type": mod.type, "group": mod.node_group.name if mod.node_group else None,
+                "show_viewport": mod.show_viewport, "show_render": mod.show_render}
     return {"name": mod.name, "type": mod.type, "show_viewport": mod.show_viewport,
             "show_render": mod.show_render,
             "settings": {key: getattr(mod, key) for key in MODIFIER_FIELDS.get(mod.type, ())}

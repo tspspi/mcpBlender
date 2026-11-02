@@ -530,8 +530,8 @@ def build_server(config: Config):
 
     @server.tool()
     async def export_glb(path: str, selected_only: bool = True, animations: bool = True,
-                         overwrite: bool = False) -> dict:
-        """Export a Godot-friendly GLB under library_root, using glTF +Y up. Inspect selection first."""
+                         overwrite: bool = False, apply_modifiers: bool = False) -> dict:
+        """Export a GLB under library_root using glTF +Y up. apply_modifiers includes evaluated static Geometry Nodes; refuses morph/rig meshes. Inspect selection first."""
         state.check("export_glb")
         target = state.library_path(path, write=True)
         if target.suffix.lower() != ".glb":
@@ -543,7 +543,7 @@ def build_server(config: Config):
             if not any(obj["selected"] for obj in scene["objects"]):
                 raise ValueError("No scene objects selected for export")
         result = await state.rpc("export_glb", path=str(target), selected_only=selected_only,
-                                 animations=animations, overwrite=overwrite)
+                                 animations=animations, overwrite=overwrite, apply_modifiers=apply_modifiers)
         return result | state.artifact(target, "model")
 
     @server.tool()

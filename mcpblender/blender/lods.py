@@ -65,11 +65,14 @@ def summary(mesh):
 
 
 def source_snapshot(p):
+    if p.get('deformation')=='MORPH':
+        from .morph_lods import source_snapshot as snapshot
+        return snapshot(p)
     if p.get('deformation')=='SKINNED':
         from .skin_lods import source_snapshot as snapshot
         return snapshot(p)
     obj=mesh_object(p['name']);require_static(obj)
-    if obj.find_armature() or obj.data.shape_keys:raise ValueError('Static LODs require no armature or shape keys; choose deformation=SKINNED for linear skins, while morph transfer remains separate')
+    if obj.find_armature() or obj.data.shape_keys:raise ValueError('Static LODs require no armature or shape keys; choose deformation=SKINNED for linear skins, or MORPH for relative shape keys')
     if obj.name not in bpy.context.scene.objects or bpy.context.view_layer.objects.get(obj.name)!=obj or not obj.visible_get():raise ValueError('LOD source must be visible in the current scene/view layer')
     bpy.context.view_layer.update()
     if any(not math.isfinite(v) for row in obj.matrix_world for v in row) or abs(obj.matrix_world.determinant())<1e-12:raise ValueError('Finite invertible source transform required')
@@ -90,7 +93,7 @@ def source_snapshot(p):
 def inspect_source(p):
     obj,mesh,report,signature=source_snapshot(p)
     try:return report|{'name':obj.name,'source_sha256':signature,'frame':bpy.context.scene.frame_current,
-                       'matrix_world':matrix(obj.matrix_world),'snapshot':('Raw skinned rest data, original linear binding and rig clips; object motion/morph transfer remain separate.' if report.get('skin') else 'Current static viewport evaluation. Materials remain shared; external procedural dependencies are not frozen beyond this evaluated content.')}
+                       'matrix_world':matrix(obj.matrix_world),'snapshot':('Raw skinned rest data and original linear binding/rig clips; morph weights follow source Key controllers.' if report.get('skin') else 'Raw relative morph basis; source actions/drivers/NLA stay authoritative.' if report.get('morph') else 'Current static viewport evaluation. Materials remain shared; external procedural dependencies are not frozen beyond this evaluated content.')}
     finally:bpy.data.meshes.remove(mesh)
 
 
@@ -132,7 +135,7 @@ def native_chain(p):
     encoded=collection[META]
     if not isinstance(encoded,str) or len(encoded)>2*1024**2:raise ValueError('Invalid LOD metadata')
     meta=json.loads(encoded)
-    if meta.get('format') not in {MARKER,'mcpblender-skinned-lod-v1'} or not 2<=len(meta.get('levels',[]))<=8:raise ValueError('Invalid LOD ownership marker')
+    if meta.get('format') not in {MARKER,'mcpblender-skinned-lod-v1','mcpblender-morph-lod-v1'} or not 2<=len(meta.get('levels',[]))<=8:raise ValueError('Invalid LOD ownership marker')
     root=bpy.data.objects.get(meta['root']);issues=[];records=[];objects=[]
     if not root or root.type!='EMPTY' or root.name not in collection.objects:raise ValueError('LOD root missing or changed')
     if collection.library or collection.override_library or root.library or root.override_library:issues.append('LOD ownership must be local')
@@ -142,7 +145,7 @@ def native_chain(p):
         objects.append(obj)
         if obj.library or obj.override_library or obj.data.library or obj.data.override_library:issues.append('LOD mesh must be local')
         if obj.parent!=root or obj.name not in collection.objects or len(obj.users_collection)!=1:issues.append('LOD hierarchy/collection changed')
-        if (obj.modifiers and not meta.get('skin')) or obj.constraints or obj.animation_data or obj.data.shape_keys:issues.append('LOD mesh gained procedural deformation')
+        if (obj.modifiers and not meta.get('skin')) or obj.constraints or obj.animation_data or (obj.data.shape_keys and not meta.get('morph')):issues.append('LOD mesh gained procedural deformation')
         if any(max(abs(value[i][j]-(1 if i==j else 0)) for i in range(4) for j in range(4))>1e-6 for value in (obj.matrix_basis,obj.matrix_parent_inverse)):issues.append('LOD relative transform changed')
         report=summary(obj.data)
         if report['mesh_sha256']!=level['mesh_sha256']:issues.append('LOD mesh/material assignments changed')
@@ -153,6 +156,9 @@ def native_chain(p):
     if meta.get('skin'):
         from .skin_lods import native_checks
         native_checks(root,objects,meta,issues)
+    if meta.get('morph'):
+        from .morph_lods import native_checks
+        native_checks(objects,meta,issues)
     signature=digest({'metadata':meta,'levels':records,'root_matrix':matrix(root.matrix_world),'issues':issues})
     return collection,root,objects,meta,records,issues,signature
 
@@ -160,13 +166,13 @@ def native_chain(p):
 def inspect_chain(p):
     collection,root,objects,meta,records,issues,signature=native_chain(p)
     source=None
-    try:source=inspect_source({'name':meta['source'],'deformation':'SKINNED' if meta.get('skin') else 'STATIC'});stale=source['source_sha256']!=meta['source_sha256']
+    try:source=inspect_source({'name':meta['source'],'deformation':'SKINNED' if meta.get('skin') else 'MORPH' if meta.get('morph') else 'STATIC'});stale=source['source_sha256']!=meta['source_sha256']
     except (ValueError,RuntimeError):stale=True
     return {'chain':collection.name,'root':root.name,'chain_sha256':signature,'valid':not issues,'issues':sorted(set(issues)),
             'source':meta['source'],'source_stale_or_unavailable':stale,'source_sha256':meta['source_sha256'],'levels':records,
-            'deformation':'SKINNED' if meta.get('skin') else 'STATIC','skin':meta.get('skin'),'pose_validation':meta.get('pose_validation'),'skin_profile':meta.get('skin_profile'),
-            'pose_validation_inputs_changed':bool(meta.get('skin') and (source is None or source['skin']['animation_sha256']!=meta['skin']['animation_sha256'] or stale)),
-            'note':'Independent mesh data; skin mode follows the original rig. Source staleness is informational. Visibility selects representations, not automatic distance switching. Materials remain shared.'}
+            'deformation':'SKINNED' if meta.get('skin') else 'MORPH' if meta.get('morph') else 'STATIC','skin':meta.get('skin'),'morph':meta.get('morph'),'pose_validation':meta.get('pose_validation'),'skin_profile':meta.get('skin_profile'),
+            'pose_validation_inputs_changed':bool((meta.get('skin') or meta.get('morph')) and (source is None or stale or (meta.get('skin') and source['skin']['animation_sha256']!=meta['skin']['animation_sha256']) or (meta.get('morph') and source['morph']['controller_snapshot_sha256']!=meta['morph']['controller_snapshot_sha256']))),
+            'note':'Independent mesh data; skin mode follows the original rig and morph mode follows the source Key controller. Source morph geometry/masks must remain intact. Visibility selects representations, not automatic distance switching. Materials remain shared.'}
 
 
 def guarded(p):
@@ -246,14 +252,22 @@ def generate(p):
             records.append(report|{'object':obj.name,'level':i,'triangle_budget':p['levels'][i-1]['triangle_budget'] if i else base_report['triangles'],
                                    'recipe':p['levels'][i-1] if i else {'method':'SNAPSHOT'},'quality':measurement})
             report_progress({'phase':'verified LOD level','level':i,'levels':len(names),'triangles':report['triangles'],'fraction':(i+1)/len(names)})
+        if base_report.get('morph'):
+            from . import morph_lods
+            for i,(obj,record) in enumerate(zip(created[1:],records)):
+                record['morph_transfer']=morph_lods.attach(obj,source,i==0)
+                record['morph_validation']=morph_lods.measure_keys(source,obj,p)
         poses=None
         if base_report.get('skin'):
             for obj in created[1:]:obj.modifiers[0].show_viewport=True
             poses=skin_lods.measure(source,created[1:],p.get('pose_frames') or base_report['skin']['recommended_pose_frames'],p['error_samples'],p['max_pose_error'])
+        elif base_report.get('morph'):
+            from .skin_lods import measure
+            poses=measure(source,created[1:],p.get('pose_frames') or morph_lods.frames_for(source),p['error_samples'],p['max_pose_error'])
         fresh=inspect_source({'name':source.name,'deformation':p.get('deformation','STATIC')})
         if fresh['source_sha256']!=signature:raise ValueError('Source changed during LOD generation')
         for i,obj in enumerate(created[1:]):obj.hide_viewport=i!=0;obj.hide_render=i!=0
-        collection[META]=json.dumps({'format':skin_lods.MARKER if base_report.get('skin') else MARKER,'skin':base_report.get('skin'),'pose_validation':poses,'skin_profile':{'max_influences':p['skin_max_influences'],'joint_importance':p['skin_joint_importance']} if base_report.get('skin') else None,'id':uuid.uuid4().hex,'source':source.name,'source_sha256':signature,'root':root.name,
+        collection[META]=json.dumps({'format':skin_lods.MARKER if base_report.get('skin') else morph_lods.MARKER if base_report.get('morph') else MARKER,'morph':base_report.get('morph'),'skin':base_report.get('skin'),'pose_validation':poses,'skin_profile':{'max_influences':p['skin_max_influences'],'joint_importance':p['skin_joint_importance']} if base_report.get('skin') else None,'id':uuid.uuid4().hex,'source':source.name,'source_sha256':signature,'root':root.name,
                                     'blender_version':bpy.app.version_string,'levels':records},sort_keys=True,allow_nan=False)
         bpy.context.view_layer.update();check_cancelled();result=inspect_chain({'chain':p['chain']})
         if not result['valid']:raise ValueError('Created LOD chain did not pass ownership validation')
@@ -287,6 +301,7 @@ def export(p):
     from .bridge import check_cancelled,report_progress,_bridge
     from .workflows import export_objects_glb
     _,_,objects,meta,records,_,signature=guarded(p);directory=Path(p['directory'])
+    if meta.get('morph'):raise ValueError('Validated morph bundles require dedicated morph replay validation; use editable Blender delivery for now')
     if meta.get('skin'):
         from .skin_lod_export import export as export_skin
         return export_skin(p)
@@ -331,6 +346,9 @@ def dispatch(command,p):
         from .skin_lod_export import plan
         return plan(p)
     if command=='sample_lod_chain':
+        if native_chain(p)[3].get('morph'):
+            from .morph_lods import sample
+            return sample(p)
         from .skin_lods import sample
         return sample(p)
     if command=='inspect_lod_source':return inspect_source(p)

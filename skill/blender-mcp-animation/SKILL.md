@@ -49,8 +49,15 @@ Joint protection can preserve bending regions but cannot guarantee a requested
 budget. `sample_lod_chain` rechecks current-timeline deformation without clip
 switches and restores frame/visibility. Rest/weight/binding edits invalidate the
 chain; changed animation/control inputs require fresh pose review. The first skin
-workflow is linear, group-only, single modifier, up to four influences and no
-morphs. For validated bundles, call `inspect_lod_export`, carry its chain and
+workflow is linear, group-only, single modifier and up to four influences.
+Relative morph keys can transfer automatically with SKINNED, or alone with
+`deformation="MORPH"`. Masked relative deltas interpolate onto reduced rest meshes;
+weights follow the original Key controller, including actions/drivers/NLA and mutes.
+Animate the source and retain that Key dependency in editable `.blend` delivery.
+Every isolated key and sampled current-timeline deformation undergo surface-error
+checks; resample after animation changes. Source key/mask or output link edits
+invalidate ownership. Morph GLB bundles remain a separate validation milestone;
+planner/export refuses morph-bearing chains, including bind-only output. For validated bundles, call `inspect_lod_export`, carry its chain and
 animation fingerprints into `export_lod_chain` (`expected_chain`,
 `expected_animation`), and choose a fresh directory. All compatible simple local
 rig clips export with full integer frame ranges, starting at zero seconds; use

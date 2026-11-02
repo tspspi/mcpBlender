@@ -12,6 +12,7 @@ from mcpblender.lod_files import validate,MARKER,glb_report
 def test_budgets_and_bundle_paths(tmp_path):
     base={'name':'Source','chain':'Asset','expected_source':'a'*64,'levels':[{'triangle_budget':200},{'triangle_budget':50}]}
     assert Generate.model_validate(base).transfer_normals
+    assert Generate.model_validate(base|{'deformation':'MORPH'}).deformation=='MORPH'
     for patch in ({'levels':[]},{'levels':[{'triangle_budget':50},{'triangle_budget':100}]},{'chain':'ä'*21},{'max_relative_error':float('nan')},{'pose_frames':[1,1]},{'pose_frames':[1048575]},{'skin_max_influences':5},{'skin_joint_importance':-1}):
         with pytest.raises(ValueError):Generate.model_validate(base|patch)
     (tmp_path/'manifest.json').write_text(json.dumps({'format':MARKER,'levels':[{'file':'../outside.glb'},{}]}))

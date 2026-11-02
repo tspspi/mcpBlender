@@ -86,7 +86,7 @@ stays in place. COLLAPSE suits general geometry, PLANAR protects planar seams/
 materials, and UNSUBDIVIDE needs a regular grid. Review sampled bidirectional
 surface error and render small/thin details: budget/UV/material/normal checks do
 not certify silhouette or foliage density. For linear skeletal LODs, select `deformation="SKINNED"` as described below.
-Morph transfer and botanical impostors remain separate. Materials stay shared; edited per-level geometry requires a new chain.
+Relative morph transfer is described below; botanical impostors remain separate. Materials stay shared; edited per-level geometry requires a new chain.
 
 Use `inspect_lod_chain`, then `chain_sha256` as `expected_chain` for
 `activate_lod_level` or `export_lod_chain`. Activation hides other managed levels,
@@ -101,7 +101,7 @@ errors/cooperative cancellation. Full limits are in USER_MANUAL.md.
 For skeletal LODs, inspect/generate with `deformation="SKINNED"`. This uses
 raw rest geometry with one enabled linear group-only Armature modifier, normalized
 complete weights (up to four influences), and the original rig. Additional mesh
-modifiers, DQ/envelopes/masks and morphs require another workflow. Joint-weight
+modifiers and DQ/envelopes/masked armature binding require another workflow. Joint-weight
 protection helps preserve bends; triangle and sampled pose-error limits can still
 refuse. Choose meaningful `pose_frames`, or review suggested action/timeline
 frames. Use `sample_lod_chain` again after motion/control changes: stored measurements
@@ -114,7 +114,15 @@ corresponding vertices against native playback. Use `animations=false` for bind-
 output. Animated delivery needs simple local rig/actions with integer clip endpoints;
 bake controls/drivers/active NLA first. Clips use zero-based seconds; manifest
 native frame starts/FPS preserve their original time mapping. Validate the bundle,
-then re-import/sample and visually review. Morph transfer remains separate.
+then re-import/sample and visually review. For morph-only assets, use `deformation="MORPH"`; compatible relative keys also
+transfer automatically in SKINNED mode. Projection interpolates masked relative
+offsets onto reduced rest geometry. Generated weights follow the source Key values
+and mutes, preserving source clips/drivers/NLA as the shared controller. Keep that
+source dependency in editable Blender delivery; animate the source, not driven LOD
+weights. Review every-key and timeline surface checks and resample after control
+changes. Modified source keys/masks or generated links invalidate the chain.
+Validated morph GLB bundles remain separate: plan/export reports a blocker. See
+the manual for limits and key ordering.
 
 Prefer structured tools for the supported pipeline, including when Python
 execution is disabled: `create_primitive` / `create_mesh`, `configure_modifier`,

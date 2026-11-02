@@ -1,5 +1,55 @@
 # Local validation: 0.2.0
 
+## Relative morph LOD transfer — 2026-11-02
+
+The structured MCP fixture runs with arbitrary Python disabled. It creates a
+540-triangle dense prop with Widen/Lift keys and a managed clip, then generates
+250/120-triangle levels. Each level retains three keys, passes every isolated-key
+surface gate and combined timeline samples, and keeps the original morph action
+unchanged. Fractional resampling, save/reopen and source clip edits are checked;
+clip edits retain usable geometry and flag prior pose measurements as stale.
+
+The native fixture provides a known-answer masked triangle projection, including
+preservation of the target rest vertex's normal offset. A dense sphere tests a
+key relative to another non-Basis key and baked mask deltas. Generated weights
+follow the original action, external-control driver, mute flag and active NLA
+strip. A combined linear-rig/morph chain also passes sampled deformation and
+save/reopen. Corrupted output coordinates and source key definitions invalidate
+ownership. Cancellation during transfer, isolated-key validation and timeline
+sampling must restore exact object/mesh/Key/action/collection counts, source
+animation and the original fractional frame. Inspection leaves no temporary Key
+copies or extra action users.
+
+Preceding LOD/static/skin/bundle/capability gate:
+
+```sh
+MCPBLENDER_TEST_BLENDER=1 python3 -m pytest -q tests/test_morph_lods.py tests/test_morph_lod_native.py tests/test_lod_contracts.py tests/test_lods.py tests/test_lod_native.py tests/test_skin_lods.py tests/test_skin_lod_native.py tests/test_skin_lod_export.py tests/test_skin_bundle_native.py tests/test_capabilities.py --tb=short --maxfail=1
+```
+
+Result: **16 passed in 113.56s**. Final focused morph/legacy shape-key gate:
+
+```sh
+MCPBLENDER_TEST_BLENDER=1 MCPBLENDER_MORPH_LOD_EVIDENCE_DIR=/tmp/mb-morph-lod-20261102 python3 -m pytest -q tests/test_morph_lods.py tests/test_morph_lod_native.py tests/test_lod_contracts.py tests/test_shape_keys.py tests/test_morph_contracts.py --tb=short --maxfail=1
+```
+
+Result: **14 passed in 79.72s**. The structured prop's worst sampled timeline
+relative error is 2.78e-7; its worst isolated-key error is 2.95e-7. These results
+apply to this tube-like fixture and do not establish a general reduction bound.
+Both bundled design/animation skills validate.
+Evidence is retained under `/tmp/mb-morph-lod-20261102/`: editable morph-only and
+combined skin/morph projects, plus structured chain/sampling records. No new
+render or target-engine appearance qualification is claimed. No packages, virtual
+environments, installed runtime/skills, service configuration or user GUI changed.
+
+This is source-controlled relative-key transfer. The source Key datablock remains
+an explicit animation dependency; complete independent clip/driver graph copies
+are not created. Masks are baked before interpolation. Bounds and surface checks
+are sampled, not exhaustive deformation/shading proof. Limits are 64 keys and
+four million source key-vertex entries, with the existing rest/pose work bounds.
+Absolute keys, unsupported modifier stacks, detached animation delivery and
+validated morph GLB bundles remain separate. Planner/export explicitly refuses
+morph-bearing bundles before writing files; use editable Blender delivery now.
+
 ## Validated animated skeletal LOD bundles — 2026-11-02
 
 Final focused gate on system Blender 5.0.1:

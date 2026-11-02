@@ -56,7 +56,11 @@ def frames_for(rig):
 def source_snapshot(p):
     obj,rig,mod,rows,deform,locks,coords,relative,settings,weight_signature=skin_weights.inventory({'name':p['name']})
     require_static(obj)
-    if obj.data.shape_keys or obj.data.animation_data:raise ValueError('Skinned LOD morph/data animation transfer is a separate workflow')
+    if obj.data.animation_data:raise ValueError('Mesh-data animation is unsupported for skinned LODs')
+    morph=None
+    if obj.data.shape_keys:
+        from .morph_lods import definition
+        morph=definition(obj)
     if len(rig.data.bones)>256 or any(b.bbone_segments!=1 for b in rig.data.bones):raise ValueError('Skin LODs support at most 256 single-segment bones')
     if any(b.use_deform and b.use_envelope_multiply for b in rig.data.bones):raise ValueError('Bone envelope multiplication is unsupported for linear group-only skin LODs')
     if rig.data.animation_data:raise ValueError('Armature-data animation is unsupported for skin LODs')
@@ -67,7 +71,10 @@ def source_snapshot(p):
     values=binding(obj,rig)
     report_weights=weights(obj,rig)
     if report_weights['max_influences']>4:raise ValueError('Skin LOD source supports four deform influences; explicitly prune with repair_skin_weights first')
-    mesh=obj.data.copy()
+    if morph:
+        from .morph_lods import rest_copy
+        mesh=rest_copy(obj)
+    else:mesh=obj.data.copy()
     try:
         for i,slot in enumerate(obj.material_slots):
             if slot.link=='OBJECT':mesh.materials[i]=slot.material
@@ -75,7 +82,13 @@ def source_snapshot(p):
         layout={'parent':obj.parent.name if obj.parent else None,'parent_inverse':lods.matrix(obj.matrix_parent_inverse),'basis':lods.matrix(obj.matrix_basis)}
         report['skin']={'rig':rig.name,'rest_sha256':rig_rest,'animation_sha256':anim,'weights':report_weights,'binding':values,'root_layout':layout,'recommended_pose_frames':frames_for(rig)}
         report['deformation']='SKINNED'
-        signature=lods.digest({'name':obj.name,'mesh':report['mesh_sha256'],'weights':weight_signature,'rest':rig_rest,'animation':anim,'layout':layout})
+        if morph:report['morph']=morph
+        guard={'name':obj.name,'mesh':report['mesh_sha256'],'weights':weight_signature,'rest':rig_rest,'animation':anim,'layout':layout}
+        if morph:
+            from .morph_lods import frames_for as morph_frames
+            guard['morph']=morph
+            report['skin']['recommended_pose_frames']=sorted(set(frames_for(rig)+morph_frames(obj)))
+        signature=lods.digest(guard)
         return obj,mesh,report,signature
     except BaseException:bpy.data.meshes.remove(mesh);raise
 

@@ -8,7 +8,7 @@ from .nla_contracts import SafeName
 
 class Source(Model):
     name: SafeName
-    deformation: Literal['STATIC','SKINNED'] = 'STATIC'
+    deformation: Literal['STATIC','SKINNED','MORPH'] = 'STATIC'
 
 
 class Level(Model):
@@ -77,9 +77,9 @@ class Validate(Model):
 
 
 COMMANDS={
- 'inspect_lod_source':(Source,(),'Inspect STATIC viewport geometry or SKINNED raw rest geometry/linear binding, UV/material/attribute inventory and source guard. Skin mode reports weights, rig and suggested pose frames; morph/object-motion sources remain separate.'),
- 'generate_lod_chain':(Generate,('allow_scene_edit',),'Create independent LOD0 and reduced geometry in a managed collection/root. SKINNED mode retains the existing linear rig, native-interpolated normalized/pruned weights and sampled pose validation. COLLAPSE/PLANAR/UNSUBDIVIDE, decreasing budgets, UV/material/normal checks and sampled bidirectional surface error; preserves source and cleans up cancellation/failures.'),
- 'sample_lod_chain':(SampleSkin,(),'Sample current-timeline deformation of a SKINNED LOD chain versus its source. Reports bounded bidirectional surface error at chosen/recommended poses, restores frame/visibility and refuses stale guards or excessive error; does not switch clips.'),
+ 'inspect_lod_source':(Source,(),'Inspect STATIC viewport geometry, MORPH relative shape keys or SKINNED raw rest geometry/linear binding, UV/material/attribute inventory and source guard. Skin mode reports weights, rig and suggested pose frames. Morph weights follow original source controllers; object-motion sources remain separate.'),
+ 'generate_lod_chain':(Generate,('allow_scene_edit',),'Create independent LOD0 and reduced geometry in a managed collection/root. MORPH transfers relative keys/masks with source-controlled weights; SKINNED also retains the existing linear rig, native-interpolated normalized/pruned weights and sampled pose validation. COLLAPSE/PLANAR/UNSUBDIVIDE, decreasing budgets, UV/material/normal checks and sampled bidirectional surface error; preserves source and cleans up cancellation/failures.'),
+ 'sample_lod_chain':(SampleSkin,(),'Sample current-timeline deformation of a SKINNED or MORPH LOD chain versus its source. Reports bounded bidirectional surface error at chosen/recommended poses, restores frame/visibility and refuses stale guards or excessive error; does not switch clips.'),
  'inspect_lod_chain':(Chain,(),'Inspect managed LOD meshes, recipes/budgets, sampled quality, source staleness and current-content fingerprint. Invalid or modified chains are not silently exportable.'),
  'activate_lod_level':(Activate,('allow_scene_edit',),'Select one managed LOD representation by viewport/render visibility, preserving source objects and geometry. Requires a current chain fingerprint.'),
  'inspect_lod_export':(ExportPlan,(),'Plan a static or skeletal LOD bundle: current chain guard, compatible clip inventory, bind-only option, export blockers and full animation guard. Does not write files or switch clips.'),

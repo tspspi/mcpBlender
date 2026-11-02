@@ -60,9 +60,10 @@ def animation_guard(rig,choices):
 def plan(p):
     _,_,objects,meta,records,issues,signature=lods.native_chain(p)
     result={'chain':p['chain'],'chain_sha256':signature,'can_export':not issues,'blockers':list(issues),
-            'deformation':'SKINNED' if meta.get('skin') else 'STATIC','animations':bool(meta.get('skin') and p.get('animations',True)),
+            'deformation':'SKINNED' if meta.get('skin') else 'MORPH' if meta.get('morph') else 'STATIC','animations':bool(meta.get('skin') and p.get('animations',True)),
             'animation_sha256':None,'clips':[],'reference_frame':bpy.context.scene.frame_current+bpy.context.scene.frame_subframe}
     if bpy.context.mode!='OBJECT':result['blockers'].append('Object mode required for LOD bundle export');result['can_export']=False
+    if meta.get('morph'):result['blockers'].append('Validated morph bundles require dedicated morph replay validation');result['can_export']=False
     if meta.get('skin') and not issues:
         try:
             rig=bpy.data.objects[meta['skin']['rig']];editable_rig(rig);choices=clips(rig) if p.get('animations',True) else {}

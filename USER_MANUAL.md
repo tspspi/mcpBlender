@@ -1555,7 +1555,7 @@ directory. Publication happens after validation. Process crashes can leave an
 interrupted staging directory; crash-time reconciliation/retention is separate.
 Explicit completed bundles and source assets are not temporary-retention targets.
 Limits: 250,000 snapshot vertices, one million corners, 500,000 triangles per
-level, eight representations total and 512 MiB per validated GLB. Morph transfer, broader skinning, foliage reconstruction/impostors/collision/
+level, eight representations total and 512 MiB per validated GLB. Broader skinning, foliage reconstruction/impostors/collision/
 shadow proxies and
 reusable collection-instance/batch delivery workflows remain separate milestones.
 
@@ -1569,7 +1569,7 @@ rather than silently flattening it.
 
 The first supported skin workflow uses one enabled linear Armature modifier and
 no additional mesh modifiers, envelope mixing, preserve-volume/DQ, mask, multiple
-modifier mixing or shape keys. Bind the intended geometry before skinning. The
+modifier mixing. Relative shape keys can transfer as described below. Bind the intended geometry before skinning. The
 source mesh has no object constraints/animation or mesh-data animation; it can be
 unparented or object-parented directly to its rig. The rig is in Object/POSE
 position with at most 256 single-segment bones and no armature-data animation.
@@ -1644,7 +1644,7 @@ controlled rigs whose live animation cannot pass the simple-clip checks. The rig
 and meshes use the captured reference frame's object transforms with the rest
 skeleton; unkeyed object channels in animated clips retain that reference baseline.
 Moving the existing rig moves the generated meshes. This workflow reduces meshes,
-not skeletons. Morph transfer remains a separate milestone.
+not skeletons. Morph-bearing chains use the editable Blender delivery described below; validated morph bundles remain separate.
 
 The independent decoder checks every exported weight, named joints, inverse binds,
 curves and finite normalized skin data. It replays the rest pose plus 3–9 sampled
@@ -1670,6 +1670,61 @@ success, ordinary failure and cooperative cancellation. Crash-time staging
 reconciliation remains separate. Sampled checks do not certify every animation
 frame, silhouette, shader appearance or engine playback; re-import and visually
 review representative results before delivery.
+
+## Morph-aware LODs and source controls
+
+Use `deformation="MORPH"` in `inspect_lod_source`/`generate_lod_chain` for a
+relative-shape-key mesh without object animation/constraints, modifiers or mesh-data
+animation. For an existing supported linear skin with relative keys, use
+`deformation="SKINNED"`; morph transfer is automatic. Source keys must be local,
+relative, finite and topology-compatible, with a non-Basis key. Disable
+`show_only_shape_key`. The limit is 64 keys including Basis and four million
+source key-vertex entries. Absolute shape animation is unsupported.
+
+Generation reduces the raw Basis, independently of current morph weights. LOD0
+uses exact vertex correspondence; reduced levels project their rest vertices onto
+source Basis triangles and interpolate relative deltas barycentrically. The target
+rest position is retained. Source vertex-group masks multiply each source delta
+before interpolation, then are baked into target key coordinates. Generated key
+mask fields are empty, avoiding a second mask multiplication. Names, relative-key
+relationships, slider ranges and interpolation settings transfer. Keys whose
+relative parent follows them in the source list may be reordered to create their
+parent first; reference keys by name. This transfers offsets, not corrective
+sculpting or topology reconstruction; inspect complex facial folds and seams.
+
+Each generated non-Basis value is driven from its original source Key value and
+mute flag. The original actions, driver expressions, external controls, NLA tracks
+and clip selection remain authoritative and unchanged. Continue editing animation
+on the source, rather than attempting independent clip editing on driven LOD keys.
+The source Key datablock remains a required controller dependency. Keep it in the
+editable `.blend` delivery. Generated shape geometry is independent, while weights
+follow the source; this is not a detached copy of every clip/driver graph.
+
+`morph_transfer` records key count, projection distance, mask treatment and a
+content/controller-link fingerprint per level. `morph_validation` measures every
+isolated relative delta at unit weight, even for keys absent from the current
+animation. These sampled bidirectional surface errors must meet `max_pose_error`,
+as must current-timeline combined deformation at `pose_frames` (or recommended
+frames). Combined skin/morph chains also evaluate the original rig. Rest geometry
+still meets triangle, UV/material/normal and `max_relative_error` gates. Samples
+are not exhaustive pose, silhouette, fold or shading guarantees.
+
+`sample_lod_chain` works for morph-only and combined chains and restores frame/
+visibility on success, failure and cooperative cancellation. It follows the current
+controller timeline without switching actions. Changing source key coordinates,
+relative relationships or masks, losing the source controller, or changing generated
+keys/controller links invalidates ownership. Source animation/weight changes keep
+transferred geometry usable but can make stored pose measurements stale;
+`pose_validation_inputs_changed` compares the recorded controller snapshot.
+Arbitrary external dependencies are not frozen. Inspect and resample after edits.
+
+Use `save_blend` for current morph-chain delivery. `inspect_lod_export` reports a
+blocker for morph-bearing chains, and `export_lod_chain` refuses them before output:
+independent GLB morph replay/bundle validation is a subsequent milestone. This
+also applies to bind-only export of a chain containing morphs. Source snapshots,
+failed generation and cancellation remove owned temporary meshes/Key data; source
+animation is never cleared or switched during transfer. Crash-time recovery is
+separate from ordinary failure cleanup.
 
 ## Existing skeleton and rest-hierarchy refinement
 

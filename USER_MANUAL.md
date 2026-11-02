@@ -1275,6 +1275,123 @@ scene drivers, 5000 scene objects and 2000 bones per rig. Validate actual evalua
 motion, skin/morph deformation and save/reopen before delivery. Skeletal drivers
 can use visual baking below; morph/object-motion baking remains separate work.
 
+## NLA action layering and composite playback
+
+NLA tools compose existing action slots on object/pose controllers or relative
+shape-key datablocks. They require no Python execution. `inspect_nla` is
+read-only; all authoring requires scene-edit permission. Supply object `name`
+and `target="OBJECT"` (default) or `target="SHAPE_KEYS"` for the mesh's keys.
+Shape editing requires independent local mesh/key data. Linked/overridden data,
+NLA tweak mode and ambiguous duplicate track names/multiple-solo states are
+refused for editing.
+
+`inspect_nla` returns the **bottom-to-top** track stack, mute/solo/lock state,
+strip types/native settings, selected action slots, source-action content hashes,
+control-curve hashes, management/edit support, active action/blending and
+`nla_sha256`. Track pagination uses `offset`/`limit` (default 16, max 64).
+Carry the fresh hash as `expected_nla` into every edit. The guard includes all
+tracks and referenced slot keys/handles/modifiers; editing a source clip invalidates
+the previous guard. UI selection and evaluated strip influence/time are excluded.
+The native influence envelope is hashed instead. Ownership of a strip is separate
+from its source action's editable content.
+
+Author clips first with the skeletal/morph/controller tools. Create layers using
+`configure_nla_track` with a unique `track`, `mute`/`solo` flags (false defaults),
+and optional `after_track` for insertion after an existing layer. Without it a
+new track appends on top. Existing managed tracks can change flags; use
+`move_nla_track` with absolute `index` to reorder. Moving a managed track after
+another track preserves imported neighbors. Inserting at index zero requires
+all tracks up to its original position to be supported/managed: Blender's native
+insertion API cannot insert before an existing first track, so that prefix is
+rebuilt. A no-op move returns the current state. Track names fit 63 UTF-8 bytes.
+Solo follows Blender's single-solo behavior; editing/rebuilding a different
+non-solo layer preserves the existing solo layer.
+
+`configure_nla_strip` selects `track`, a globally unique `strip` name, and typed
+`settings`. The track must be managed and its existing children supported:
+
+```json
+{"params":{"name":"Arm","track":"Gesture","strip":"ReachSlow","expected_nla":"<inspection nla_sha256>","settings":{"clip":"Reach","start":21,"action_start":1,"action_end":25,"scale":2,"repeat":1,"blend":"ADD","influence":0.5,"blend_in":4,"blend_out":4}},"wait":true}
+```
+
+Settings name an action `clip` and optional explicit `slot`. The tool selects a
+unique compatible OBJECT/KEY slot, validates all channels against existing
+transform/custom-control/influence or shape-weight paths, and refuses channels
+that are already driven. Path compatibility does not establish semantic rig
+retargeting. Source actions must be local and contain animation channels.
+Only the selected slot contributes to this target; other objects/slots are not
+rebound.
+
+The source window is [`action_start`,`action_end`]. Its timeline duration is
+`(action_end-action_start)*scale*repeat`, beginning at `start`. Scale is .0001..
+1000; repeat .1..1000 permits partial cycles. `reverse` reverses action playback.
+The computed duration must be at least .001 frames, fit the native timeline,
+and leave space for its fades. `blend` supports REPLACE, ADD, SUBTRACT, MULTIPLY
+and COMBINE. `extrapolation` is NOTHING (default), HOLD_FORWARD or HOLD. Static
+`influence` lies in [0,1]; `blend_in`/`blend_out` are timeline-frame fades whose
+sum cannot exceed duration. `mute` suppresses a strip. Omitted fields take their
+schema defaults; configuration replaces the full exposed settings.
+
+On a single track strips cannot overlap. Crossfades/overlays use separate tracks.
+All times are native floats within [-1048574,1048574]. The tool checks actual
+native timing/fade values and refuses silent clamping or excessive rounding.
+Native action synchronization and auto blends are disabled for typed strips.
+Blender otherwise overwrites unanimated strip influence, so the tool builds an
+owned linear influence envelope that combines weight and fades. It does not
+pretend that setting a static native influence alone changes playback.
+
+`configure_nla_playback` sets `use_nla` (true default), active-action blend,
+influence and extrapolation. An active action is a separate layer and can
+cover the NLA result. Set `clear_active_action=true` explicitly when the NLA
+stack should supply the whole motion; the old action is retained with a fake
+user. The tool does not silently stash or delete a source clip. Optional
+`reset_base=true` requires this explicit clearing. For rigs it resets bone
+transforms to rest while preserving object transforms. Numeric custom controls
+remain governed by their own channels/properties.
+
+For shape targets, `reset_base=true` creates/replaces a managed **Shape Base**
+layer below the other layers, with a generated zero-weight action. Native NLA
+uses an RNA default of one for shape weights; setting static weights to zero is
+insufficient for weighted/additive layers. The explicit base makes those layers
+blend from zero. It excludes directly driven weights, uses a short constant clip
+with HOLD extrapolation, and therefore avoids a huge source-animation range.
+Creating this foundation requires a wholly managed supported stack and room for
+one extra track when none exists. Repeating the reset retains one base track;
+obsolete generated actions are removed only if unused and unchanged. Modified
+or shared generated actions and all user source clips are retained. Keep the
+zero base beneath additive shape layers; ordinary track movement remains explicit.
+
+`remove_nla_strip` rebuilds its managed track without that strip.
+`remove_nla_track` removes an explicitly selected managed track containing only
+supported children. Source actions receive fake users and remain available.
+Imported, externally modified, locked, transition/meta/sound and arbitrary
+animated-control strips are inspect-only; ordinary track flag changes do not
+rewrite their contents. Metadata recipes are matched against native action/
+slot, timing, blend state and envelope before they can rebuild a strip.
+
+Strip edits/removal, track movement and playback configuration submit
+asynchronously by default; poll the operation or use `wait=true` for short work.
+Rebuilding stages complete muted replacement tracks before removing any source
+tracks. Progress reports strip counts/fraction and current storage. Cooperative
+cancellation during staging discards staged tracks and restores frame/active
+track, retaining the source stack. Ordinary timing/compatibility failures also
+happen before replacement. The short final native replacement is not interrupted;
+process crashes/unexpected commit-phase native failures use existing checkpoints
+and require inspection/recovery. It is not a filesystem transaction.
+
+Limits are 64 final tracks and 512 top-level strips; imported nesting is inspected
+up to four levels/128 children, eight control curves and 10000 control points per
+strip. Existing action-slot bounds also apply. Temporarily staged tracks do not
+count as final user layers. Save `.blend` to retain editable composition. Sample
+its **current** timeline with `sample_constraint_animation`, including skin/morph
+meshes. Simple clip switching/sampling/editing retains its active-NLA guard;
+mute layers before using those tools to revise a source action, then update the
+strip reference or re-inspect the stack guard. Existing render commands render
+the current timeline. For portable skeletal delivery, visually bake the composite
+and export only its baked rig/skin, then reimport and compare playback. General
+morph/object-motion composite baking and animated strip-time/control authoring
+remain separate workflows.
+
 ## Visual skeletal animation baking
 
 `bake_constraint_animation` captures the **current evaluated timeline**, including

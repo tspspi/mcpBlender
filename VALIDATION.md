@@ -1,5 +1,76 @@
 # Local validation: 0.2.0
 
+## NLA composition, generated shape base and composite delivery — 2026-11-02
+
+The combined NLA/driver/controller/constraint/bake/skeletal/morph/capability/server
+suite passed **57 tests in 317.64 seconds**, with the existing Starlette/AnyIO
+warning:
+
+```sh
+MCPBLENDER_TEST_BLENDER=1 MCPBLENDER_NLA_EVIDENCE_DIR=/tmp/mb-nla-20261102 python3 -m pytest -q tests/test_nla_contracts.py tests/test_nla.py tests/test_driver_contracts.py tests/test_animation_drivers.py tests/test_curve_contracts.py tests/test_animation_curves.py tests/test_constraint_contracts.py tests/test_constraints.py tests/test_animation_bake.py tests/test_animation_contracts.py tests/test_skeletal_animation.py tests/test_morph_contracts.py tests/test_shape_keys.py tests/test_capabilities.py tests/test_server.py --tb=short --maxfail=1
+```
+
+After asynchronous defaults, managed movement around imported neighbors,
+single-solo preservation and recipe/native consistency guards, the focused suite
+passed **7 tests in 66.15 seconds**:
+
+```sh
+MCPBLENDER_TEST_BLENDER=1 MCPBLENDER_NLA_EVIDENCE_DIR=/tmp/mb-nla-20261102 python3 -m pytest -q tests/test_nla_contracts.py tests/test_nla.py --tb=short --maxfail=1
+```
+
+The final shape-foundation capacity guard passed its live regression
+(**1 test in 14.77 seconds**); final NUL-free name/range/permission contracts
+passed **2 tests in 3.31 seconds**.
+
+MCP Python execution is disabled. An object action is reused at a new start,
+scaled, repeated, reversed and trimmed into a later strip. Independent native
+world-position checks verify timing, REPLACE/ADD/SUBTRACT/MULTIPLY/COMBINE blending,
+track order, mute/solo and preservation of a separate solo layer during rebuild.
+Overlap and stale guards refuse without changing the fingerprint. Strip/track
+removal retains source actions. Save/reopen retains managed ownership/playback.
+
+A weighted two-bone limb combines tip rotation and additive root translation.
+Three independently computed endpoints and distinct skin deformations agree.
+Visual baking checks every integer-frame bone matrix and skin vertex over nine
+frames without changing the source NLA fingerprint. Exported GLB has exactly one
+mesh, one skin and the named composite animation. Native reimported skinned mesh
+playback bounds match the source composite within .0002 at three frames. An
+independent fade fixture checks edge, ramp and middle contributions. Another rig
+layers a scalar control action driving a native bone driver; three endpoint/skin
+samples and a 17-frame visual bake agree.
+
+Native source inspection showed that unanimated strip influence is recalculated,
+so typed strips use a generated linear envelope combining weight/fades. It also
+showed the native NLA shape-weight RNA default is one, confirmed by opening the
+saved scene directly with native Blender. Shape-base reset now stages an explicit
+zero-weight foundation beneath additive/weighted shape layers. A short constant
+clip with HOLD extrapolation avoids an excessive source range. Two independent
+morphs produce expected evaluated bounds at three frames, with zero contribution
+outside the layer ranges. Repeated resets retain one foundation and remove the
+previous unchanged unused generated action. Source edits invalidate the stack
+hash without losing structural strip ownership; shared shape-data edits refuse.
+A native timing-rounding failure during staging preserves the original stack.
+
+A trusted external native-Blender fixture supplies a 256-strip managed layer
+plus an imported neighbor. Moving the managed layer after the imported track
+preserves the neighbor; moving it before an unsupported prefix is refused. A
+real rebuild is cancelled after staging reports progress/storage: staged tracks
+are discarded, frame seven and the exact source fingerprint restored. A second
+fixture supplies a correct native ownership hash but an inconsistent timing
+recipe; inspection and editing refuse it without changing the stack. Metadata
+is therefore checked against actual native timing, slot, blending and envelope.
+
+Evidence: `/tmp/mb-nla-20261102/nla-composite.blend`, `nla-composite.glb`,
+`comparison.json` and `nla-morph.blend`. Scope is typed local action slots and
+managed action strips; transition/meta/sound editing, arbitrary animated control/
+time curves, unsupported import repair, multi-object coordinated layer editing,
+NLA-specific process-kill recovery, large-scene performance and morph/object-motion
+composite baking remain unqualified. Native final replacement is short and not
+interruptible; crash handling uses existing checkpoints rather than a filesystem
+transaction. No packages/venvs, installed runtime/skills, user GUI session or
+engine integration changed; isolated source-checkout background Blender only.
+
+
 ## Typed native drivers and animated scalar controls — 2026-11-02
 
 The combined driver/controller/constraint/visual-bake/skeletal/morph/capability/
@@ -61,7 +132,7 @@ surface and tested Blender 5.0.1. It does not establish arbitrary RNA/material-
 node drivers, every native variable type/space/rotation combination, future-input
 validity, unsupported-driver repair, large-scene latency or morph/object-motion
 baking. Constraint configuration retains its earlier conservative driver guard;
-create constraints before drivers. NLA authoring and retargeting remain open.
+create constraints before drivers. Core NLA authoring was subsequently qualified above; retargeting and advanced strip controls remain open.
 No package, venv, installed runtime/skill, user GUI or engine integration changed;
 verification used isolated source-checkout background Blender instances.
 
@@ -118,7 +189,7 @@ as persistent variants, not deleted temporary files. Inspection hashes are actio
 binding guards, not whole-scene guards. Raw curve edits do not certify normalized
 quaternions, evaluated constraint reach, subframe accuracy, arbitrary imported
 rig compatibility or coordinated morph delivery. Driver authoring was a separate milestone; see its qualification above.
-NLA authoring and retargeting remain separate work. No package/venv, installed service/skill, user
+NLA authoring was subsequently qualified above; advanced strip controls and retargeting remain separate work. No package/venv, installed service/skill, user
 GUI session or engine integration was changed; isolated background Blender only.
 
 

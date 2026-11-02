@@ -83,8 +83,37 @@ feedback; imported/externally changed drivers remain inspect-only. Metadata is
 matched against native variables, not trusted as a dependency declaration. Check
 native validity and sampled endpoints/deformation, including input extremes;
 current-frame validity does not guarantee every future value is valid. Save/reopen
-and use visual baking for supported skeletal delivery. Morph/object-motion baking,
-NLA and retargeting remain separate workflows. Full contracts: USER_MANUAL.md.
+and use visual baking for supported skeletal delivery. Morph/object-motion baking, animated strip-control/time authoring and retargeting
+remain separate workflows. Full contracts: USER_MANUAL.md.
+
+For NLA composition, author source clips first. `inspect_nla` uses object `name`
+and OBJECT/default or SHAPE_KEYS `target`; carry `nla_sha256` as `expected_nla`.
+It reports bottom-to-top layers, active action and source-slot content hashes.
+Create named `configure_nla_track` layers, then `configure_nla_strip` with clip/
+optional slot, source action_start/end, timeline start/scale/repeat/reverse,
+blend/influence/fades and extrapolation. Same-track overlaps are refused; use
+separate layers for crossfades. Configure replaces the full exposed settings.
+Source actions stay intact. Imported/modified/locked/unsupported strips remain
+inspect-only. Moving a managed track after imported neighbors preserves them;
+moving to the bottom requires a fully supported prefix.
+
+Use `configure_nla_playback` to enable NLA and explicitly choose whether to clear
+the active action (retained as a clip) or blend it above the stack. `reset_base`
+requires clearing: rigs reset bone transforms; shape targets get an explicit
+zero-weight foundation, because native NLA shape defaults are ONE. Keep that
+base below additive/weighted morph layers. It uses a short held constant clip;
+repeated resets replace unchanged unused generated actions. Initial shape-base
+creation/rebuilding requires a wholly supported managed stack. Never infer a
+zero NLA baseline from static weight values alone.
+
+Rebuilds are async by default; inspect progress/storage, or wait=true for short
+work. Staging/cancellation leaves the original stack intact; final native commit
+uses existing checkpoints for crash recovery. Sample the current composite at
+key/intermediate frames with skin/morph deformation, save/reopen, and visually
+bake supported skeletal motion before GLB delivery. NLA ACTIONS export of source
+clips does not prove the composite was exported. Mute NLA layers before using
+simple clip-edit tools; source edits require a fresh stack hash. Full contracts,
+limits and native influence-envelope semantics: USER_MANUAL.md.
 
 Use `sample_constraint_animation` to inspect the current constrained timeline at
 key/intermediate frames, including bound mesh deformation. It restores the frame

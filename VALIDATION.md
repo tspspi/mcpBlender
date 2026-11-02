@@ -40,6 +40,45 @@ node combination, imported nested graphs, field workload limits, simulation zone
 reusable procedural presets or separate render workers. The installed user service
 and installed skills were not changed; no dependency/environment changes occurred.
 
+## Procedural presets — 2026-11-02
+
+```sh
+MCPBLENDER_TEST_BLENDER=1 MCPBLENDER_PRESET_EVIDENCE_DIR=/tmp/mb-presets-20261102 python3 -m pytest -q tests/test_geometry_presets.py tests/test_geometry.py tests/test_geometry_contracts.py tests/test_capabilities.py tests/test_shaders.py tests/test_shader_contracts.py tests/test_action_integration.py tests/test_actions.py tests/test_asset_contracts.py tests/test_server.py --tb=short --maxfail=1
+```
+
+**41 tests passed in 179.32 seconds**, with the existing Starlette/AnyIO warning.
+An additional isolated scatter run passed **1 test in 18.29 seconds**, verifying
+normal alignment on a vertical surface and fixture independence.
+
+With arbitrary Python execution disabled, real Blender 5.0.1 creates a textured
+brick building, separate roof/window materials and repeated window panels. Two
+objects share a recipe with independent floor counts; dimensions and vertex
+counts match the parameters. Generated UVs have no zero-area faces in the building
+fixture. Packed textures and three material references survive evaluated GLB
+export; graph fingerprints, parameter limits and geometry survive save/reopen.
+Invalid replacement with a missing material preserves the original recipe.
+
+Vegetation uses UV-bearing trunk/crown meshes with distinct materials and the
+requested height. The initial fixture caught the cone node's bottom-origin versus
+the cylinder node's centered origin; the recipe now accounts for both. Seeded
+surface scattering caps output to five trees, then two after changing MaxPoints;
+changing/restoring a seed changes/restores the geometry fingerprint. A vertical
+surface verifies tree axes follow its normal. Candidate-budget refusal preserves
+the target and rejects mixed parameter batches without partial application.
+Forest geometry survives save/reopen and exports both tree materials.
+
+Refinement preserves the original source mesh while producing the expected 24/96
+subdivision faces from a cube. Out-of-range levels, shape-key geometry, an upstream
+modifier and an excessive face estimate are refused. Returned workload records
+expose estimates and limits. The building/forest PNGs were opened and visually
+inspected; PNG, blend and GLB evidence is retained outside Git.
+
+This qualifies the supplied exterior/pine/scatter/subdivision recipes, not an
+architectural interior generator, arbitrary species or topology repair. Workload
+checks apply at attachment/input update; area-based candidate estimates are not
+hard intermediate-memory limits. Preset metadata and limits remain inspectable.
+The design skill source validates; installed service/skills were not changed.
+
 ## Structured shaders and material presets
 
 On 2026-11-01, `MCPBLENDER_TEST_BLENDER=1 python3 -m pytest -q

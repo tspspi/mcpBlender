@@ -4,7 +4,8 @@ from fastmcp import Client
 import pytest
 
 from mcpblender.config import Config
-from mcpblender.geometry_contracts import GeometryGraph, GeometryNode, GeometryValues, COMMANDS
+from mcpblender.geometry_contracts import GeometryGraph, GeometryNode, GeometryValues, GeometryPreset, InterfaceInput, COMMANDS
+from mcpblender.blender.geometry_presets import compile_preset
 from mcpblender.server import build_server
 
 
@@ -38,3 +39,22 @@ def test_geometry_contracts_and_readonly_policy(tmp_path):
                     with pytest.raises(PermissionError):
                         state.check(command)
     asyncio.run(run())
+
+
+def test_presets_compile_to_typed_graphs_and_bound_parameters():
+    for kind in ("BUILDING","VEGETATION","SCATTER_VEGETATION","REFINE_MESH"):
+        params=GeometryPreset(group="Recipe",settings={"type":kind}).model_dump(exclude_none=True)
+        spec=compile_preset(params)
+        assert spec.pop("_preset")=={"type":kind,"version":1}
+        graph=GeometryGraph.model_validate(spec)
+        assert graph.inputs and all(i.minimum is not None and i.maximum is not None for i in graph.inputs)
+    for settings in ({"type":"BUILDING","floors":33},{"type":"BUILDING","columns":True},
+                     {"type":"VEGETATION","segments":100},{"type":"VEGETATION","height":float("nan")},
+                     {"type":"SCATTER_VEGETATION","max_points":2001},{"type":"SCATTER_VEGETATION","density":-1},
+                     {"type":"REFINE_MESH","levels":4}):
+        with pytest.raises(ValueError):
+            GeometryPreset(group="Recipe",settings=settings)
+    for params in ({"name":"Value","type":"FLOAT","default":0,"minimum":2,"maximum":1},
+                   {"name":"Flag","type":"BOOLEAN","default":False,"maximum":1}):
+        with pytest.raises(ValueError):
+            InterfaceInput.model_validate(params)

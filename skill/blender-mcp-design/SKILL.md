@@ -48,6 +48,17 @@ color generated primitives. Inspect evaluated geometry and view a render after
 changing procedural inputs; source mesh topology may remain unchanged. These
 tools do not yet expose nested groups or simulation zones.
 
+Prefer `create_geometry_preset` for repeated buildings, pine-style vegetation,
+seeded surface scattering or subdivision refinement. Create named materials first,
+create the group with typed `settings`, then attach it to a mesh. Presets carry UVs,
+material references and persistent limits; inspect those limits before changing
+exposed modifier inputs. Building parameters generate a solid exterior with window
+panels and a flat roof, without interiors or cut openings. Scatter preserves the
+source surface and realizes a capped number of trees. Scatter/refinement must be
+the first modifier on geometry without shape keys or armature deformation; bake
+upstream work explicitly. Their returned workload estimates explain candidate/
+face budgets, but do not bound later native/source edits or all memory use.
+
 Prefer structured tools for the supported pipeline, including when Python
 execution is disabled: `create_primitive` / `create_mesh`, `configure_modifier`,
 `apply_modifier` / `remove_modifier`, `generate_uv`, `duplicate_object`,

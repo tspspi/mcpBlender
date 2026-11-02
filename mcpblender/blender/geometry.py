@@ -9,24 +9,37 @@ from .assets import mesh_object
 from .shaders import resolve, set_value as shader_set_value, socket_info as shader_socket_info
 
 COMMANDS = {"geometry_node_catalog", "inspect_geometry_graph", "configure_geometry_graph",
-            "attach_geometry_nodes", "configure_geometry_inputs"}
+            "attach_geometry_nodes", "configure_geometry_inputs", "create_geometry_preset"}
 NODE_TYPES = (
     "NodeGroupInput", "NodeGroupOutput", "GeometryNodeMeshCube", "GeometryNodeMeshGrid",
     "GeometryNodeMeshLine", "GeometryNodeMeshCylinder", "GeometryNodeMeshCone",
     "GeometryNodeTransform", "GeometryNodeSetPosition", "GeometryNodeInputPosition",
     "GeometryNodeJoinGeometry", "GeometryNodeDistributePointsOnFaces",
     "GeometryNodeInstanceOnPoints", "GeometryNodeRealizeInstances",
-    "GeometryNodeSubdivisionSurface", "GeometryNodeSetMaterial", "ShaderNodeMath", "ShaderNodeVectorMath", "ShaderNodeCombineXYZ",
+    "GeometryNodeSubdivisionSurface", "GeometryNodeSetMaterial", "GeometryNodeStoreNamedAttribute",
+    "GeometryNodeInputIndex", "FunctionNodeCompare", "GeometryNodeSeparateGeometry",
+    "ShaderNodeMath", "ShaderNodeVectorMath", "ShaderNodeCombineXYZ",
 )
 PROPERTIES = {
     "GeometryNodeMeshLine": ("mode", "count_mode"),
     "GeometryNodeMeshCylinder": ("fill_type",), "GeometryNodeMeshCone": ("fill_type",),
     "GeometryNodeDistributePointsOnFaces": ("distribute_method",),
     "ShaderNodeMath": ("operation",), "ShaderNodeVectorMath": ("operation",),
+    "GeometryNodeStoreNamedAttribute": ("data_type", "domain"),
+    "FunctionNodeCompare": ("data_type", "operation", "mode"),
+    "GeometryNodeSeparateGeometry": ("domain",),
 }
 SOCKET_TYPES = {"FLOAT": "NodeSocketFloat", "INT": "NodeSocketInt",
                 "BOOLEAN": "NodeSocketBool", "VECTOR": "NodeSocketVector"}
 MANAGED = "mcpblender_geometry_graph"
+LIMITS = "mcpblender_geometry_limits"
+PRESET = "mcpblender_geometry_preset"
+
+
+def check_limits(value, limits):
+    for number in value if isinstance(value, list) else [value]:
+        if (limits.get("minimum") is not None and number < limits["minimum"]) or (limits.get("maximum") is not None and number > limits["maximum"]):
+            raise ValueError("Geometry input is outside its declared minimum/maximum")
 
 
 def plain(value):
@@ -80,18 +93,22 @@ def modifier_values(tree, mod):
 
 
 def describe(tree):
+    limits = json.loads(tree.get(LIMITS, "{}"))
     nodes = [{"name": node.name, "type": node.bl_idname,
               "properties": {key: plain(getattr(node, key)) for key in PROPERTIES.get(node.bl_idname, ())},
               "inputs": [socket_info(s, i) for i, s in enumerate(list(node.inputs)[:128])],
               "outputs": [socket_info(s, i) for i, s in enumerate(list(node.outputs)[:128])]}
              for node in list(tree.nodes)[:128]]
     sockets = [{"name": s.name, "identifier": s.identifier, "direction": s.in_out,
-                "type": s.socket_type, "default": plain(getattr(s, "default_value", None))}
+                "type": s.socket_type, "default": plain(getattr(s, "default_value", None)),
+                **limits.get(s.identifier, {})}
                for s in interface(tree)[:64]]
     links = [{"from_node": l.from_node.name, "from_socket": l.from_socket.identifier,
               "to_node": l.to_node.name, "to_socket": l.to_socket.identifier,
               "valid": l.is_valid} for l in list(tree.links)[:256]]
     content = {"nodes": nodes, "inputs_outputs": sockets, "links": links}
+    if tree.get(PRESET):
+        content["preset"] = json.loads(tree[PRESET])
     # Inspection of large/imported graphs is bounded, and must not pretend the
     # truncated fingerprint guards their full contents.
     complete = (len(tree.nodes) <= 128 and len(tree.links) <= 256 and len(interface(tree)) <= 64
@@ -107,6 +124,7 @@ def describe(tree):
 
 
 def add_interface(tree, specs=()):
+    limits = {}
     tree.interface.new_socket(name="Geometry", in_out="INPUT", socket_type="NodeSocketGeometry")
     tree.interface.new_socket(name="Geometry", in_out="OUTPUT", socket_type="NodeSocketGeometry")
     for spec in specs:
@@ -115,8 +133,19 @@ def add_interface(tree, specs=()):
         node = tree.nodes.get("MCP_InterfaceDefaults") or tree.nodes.new("NodeGroupInput")
         node.name = "MCP_InterfaceDefaults"
         set_value(resolve(node.outputs, socket.identifier), spec["default"])
+        constraint = {key: spec[key] for key in ("minimum", "maximum") if spec.get(key) is not None}
+        check_limits(plain(node.outputs[socket.identifier].default_value), constraint)
+        if constraint:
+            limits[socket.identifier] = constraint
+            for key, attr in (("minimum", "min_value"), ("maximum", "max_value")):
+                if key in constraint and hasattr(socket, attr):
+                    bound = constraint[key]
+                    if spec["type"] == "INT":
+                        bound = math.ceil(bound) if key == "minimum" else math.floor(bound)
+                    setattr(socket, attr, bound)
         socket.default_value = node.outputs[socket.identifier].default_value
     tree.nodes.clear()
+    tree[LIMITS] = json.dumps(limits)
 
 
 def configure_node(tree, spec):
@@ -140,6 +169,10 @@ def configure_node(tree, spec):
         if mat is None:
             raise ValueError(f"Material not found: {spec['material']}")
         node.inputs["Material"].default_value = mat
+    if spec.get("attribute"):
+        if spec["type"] != "GeometryNodeStoreNamedAttribute":
+            raise ValueError("attribute requires GeometryNodeStoreNamedAttribute")
+        node.inputs["Name"].default_value = spec["attribute"]
     for item in spec.get("inputs", []):
         socket = resolve(node.inputs, item["socket"])
         # Conservative cardinality limits on direct primitive/ subdivision inputs.
@@ -202,6 +235,8 @@ def configure(p):
             configure_node(staged, spec)
         connect(staged, p["links"])
         staged[MANAGED] = True
+        if p.get("_preset"):
+            staged[PRESET] = json.dumps(p["_preset"])
         staged.use_fake_user = True
         result = describe(staged)
         if previous:
@@ -235,10 +270,11 @@ def node_catalog(p):
         bpy.data.node_groups.remove(scratch)
 
 
-def modifier_result(obj, mod):
+def modifier_result(obj, mod, workload=None):
     return {"name": obj.name, "modifier": mod.name, "group": mod.node_group.name,
             "graph_sha256": describe(mod.node_group)["graph_sha256"],
-            "values": modifier_values(mod.node_group, mod)}
+            "values": modifier_values(mod.node_group, mod),
+            **({"workload": workload} if workload else {})}
 
 
 def configure_inputs(p):
@@ -266,19 +302,26 @@ def configure_inputs(p):
             seen.add(socket.identifier)
             if mod.get(socket.identifier + "_use_attribute", False):
                 raise ValueError("Disable the named-attribute input mode before setting a constant")
+            limits = json.loads(tree.get(LIMITS, "{}")).get(socket.identifier, {})
+            check_limits(item["value"], limits)
             set_value(resolve(input_node.outputs, socket.identifier), item["value"])
             value = plain(input_node.outputs[socket.identifier].default_value)
+            check_limits(value, limits)
             values.append((socket.identifier, value))
     finally:
         bpy.data.node_groups.remove(scratch)
+    workload = validate_workload(obj, tree, mod, dict(values))
     for identifier, value in values:
         mod[identifier] = value
     obj.update_tag()
     bpy.context.view_layer.update()
-    return modifier_result(obj, mod)
+    return modifier_result(obj, mod, workload)
 
 
 def dispatch(command, p):
+    if command == "create_geometry_preset":
+        from .geometry_presets import compile_preset
+        return configure(compile_preset(p))
     if command == "geometry_node_catalog":
         return node_catalog(p)
     if command == "inspect_geometry_graph":
@@ -292,8 +335,39 @@ def dispatch(command, p):
     mod = obj.modifiers.get(p["modifier"])
     if mod and (mod.type != "NODES" or mod.node_group != tree):
         raise ValueError("Existing modifier has a different type/group; remove it explicitly before attaching")
+    workload = validate_workload(obj, tree, mod)
     if mod is None:
         mod = obj.modifiers.new(p["modifier"], "NODES")
         mod.node_group = tree
     bpy.context.view_layer.update()
-    return modifier_result(obj, mod)
+    return modifier_result(obj, mod, workload)
+
+
+def validate_workload(obj, tree, mod=None, overrides=None):
+    metadata = json.loads(tree.get(PRESET, "{}"))
+    kind = metadata.get("type")
+    if kind not in {"SCATTER_VEGETATION", "REFINE_MESH"}:
+        return
+    if obj.data.shape_keys or obj.find_armature():
+        raise ValueError("Scatter/refinement presets require static meshes without shape keys/armature deformation")
+    prior = list(obj.modifiers)
+    if (mod is not None and prior.index(mod) != 0) or (mod is None and prior):
+        raise ValueError("Scatter/refinement preset must be the first modifier for workload estimation; bake upstream modifiers explicitly")
+    def value(name):
+        socket = next(s for s in interface(tree) if s.in_out == "INPUT" and s.name == name)
+        return (overrides or {}).get(socket.identifier, mod.get(socket.identifier, socket.default_value) if mod else socket.default_value)
+    if kind == "SCATTER_VEGETATION":
+        area = sum(face.area for face in obj.data.polygons)
+        candidates = area * value("Density")
+        if not math.isfinite(candidates) or candidates > 20_000:
+            raise ValueError("Scatter candidate estimate exceeds 20000 (local surface area times density); reduce density or split the surface")
+        return {"kind": "surface_scatter", "local_surface_area": area, "candidate_estimate": candidates,
+                "candidate_limit": 20_000, "max_points": value("MaxPoints"),
+                "note": "Area times density is an estimate, not a hard intermediate memory limit. Output instance count is capped separately."}
+    else:
+        levels = value("Levels")
+        faces = len(obj.data.polygons) if levels == 0 else len(obj.data.loops) * 4 ** (levels - 1)
+        if faces > 250_000:
+            raise ValueError("Refinement face estimate exceeds 250000; reduce levels or split the asset")
+        return {"kind": "subdivision", "input_faces": len(obj.data.polygons),
+                "estimated_output_faces": faces, "face_limit": 250_000}

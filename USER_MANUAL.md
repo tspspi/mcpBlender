@@ -525,11 +525,16 @@ groups; request a `node_type` for installed socket identifiers and property choi
 
 `configure_geometry_graph` creates a named persistent group with automatic
 Geometry input/output sockets and optional FLOAT, INT, BOOLEAN or VECTOR inputs.
-Each input supplies a name, type and default. Nodes use catalog types, named
+Each input supplies a name, type and default, with optional numeric `minimum` and
+`maximum` limits. Those limits persist in the group, appear in inspection, and are
+enforced before modifier input updates. Nodes use catalog types, named
 instances, allowlisted properties and typed input values. Socket references are
 identifiers, unambiguous names or nonnegative indexes. Rotations use XYZ Euler
 radians. `GeometryNodeSetMaterial` accepts a named existing `material`; assigning a
 material slot on the original mesh does not color newly generated primitives.
+`GeometryNodeStoreNamedAttribute` accepts `attribute` and allowlisted `data_type` /
+`domain` settings. Primitive UV Map fields can be stored as `FLOAT2` on `CORNER`
+under `UVMap` for textured PBR and GLB delivery.
 
 For example, a reusable parameterized box:
 
@@ -580,6 +585,46 @@ For delivery, `export_objects_glb` and `export_glb` accept explicit
 editable source. This mode refuses shape-key/armature-deformed meshes. The default
 keeps the existing base-mesh export behavior. Alternatively, explicitly bake a
 modifier using `apply_modifier`, then inspect the resulting mesh before export.
+
+### Reusable procedural presets
+
+`create_geometry_preset` creates a named reusable group, then
+`attach_geometry_nodes` attaches it to an existing mesh. The tool takes `group`
+and a discriminated `settings` object. Materials are optional names of existing
+materials; use `apply_material_preset` first for textured PBR or other surfaces.
+Generated primitives carry a `UVMap` and material references. For example:
+
+```json
+{"params":{"group":"ApartmentExterior","settings":{
+  "type":"BUILDING","floors":3,"columns":4,"width":8,"depth":5,
+  "floor_height":3,"wall_material":"Brick","window_material":"Glass",
+  "roof_material":"Roof"}}}
+```
+
+| Settings type | Parameters and exposed modifier inputs | Result |
+| --- | --- | --- |
+| `BUILDING` | `floors` / `Floors` (1–32), `columns` / `Columns` (1–16), `width` / `Width`, `depth` / `Depth` (1–200), `floor_height` / `FloorHeight` (1–10); optional wall/window/roof materials | Solid exterior mass with a flat roof and repeated decorative window panels on front/back. It does not cut openings or provide interiors. |
+| `VEGETATION` | `height` / `Height` (.5–30), `crown_radius` / `CrownRadius` (.1–10), `trunk_radius` / `TrunkRadius` (.02–2); fixed `segments` (3–32), optional trunk/leaf materials | Pine-style cylinder trunk and cone crown with its base at local Z=0. |
+| `SCATTER_VEGETATION` | Tree parameters plus `density` / `Density` (0–50), `seed` / `Seed` (0–1000000), `spacing` / `Spacing` (.1–20), `max_points` / `MaxPoints` (1–2000) | Seeded Poisson distribution on the input surface, aligned to its normals, capped by point index, realized for delivery and joined with the original surface. |
+| `REFINE_MESH` | `levels` / `Levels` (0–3), optional `material` | Catmull–Clark subdivision of the input mesh, retaining the editable source; this is not automatic remeshing or topology repair. |
+
+Parameter names in settings use snake_case; exposed modifier names are shown after
+the slash. Use `configure_geometry_inputs` with the current `expected_graph` to
+change one object's values. Geometry inspection reports preset type/version,
+limits, material references and each modifier's values. Invalid creation or
+replacement preserves an existing group; the usual unused-group replacement
+guard applies.
+
+Scatter and refinement require the first modifier position and meshes without
+shape keys or armature deformation. Bake upstream modifiers explicitly before
+attaching them. Attach/input updates return `workload`: scatter estimates candidate
+points as **local surface area × density**, refusing estimates above 20000, and
+separately caps output instances to `MaxPoints`. Refinement estimates faces from
+source polygon corners and subdivision levels, refusing estimates above 250000.
+These are checks at those tool calls, not global memory limits or guarantees for
+later source edits, native UI edits, fields or stacked modifiers. Distances and
+density operate in object-local coordinates; object scale changes world spacing.
+Inspect evaluated geometry, materials/UVs and a render before delivery.
 
 ## Structured skeletal animation
 

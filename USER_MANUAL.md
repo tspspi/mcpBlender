@@ -693,6 +693,87 @@ disabled. It does not supply cloth/soft-body/fluid/particle baking or convert ri
 motion to keyframes/GLB clips. Snapshot paths are explicit protected deliverables;
 temporary-cache retention/cleanup for other backends remains separate work.
 
+## Fluid authoring and isolated cache bundles
+
+Fluid tools work with Python execution disabled. Call `inspect_fluids` and carry
+its `fluid_sha256` as `expected_fluid` on authoring and baking commands. Reinspect
+after changing a source. Unsupported dependencies produce an explicit reason and
+no usable fingerprint. The current surface supports one static liquid/gas domain,
+local mesh sources and static mesh collision effectors. Apply source scale before
+configuration; a domain needs nonzero volume. Simulation source fingerprints
+cover base meshes, transforms, controller settings, gravity, units, FPS and range.
+
+- `configure_fluid_domain`: named mesh, `type` LIQUID/GAS, `resolution` 16–128,
+  `frame_start`/`frame_end` (at most 500 frames inside 1–10000), `time_scale`,
+  `gravity_weight` (0–1),
+  `mesh_scale` 1–2 and six `use_collision_border_*` wall controls.
+- `configure_fluid_flow`: named mesh, `type` LIQUID/SMOKE/FIRE/BOTH, `behavior`
+  GEOMETRY/INFLOW/OUTFLOW, density, temperature, fuel, surface distance, initial
+  `velocity` and subframes. Flow and domain types must match. Installed native
+  parameter ranges are checked before creating/updating controllers.
+- `configure_fluid_effector`: static mesh collision, surface distance,
+  `use_effector` and subframes. `remove_fluid_controller` removes only an owned
+  unbaked controller, preserving its mesh and files.
+
+New controllers use modifier name `Fluid` unless supplied. Configuration values
+not supplied use the contract defaults. The initial surface excludes animated or
+deforming sources, parents/constraints, upstream modifiers, vertex-group/texture
+dependencies, force fields, guiding, noise and secondary particles. The native
+FLIP display modifier is disabled; liquid surface baking still uses solver
+particles. These tools do not provide a gas volume-material preset or convert
+simulation into GLB animation. Gas density checkpoints establish cached solver
+output, rather than a finished smoke/fire look.
+
+`bake_fluid` requires scene-edit and library-write permission. Supply a new
+`directory`, domain `name` and current fingerprint, for example:
+
+```json
+{"params":{"name":"LiquidDomain","directory":"fluid/take-001",
+  "expected_fluid":"<fluid_sha256>","threads":2},"wait":false,
+  "request_id":"fluid-take-001"}
+```
+
+The operation returns immediately by default. Poll `get_operation` or
+`wait_operation` and use a stable request ID across reconnects. It saves an
+unbaked full-scene `source.blend` copy and launches an owned background Blender
+worker. The editing instance's project/frame stay unchanged. The worker bakes
+native data plus liquid surface geometry, samples start/middle/end, writes
+`asset.blend`, and records cache/project hashes in `manifest.json`. Native cache
+files remain in `cache/`; they are not embedded in the `.blend`. Its relative
+`//cache` reference supports moving the entire bundle. External dependencies of
+unrelated scene objects still need ordinary asset packaging.
+
+`threads` defaults to 2 (maximum 16), `max_bytes` to 2 GiB (maximum 64 GiB), and
+`timeout_seconds` to 1800 (10–86400). A conservative cell/frame/project heuristic
+is checked against the budget and available space before saving/starting. While
+the worker runs, progress reports its phase/PID, bytes/file count, estimated
+output and current free space. Disk quota/reserve and timeout are checked during
+polling, and final byte size is checked again. These are monitored estimates,
+not a filesystem quota or a guarantee against other processes consuming space.
+
+Cancellation stops/reaps only this owned worker and preserves partial output.
+Native baking blocks the isolated worker; broker queries remain available.
+Source snapshot saving in the editing instance remains noninterruptible. Hash
+validation yields progress/cancellation in bounded batches. Broker restart keeps
+the active worker/job; an editing-instance crash stops its child and leaves the
+operation interrupted with unknown outcome. Do not replay that request blindly.
+
+Open `asset.blend`, then call `validate_fluid_bake` with its bundle `directory`.
+Validation checks file hashes, source/job/cache binding, and bounded native
+liquid-geometry or gas-density checkpoints; it restores the original frame. It
+does not prove every frame or target-engine behavior. Authoring cached imported
+projects is refused: open the unbaked source copy, edit, and bake to a new bundle.
+
+`inspect_fluid_job` reports ownership/state, process liveness and disk usage.
+`recover_fluid_job` reconciles a running marker only after its recorded parent and
+worker are gone. A complete bound manifest is adopted without replay, with native
+validation still required; an incomplete result becomes interrupted.
+`cleanup_fluid_job` defaults to `dry_run=true`. Explicit application can remove an
+owned failed/cancelled partial bundle; interrupted output additionally requires
+`include_interrupted=true`. Successful deliverables, live workers, current-project
+references, symlinks and unknown entries are protected. Existing output directories
+are never overwritten; there is no automatic expiration of explicit fluid bundles.
+
 ## Structured skeletal animation
 
 `create_armature`, `bind_mesh` and `inspect_rig` take typed `params` and work with

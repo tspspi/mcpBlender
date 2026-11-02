@@ -21,6 +21,7 @@ def test_workflow_inventory_does_not_claim_unregistered_commands():
     assert support["physics"]["support"] == "structured_partial"
     assert support["simulation_baking"]["support"] == "structured_partial"
     assert support["particles"]["support"] == "structured_partial"
+    assert support["fluids"]["support"] == "structured_partial"
     for name in ("compositing",):
         assert support[name]["support"] == "python_only"
         assert support[name]["structured_commands"] == []

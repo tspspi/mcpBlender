@@ -1,5 +1,69 @@
 # Local validation: 0.2.0
 
+## Static-source fluid bundles — 2026-11-02
+
+The full regression passed **119 tests in 716.87 seconds**, with the existing
+warning. Final refinements then passed **21 focused tests in 106.16 seconds**:
+source binding now includes nested domain effector weights/collection guards;
+actual zero-gravity liquid stays aloft while the normal fixture falls onto its
+shelf. The original project path is preserved. A partial bundle's open source
+project blocks deletion. The isolated worker uses its bundle as its working
+directory and disables its own native core dumps. The full regression precedes
+these final refinements; the focused run covers their affected workflows.
+
+An earlier expanded focused suite passed **21 tests in 100.73 seconds**, with the existing
+Starlette/AnyIO deprecation warning:
+
+```sh
+MCPBLENDER_TEST_BLENDER=1 MCPBLENDER_FLUID_EVIDENCE_DIR=/tmp/mb-fluids-20261102 python3 -m pytest -q tests/test_fluids.py tests/test_fluid_contracts.py tests/test_capabilities.py tests/test_broker_startup.py tests/test_server.py tests/test_storage.py --tb=short --maxfail=1
+```
+
+Real Blender 5.0.1 creates a liquid domain, geometry source and interior collision
+shelf through typed tools with Python execution disabled. Isolated worker baking
+produces native data and a surface; at frame 24 the falling liquid remains within
+one domain cell of the shelf top. The live project's frame stays unchanged.
+A fresh Blender opens the baked asset, validates file/source/cache/checkpoint
+bindings, detects a changed collider and renders the cached mesh. The coarse blue
+liquid preview was opened and inspected. A relocated bundle also validates through
+its relative cache path. Actual corruption of a cache file is detected.
+
+Smoke inflow produces increasing sampled density; grid checkpoints survive saving
+and reopening. This qualifies solver data, not volume-material authoring or final
+smoke/fire rendering. A running 240-frame native bake survives broker restart,
+then cancellation terminates/reaps its owned child. Progress includes available
+space and estimates; retrying the same request ID returns the same cancelled job.
+
+A disposable editing-instance SIGKILL interrupts its operation and its owned bake
+worker exits. A fresh instance reconciles the abandoned directory without replay.
+Interrupted output is preserved unless explicitly included in cleanup. A separate
+metadata fixture models parent death after a genuine complete worker result;
+reconciliation adopts its file-bound manifest and still requires native validation.
+Recovery refuses live recorded processes. Successful deliverables, symlinks,
+unknown entries and referenced outputs are protected from partial-job cleanup.
+Cleanup defaults to inspection, and an explicitly applied cancelled-job cleanup
+removes only the verified owned directory.
+
+Earlier focused runs passed 19 tests in 85.91 seconds, then 6 fluid/contract/
+capability checks in 88.05 seconds after native range checks. The final run adds
+portable-bundle/adoption checks and finite/nonzero-domain preflight. The bundled
+animation skill validator and `git diff --check` passed.
+
+Native fluid cache enums differ from the class-only RNA catalog: liquid meshes
+use BOBJECT. Liquid domains also create a legacy FLIP display system unless
+explicitly disabled; surface baking still uses solver particles. Workers use
+modular UNI data caches and optional liquid meshes. Source snapshots contain the
+whole scene; output caches remain external. Storage estimates/quota monitoring
+are heuristics, not filesystem reservations. Snapshot saving in the editing
+instance remains noninterruptible; native baking blocks only the owned child.
+Hash validation yields bounded batches and native checkpoint sampling restores
+the frame. Native checkpoint equality is sampled, not an all-frame solver proof.
+
+Evidence under `/tmp/mb-fluids-20261102/` contains liquid/smoke bundles and a liquid
+PNG. Other Blender/platform versions, large workloads, animated/deforming fluid
+sources, guiding, noise/secondary particles, force-field coupling, cache-to-game
+animation and finished gas volume materials are outside this qualification.
+No packages, virtual environments, installed services or installed skills changed.
+
 ## Broker request draining — 2026-11-02
 
 Broker shutdown now closes its listener and drains accepted handlers before

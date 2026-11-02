@@ -106,8 +106,25 @@ reopening. Static hair needs ordinary project saving rather than a time bake.
 `clear_simulation_cache` preserves saved snapshots; removal tools affect owned
 controllers/helpers. Frame/cache budgets and free-space checks constrain work.
 Watch tracked progress/storage and cancel at frame boundaries; native cache
-finalization/save remain noninterruptible. External disk/fluid caches, cache-to-
+finalization/save remain noninterruptible. Other point-cache disk backends, cache-to-
 keyframe export and automatic deletion of explicit snapshots are not provided.
+
+For fluids use `inspect_fluids` and `expected_fluid`, then typed
+`configure_fluid_domain`, `configure_fluid_flow` and `configure_fluid_effector`.
+Apply scale first; use one static-source domain without extra modifiers, parents,
+animation, force fields or texture/group dependencies. `bake_fluid` writes a new
+full-scene project/cache bundle in an isolated worker; default return is a tracked
+job. Monitor storage/phase and cancel through operation tools. Cancellation stops
+only its owned worker; partial files remain. Keep the entire bundle together.
+Open `asset.blend` and run `validate_fluid_bake` to check hashes/source binding and
+native geometry/density checkpoints. Cached projects are protected from authoring;
+edit the unbaked `source.blend` and bake to a new directory instead. No gas volume
+material preset or cache-to-game-animation conversion is implied by data baking.
+After a parent crash, inspect/recover the job rather than replaying it. Recovery
+requires both recorded processes gone and adopts a complete manifest or records
+interruption; adopted output still needs native validation. Partial cleanup is
+dry-run by default, protects successful/reference-bound output and requires
+explicit inclusion for interrupted work.
 
 Render a small preview frame sequence before committing to expensive output.
 Prefer the named `animation_preview` action for PNG/video delivery without editing

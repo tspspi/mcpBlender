@@ -16,6 +16,34 @@ render was opened and visually inspected. Evidence: `/tmp/mb-shaders-20261101/`.
 This qualifies the installed Blender 5.0.1 surface, not arbitrary imported node
 groups, animated shader graphs, every supported node combination or Godot shaders.
 
+## Guarded mesh editing — 2026-11-02
+
+```sh
+MCPBLENDER_TEST_BLENDER=1 MCPBLENDER_MESH_EVIDENCE_DIR=/tmp/mb-mesh-20261102 python3 -m pytest -q tests/test_mesh_contracts.py tests/test_mesh_editing.py tests/test_asset_contracts.py tests/test_asset_editing.py tests/test_server.py --tb=short --maxfail=1
+```
+
+**25 tests passed in 69.18 seconds**, with the existing Starlette/AnyIO warning.
+Using real background Blender with arbitrary Python tools disabled, the new
+fixture inspects indexed elements, stores a named roof selection, extrudes/insets
+the roof, rejects old fingerprints and stale named selections, and preserves the
+result across save/reopen. Repeating an extrusion request after broker restart
+returns the original operation without changing the newer mesh. The rendered
+preview was opened and visually inspected; evidence includes the saved project.
+
+Other checks verify quad-ring cuts, shared-data refusal and explicit isolation,
+invalid-index/non-quad/coordinate-conflict refusal without mesh replacement,
+shape-key refusal, inward/outward winding, vertex merging and loose cleanup.
+Difference/union/intersection Boolean results have expected volumes; explicit
+GLB export includes the finished shell and excludes the cutter. Contract checks
+cover malformed indices/parameters and read-only policy enforcement.
+
+An initial selection implementation triggered a native crash while directly
+writing vertex selection. Selection now uses temporary BMesh/copy assignment;
+the reproducing fixture and the combined suite pass. This milestone supports
+local Object-mode meshes without shape keys/armature deformation, not sculpting,
+retopology or arbitrary imported dependency graphs. Generated UV quality still
+needs review. The installed user service/skills were not upgraded or restarted.
+
 ## Latest complete regression
 
 On 2026-11-01, after the installation-driven recovery and splash changes:

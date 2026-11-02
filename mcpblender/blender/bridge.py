@@ -359,7 +359,7 @@ class BridgeServer:
     def tick(self):
         try:
             if self.pending:
-                reads = {"get_scene_info", "get_object_info", "inspect_mesh", "inspect_shape_keys", "inspect_morph_animation", "sample_morph_animation", "inspect_rig", "inspect_animation", "sample_animation", "get_capabilities", "inspect_resources", "vse_list", "checkpoint", "shutdown_blender", "capture_viewport", "render_still", "render_animation", "render_video"}
+                reads = {"get_scene_info", "get_object_info", "inspect_mesh", "inspect_mesh_elements", "inspect_shape_keys", "inspect_morph_animation", "sample_morph_animation", "inspect_rig", "inspect_animation", "sample_animation", "get_capabilities", "inspect_resources", "vse_list", "checkpoint", "shutdown_blender", "capture_viewport", "render_still", "render_animation", "render_video"}
                 reads.update({"asset_report", "preflight_game_asset", "render_animation_preview"})
                 reads.update({"shader_node_catalog", "inspect_shader_graph"})
                 mutates = self.active["command"] not in reads

@@ -407,9 +407,15 @@ and work when `allow_code_execution=false`. Editing requires `allow_scene_edit`;
   helps compare poses. The digest covers world vertices and polygon connectivity,
   not materials or UVs. This is not a self-intersection or UV-overlap test.
 - `configure_modifier`: create/update a named `BEVEL`, `SUBSURF`, `DECIMATE`,
-  `SOLIDIFY` or `TRIANGULATE` modifier with typed settings. Other stack entries
+  `SOLIDIFY`, `TRIANGULATE` or `BOOLEAN` modifier with typed settings. Other stack entries
   remain intact. Settings include defaults; an update replaces the supported
   settings for that modifier. Angles are radians, distances are Blender units.
+  Boolean settings name an operand `object`, choose `DIFFERENCE`, `UNION` or
+  `INTERSECT`, and use the `EXACT` solver. Self-reference and cycles through
+  Boolean operands, parents and constraint targets are rejected. Other imported
+  dependency types are not comprehensively analyzed. Inspect the evaluated result
+  before applying the modifier; the operand remains in the scene and export it
+  only when intended.
 - `apply_modifier` / `remove_modifier`: explicitly bake or discard a stack entry.
   Baking shared mesh data requires `make_single_user=true`; shape-key meshes are
   refused. Applying a later stack entry follows Blender's native stack behavior.
@@ -449,6 +455,57 @@ Example `configure_modifier` arguments:
 ```json
 {"params":{"name":"Prop","modifier":"SoftEdges","settings":{"type":"BEVEL","width":0.05,"segments":3}}}
 ```
+
+## Mesh element editing and cleanup
+
+Use `inspect_mesh_elements` with `domain=VERTEX`, `EDGE` or `FACE` to page the
+stored base mesh. It returns local coordinates, world vertex positions, edge
+adjacency, face centers/normals/material indices, shared-data usage and named
+selections. Pass its `topology_sha256` as `expected_topology` to every indexed
+edit. Optionally pass its `geometry_sha256` as `expected_geometry` to reject
+coordinate changes too. This local-geometry fingerprint differs from the world
+geometry digest returned by `inspect_mesh`; neither includes UVs/materials.
+Evaluated modifier output is not a source of editable base-mesh indices.
+
+`select_mesh_elements` takes a `domain` and `elements`, with exactly one of
+`indices` or `selection` inside `elements`. An optional `selection_name` stores
+the chosen indices on this object; replacing it requires `replace=true`.
+Named selections survive save/reopen, but topology changes make them stale.
+`remove_mesh_selection` removes a named group without editing geometry. Limits
+are 64 names and 100,000 stored indices in total. Selection writes use a temporary
+mesh and do not switch the user's Object/Edit mode or active object.
+
+For example, inspect the roof face index and then call `extrude_mesh_faces`:
+
+```json
+{"params": {"name": "Building", "expected_topology": "COPY_CURRENT_TOPOLOGY_SHA256",
+            "faces": {"indices": [5]}, "offset": [0, 0, 1]}}
+```
+
+The fingerprint and index are placeholders for inspected values. Reinspect after
+every edit: indices and fingerprints can change even when vertex counts match.
+
+- `extrude_mesh_faces`: extrude a face region by an explicit object-local offset.
+- `inset_mesh_faces`: inset a region or individual faces by local `thickness`.
+- `loop_cut_mesh`: cross a quad ring from seed `edge`, adding 1–32 evenly spaced
+  cuts; non-quad or non-manifold rings are refused before assignment.
+- `merge_mesh_vertices`: weld explicit/named `vertices` at `CENTER`, `FIRST` or
+  `LAST` input position.
+- `cleanup_mesh`: optional distance weld, degenerate-edge dissolution, loose
+  edge/vertex removal and face-normal recalculation.
+- `repair_mesh_normals`: recalculate all/selected faces `OUTSIDE` or `INSIDE`, or
+  `FLIP` their winding. Outside is not well-defined for every open/nonorientable
+  surface; inspect results. This does not author custom split normals.
+
+These tools require local meshes in Object mode without shape keys or armature
+deformation. Shared mesh data needs `make_single_user=true`. Geometry operations
+work on a temporary BMesh/copy before replacing the object's data; preflight and
+operation failures preserve the original geometry. A crash around assignment can
+still leave an uncertain outcome. Existing UV layers and material slots are
+preserved, but newly generated UVs may need re-unwrapping. Inspect topology,
+materials and renders after editing. Mesh edits are limited to one million
+vertices/faces; native operations are not forcibly interruptible. Ordinary
+operation IDs, request-ID deduplication and broker reconnection apply.
 
 ## Structured skeletal animation
 

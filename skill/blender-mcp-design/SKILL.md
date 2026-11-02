@@ -18,6 +18,24 @@ Compare base and evaluated geometry to distinguish stored topology from modifier
 results. The geometry digest excludes UVs/materials; the checks do not detect
 self-intersection or UV overlap.
 
+For base-mesh element edits, use `inspect_mesh_elements` and carry its
+`topology_sha256` into `expected_topology`; optionally guard coordinates with its
+local `geometry_sha256` as `expected_geometry`. Do not substitute the evaluated
+mesh's indices or the world-space digest from `inspect_mesh`. Reinspect after
+every edit. `select_mesh_elements` can store named vertex/edge/face groups;
+topology changes invalidate those groups. Remove obsolete names explicitly with
+`remove_mesh_selection`.
+
+Use `extrude_mesh_faces`, `inset_mesh_faces`, `loop_cut_mesh`,
+`merge_mesh_vertices`, `cleanup_mesh` and `repair_mesh_normals` for supported
+element work. Selection references contain exactly one of `indices` or
+`selection`. Distances/offsets are object-local. Loop cuts require a quad ring.
+Edits refuse shape-key and armature-deformed meshes; shared data requires explicit
+isolation. Inspect winding, UVs, material slots and a render after topology edits.
+Boolean modifiers support explicit operand objects and difference/union/intersect;
+inspect the evaluated result before applying or exporting, and exclude cutters
+from deliverables unless requested. Imported dependency graphs still need review.
+
 Prefer structured tools for the supported pipeline, including when Python
 execution is disabled: `create_primitive` / `create_mesh`, `configure_modifier`,
 `apply_modifier` / `remove_modifier`, `generate_uv`, `duplicate_object`,

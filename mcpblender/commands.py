@@ -220,9 +220,16 @@ class TriangulateSettings(Model):
     ngon_method: Literal["BEAUTY", "CLIP"] = "BEAUTY"
 
 
+class BooleanSettings(Model):
+    type: Literal["BOOLEAN"] = "BOOLEAN"
+    object: Name
+    operation: Literal["DIFFERENCE", "UNION", "INTERSECT"] = "DIFFERENCE"
+    solver: Literal["EXACT"] = "EXACT"
+
+
 class Modifier(Named):
     modifier: Name
-    settings: Annotated[BevelSettings | SubdivisionSettings | DecimateSettings | SolidifySettings | TriangulateSettings,
+    settings: Annotated[BevelSettings | SubdivisionSettings | DecimateSettings | SolidifySettings | TriangulateSettings | BooleanSettings,
                         Field(discriminator="type")]
     show_viewport: bool = True
     show_render: bool = True
@@ -463,7 +470,7 @@ COMMANDS = {
     "apply_transforms": (ApplyTransforms, EDIT, "Bake chosen static mesh transforms into geometry, preserving child world placement. Rotation and scale default true. Shared meshes require make_single_user=true."),
     "generate_uv": (UVProjection, EDIT, "Project every face into a named UV map using SMART or CUBE projection. Existing maps require overwrite=true; shared mesh edits require make_single_user=true. Angles are degrees."),
     "inspect_mesh": (MeshInspection, (), "Inspect base or evaluated mesh topology, UVs, world bounds and sampled vertices at the current frame; does not change the scene."),
-    "configure_modifier": (Modifier, EDIT, "Create/update a named bevel, subdivision, decimation, solidify or triangulation modifier using typed settings. Existing modifier type must match."),
+    "configure_modifier": (Modifier, EDIT, "Create/update a named bevel, subdivision, decimation, solidify, triangulation or exact Boolean modifier using typed settings. Existing modifier type must match; Boolean operands must not form dependency cycles."),
     "apply_modifier": (ApplyModifier, EDIT, "Destructively apply a named modifier. Shared mesh data requires make_single_user=true. Object mode required."),
     "remove_modifier": (ModifierReference, EDIT, "Remove a named modifier without applying it."),
     "get_capabilities": (Empty, (), "Discover Blender domains, structured commands, engines and video codec support."),
@@ -593,3 +600,8 @@ from .shader_contracts import COMMANDS as SHADER_COMMANDS
 
 COMMANDS.update(SHADER_COMMANDS)
 DOMAIN_COMMANDS.update(SHADER_COMMANDS)
+
+from .mesh_contracts import COMMANDS as MESH_COMMANDS
+
+COMMANDS.update(MESH_COMMANDS)
+DOMAIN_COMMANDS.update(MESH_COMMANDS)

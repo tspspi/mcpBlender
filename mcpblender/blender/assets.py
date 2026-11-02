@@ -17,6 +17,7 @@ MODIFIER_FIELDS = {
     "DECIMATE": ("ratio", "use_collapse_triangulate"),
     "SOLIDIFY": ("thickness", "offset", "use_even_offset"),
     "TRIANGULATE": ("quad_method", "ngon_method"),
+    "BOOLEAN": ("operation", "solver"),
 }
 
 
@@ -79,7 +80,8 @@ def finished(result):
 def modifier_info(mod):
     return {"name": mod.name, "type": mod.type, "show_viewport": mod.show_viewport,
             "show_render": mod.show_render,
-            "settings": {key: getattr(mod, key) for key in MODIFIER_FIELDS.get(mod.type, ())}}
+            "settings": {key: getattr(mod, key) for key in MODIFIER_FIELDS.get(mod.type, ())}
+                        | ({"object": mod.object.name if mod.object else None} if mod.type == "BOOLEAN" else {})}
 
 
 def inspect_mesh(p):
@@ -156,7 +158,24 @@ def dispatch(command, p):
             raise ValueError("Unsupported structured modifier type")
         if mod and mod.type != kind:
             raise ValueError("Existing modifier type must match; remove it explicitly to replace it")
+        operand = None
+        if kind == "BOOLEAN":
+            operand = mesh_object(settings["object"])
+            pending, visited = [operand], set()
+            while pending:
+                current = pending.pop()
+                if current == obj:
+                    raise ValueError("Boolean operand creates a dependency cycle")
+                if current.name in visited:
+                    continue
+                visited.add(current.name)
+                if current.parent:
+                    pending.append(current.parent)
+                pending.extend(c.target for c in current.constraints if getattr(c, "target", None))
+                pending.extend(m.object for m in current.modifiers if m.type == "BOOLEAN" and m.object)
         mod = mod or obj.modifiers.new(p["modifier"], kind)
+        if operand is not None:
+            mod.object = operand
         for key in MODIFIER_FIELDS[kind]:
             if key in settings:
                 setattr(mod, key, settings[key])

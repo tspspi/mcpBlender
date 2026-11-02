@@ -388,7 +388,12 @@ class Handler(socketserver.BaseRequestHandler):
         try:
             check_peer(self.request)
             data = bytearray()
+            deadline = time.monotonic() + 5
             while b"\n" not in data:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise TimeoutError("Broker request input deadline exceeded")
+                self.request.settimeout(remaining)
                 part = self.request.recv(65536)
                 if not part:
                     return
@@ -407,7 +412,9 @@ class Handler(socketserver.BaseRequestHandler):
 
 
 class UnixServer(socketserver.ThreadingUnixStreamServer):
-    daemon_threads = True
+    # Drain accepted requests before closing their shared journal. Each socket
+    # has a bounded timeout, so a partial request cannot hold shutdown forever.
+    daemon_threads = False
     request_queue_size = 32
 
 
@@ -428,6 +435,7 @@ def serve(path):
             server.serve_forever(poll_interval=0.1)
         finally:
             broker.stop_event.set()
+            server.server_close()
             broker.supervisor.join(timeout=2)
             broker.retention.close()
             broker.journal.db.close()

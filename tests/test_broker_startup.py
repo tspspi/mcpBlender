@@ -82,3 +82,34 @@ def test_supervisor_defers_to_frontend_launch_lock_without_deadlock(tmp_path, mo
         assert instance.request("status", {})["recovery"]["last_pid"] == 4242
     finally:
         instance.journal.db.close()
+
+
+def test_restart_drains_an_accepted_request_before_closing_journal(tmp_path):
+    import json
+    import socket
+    import time
+    from mcpblender.wire import call
+    path=tmp_path/"drain/bridge.sock"
+    before=broker.ensure_broker(path)
+    with socket.socket(socket.AF_UNIX,socket.SOCK_STREAM) as pending:
+        pending.settimeout(5);pending.connect(str(path))
+        pending.sendall(b'{"command":"status","params":{}}')
+        call(path,"restart_broker",timeout=5)
+        # A closed listener proves shutdown reached request draining. Finish
+        # the already accepted request only then, while its journal is needed.
+        deadline=time.monotonic()+3
+        while True:
+            with socket.socket(socket.AF_UNIX,socket.SOCK_STREAM) as probe:
+                code=probe.connect_ex(str(path))
+            if code in {errno.ECONNREFUSED,errno.ENOENT}:break
+            assert time.monotonic()<deadline
+            time.sleep(.01)
+        pending.sendall(b'\n');response=bytearray()
+        while b'\n' not in response:
+            part=pending.recv(65536);assert part;response.extend(part)
+        decoded=json.loads(response)
+        assert decoded["ok"],decoded
+        assert decoded["result"]["broker_epoch"]==before["broker_epoch"]
+    deadline=time.monotonic()+3
+    while path.exists() and time.monotonic()<deadline:time.sleep(.01)
+    assert not path.exists()

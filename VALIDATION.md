@@ -1,5 +1,17 @@
 # Local validation: 0.2.0
 
+## Broker request draining — 2026-11-02
+
+Broker shutdown now closes its listener and drains accepted handlers before
+closing their shared journal. Input reads have a five-second total deadline.
+A deterministic socket fixture holds a partial request across restart, waits
+until the listener is closed, then finishes that accepted request and verifies
+its reply still uses a live journal. All six broker-startup checks passed;
+the combined broker/fluid-development run passed nine tests in 60.48 seconds,
+including restart during an isolated native bake followed by cancellation.
+This fixes the observed closed-database progress race; it does not make remote
+network operations replayable after broker interruption.
+
 ## Cloth, soft bodies, particles and force helpers — 2026-11-02
 
 The initial point-cache suite passed **4 tests in 62.29 seconds**, using real

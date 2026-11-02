@@ -6,6 +6,7 @@ from pathlib import Path
 import struct
 
 MARKER='mcpblender-static-lod-v1'
+SKIN_MARKER='mcpblender-animated-lod-v1'
 
 
 def file_hash(path):
@@ -15,7 +16,7 @@ def file_hash(path):
     return h.hexdigest()
 
 
-def glb_report(path):
+def read_glb(path):
     path=Path(path)
     if path.stat().st_size>512*1024**2:raise ValueError('GLB exceeds 512 MiB validation limit')
     data=path.read_bytes()
@@ -39,7 +40,12 @@ def glb_report(path):
         if 'uri' in image or 'bufferView' not in image:raise ValueError('Texture images must be embedded in GLB')
         view=doc['bufferViews'][image['bufferView']]
         if view.get('buffer',0)!=0 or view.get('byteOffset',0)+view['byteLength']>len(binary):raise ValueError('Invalid embedded image bounds')
-    if doc.get('skins') or doc.get('animations'):raise ValueError('Static LOD bundle cannot contain skins/animations')
+    return doc,binary
+
+
+def glb_report(path,skinned=False):
+    doc,binary=read_glb(path)
+    if not skinned and (doc.get('skins') or doc.get('animations')):raise ValueError('Static LOD bundle cannot contain skins/animations')
     def attribute(index,components):
         accessor=doc['accessors'][index]
         if accessor.get('sparse') or accessor.get('normalized') or accessor.get('componentType')!=5126 or accessor.get('type')!=f'VEC{components}':raise ValueError('Expected dense float GLB attribute')
@@ -82,17 +88,26 @@ def glb_report(path):
 
 def validate(directory):
     root=Path(directory);manifest=root/'manifest.json'
-    if manifest.is_symlink() or not manifest.is_file() or manifest.stat().st_size>2*1024**2:raise ValueError('Missing/oversized LOD manifest')
+    if manifest.is_symlink() or not manifest.is_file() or manifest.stat().st_size>8*1024**2:raise ValueError('Missing/oversized LOD manifest')
     doc=json.loads(manifest.read_text())
-    if doc.get('format')!=MARKER or not 2<=len(doc.get('levels',[]))<=8:raise ValueError('Invalid LOD manifest')
+    if doc.get('format') not in {MARKER,SKIN_MARKER} or not 2<=len(doc.get('levels',[]))<=8:raise ValueError('Invalid LOD manifest')
     files=[]
     for i,level in enumerate(doc['levels']):
         if level.get('file')!=f'level_{i:02}.glb':raise ValueError('Unexpected LOD member path')
         path=root/level['file']
         if path.is_symlink() or not path.is_file() or path.stat().st_size>512*1024**2 or file_hash(path)!=level['sha256']:raise ValueError('LOD member missing or hash mismatch')
-        report=glb_report(path)
+        skinned=doc['format']==SKIN_MARKER
+        report=glb_report(path,skinned=skinned)
+        if skinned:
+            from .skin_glb import Document
+            skin=Document(path)
+            if skin.report()!=level['skin']:raise ValueError('Skin/animation inventory differs from manifest')
         if report['triangles']!=level['triangles'] or report['triangles']>level['triangle_budget']:raise ValueError('GLB triangle count/budget mismatch')
         if any(abs(a-b)>1e-5+abs(b)*1e-7 for key in ('min','max') for a,b in zip(report['position_bounds'][key],level['position_bounds'][key])):raise ValueError('Exported position bounds differ from native LOD')
         if level['uv_required'] and any('TEXCOORD_0' not in p['uv_sets'] for p in report['primitives']):raise ValueError('Expected exported UV coordinates')
+        if skinned:
+            from .skin_glb import check_recorded_samples
+            check_recorded_samples(skin,level['playback'])
+            report['skin']=skin.report()
         files.append({'file':level['file'],**report})
     return {'valid':True,'levels':files,'chain':doc['chain'],'chain_sha256':doc['chain_sha256'],'note':'Binary attributes/dependencies and declared budgets checked; no target-engine switching, rendered silhouette or material appearance certification.'}

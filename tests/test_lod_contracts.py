@@ -26,7 +26,7 @@ def test_readonly_lod_visibility_and_output_boundary(tmp_path):
     async def run():
         async with Client(server) as client:
             names={t.name for t in await client.list_tools()}
-            assert {'inspect_lod_source','inspect_lod_chain','validate_lod_export','sample_lod_chain'}<=names
+            assert {'inspect_lod_source','inspect_lod_chain','validate_lod_export','sample_lod_chain','inspect_lod_export'}<=names
             assert not {'generate_lod_chain','activate_lod_level','export_lod_chain'}&names
     asyncio.run(run())
     with pytest.raises(ValueError,match='inside'):

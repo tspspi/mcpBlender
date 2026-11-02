@@ -1,4 +1,4 @@
-"""Static asset LOD generation, managed selection and independent GLB bundles."""
+"""Asset LOD generation, managed selection and independent static/skin GLB bundles."""
 from typing import Literal
 from pydantic import Field,FiniteFloat,model_validator
 from .config import Model
@@ -42,6 +42,10 @@ class Chain(Model):
     chain: SafeName
 
 
+class ExportPlan(Chain):
+    animations: bool = True
+
+
 class Guard(Chain):
     expected_chain: Digest
 
@@ -62,6 +66,10 @@ class SampleSkin(Guard):
 
 class Export(Guard):
     directory: str = Field(min_length=1)
+    animations: bool = True
+    animation_samples: int = Field(default=3,ge=3,le=9)
+    skin_tolerance: FiniteFloat = Field(default=.001,ge=.0000001,le=1)
+    expected_animation: Digest | None = None
 
 
 class Validate(Model):
@@ -74,6 +82,7 @@ COMMANDS={
  'sample_lod_chain':(SampleSkin,(),'Sample current-timeline deformation of a SKINNED LOD chain versus its source. Reports bounded bidirectional surface error at chosen/recommended poses, restores frame/visibility and refuses stale guards or excessive error; does not switch clips.'),
  'inspect_lod_chain':(Chain,(),'Inspect managed LOD meshes, recipes/budgets, sampled quality, source staleness and current-content fingerprint. Invalid or modified chains are not silently exportable.'),
  'activate_lod_level':(Activate,('allow_scene_edit',),'Select one managed LOD representation by viewport/render visibility, preserving source objects and geometry. Requires a current chain fingerprint.'),
- 'export_lod_chain':(Export,('allow_library_write',),'Export each static LOD into a separate GLB plus a checked manifest, independently decode counts/positions/normals/UVs, restore visibility/selection and publish a new bundle directory only after success.'),
- 'validate_lod_export':(Validate,(),'Independently re-read a generated LOD bundle, verify file hashes, GLB triangle/attribute inventory and embedded buffer/image dependencies. No engine or silhouette certification.'),
+ 'inspect_lod_export':(ExportPlan,(),'Plan a static or skeletal LOD bundle: current chain guard, compatible clip inventory, bind-only option, export blockers and full animation guard. Does not write files or switch clips.'),
+ 'export_lod_chain':(Export,('allow_library_write',),'Export each static or skeletal LOD into a GLB plus checked manifest. Skin bundles validate joints/weights/curves and compare independent decoded playback with native poses; compatible integer-frame clips use zero-based seconds. Restore state and publish only after validation.'),
+ 'validate_lod_export':(Validate,(),'Independently re-read a generated LOD bundle, verify hashes, GLB triangle/attribute/dependency inventory and recorded skin replay fingerprints. No engine or silhouette certification.'),
 }

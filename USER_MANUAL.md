@@ -1546,7 +1546,7 @@ A manifest records file hashes, geometry/quality/budgets and source/chain guards
 `validate_lod_export` re-reads those files independently, refusing missing,
 modified, oversized or symlinked members. This does not replace rendered or
 native re-import checks, verify every texture/shader visually or configure engine
-LOD switching. Each GLB is a separate static representation.
+LOD switching. Each GLB is a separate representation; skeletal validation is described below.
 
 Generate/export default to queued operations; poll/wait/cancel, or pass `wait=true`.
 Native evaluation/decimation/export cannot cancel internally. Cooperative errors
@@ -1621,14 +1621,55 @@ cooperative cancellation. Generation failure removes all owned meshes/groups/
 collection/root while retaining source data and rig/clip bindings. Native calls
 are noninterruptible internally; crash-time atomicity is not implied.
 
-For animated GLB delivery in this milestone, activate the wanted level and use
-`export_objects_glb` with both the level mesh and its existing rig explicitly,
-`animations=true`, and `apply_modifiers=false`. Native glTF exports compatible
-rig clips and joint weights. Independently re-import and sample playback; bake
-complex control/NLA composition when the delivery needs that result. The static
-`export_lod_chain` bundle tool explicitly refuses skinned chains rather than
-omitting their deformation. Dedicated validated skin bundles and morph-animation
-transfer remain separate milestones. This workflow reduces meshes, not skeletons.
+For validated skeletal delivery, call `inspect_lod_export` with `chain` and
+`animations` (default true). This read-only planner reports export blockers,
+compatible clips, the reference frame, `chain_sha256` and `animation_sha256`.
+Carry those fingerprints as `expected_chain` and `expected_animation` into
+`export_lod_chain`, with a fresh `directory`. The animation guard comes from this
+planner, not the source-inspection pose signature. Export writes one self-contained
+GLB per level and a manifest, then validates everything before publication.
+
+Animated bundles currently require local, non-overridden rig/data/actions and
+simple object/bone transform clips: no constraints, drivers or active NLA blending.
+Bake composed control/NLA motion first. The inventory includes the active action,
+managed rig actions and actions in NLA strips, including muted stashes. There must
+be 1–32 compatible clips, each with integer endpoints within native frame limits
+and a span of at most 10,000 frames. Fractional endpoints are explicitly refused.
+Full action ranges export independently of the scene playback range. Each GLB
+clip starts at zero seconds; map back with `native_frame_start + time * fps` from
+the manifest, including clips originally starting at a negative frame.
+
+Use `animations=false` for a bind-only bundle without clips. This also permits
+controlled rigs whose live animation cannot pass the simple-clip checks. The rig
+and meshes use the captured reference frame's object transforms with the rest
+skeleton; unkeyed object channels in animated clips retain that reference baseline.
+Moving the existing rig moves the generated meshes. This workflow reduces meshes,
+not skeletons. Morph transfer remains a separate milestone.
+
+The independent decoder checks every exported weight, named joints, inverse binds,
+curves and finite normalized skin data. It replays the rest pose plus 3–9 sampled
+frames per clip (`animation_samples`, default 3), comparing every joint matrix and
+representative corresponding vertices against native Blender. Representatives
+include distributed vertices and extrema for each weighted joint. `skin_tolerance`
+(default 0.001) gates vertex distances and matrix-component differences. Native
+glTF drops tiny influences; a maximum weight difference of 0.0004 is permitted
+and recorded, while the geometric gate still applies. Nondeforming bone-named
+masks are removed only from a temporary export copy and remain in authored data.
+Skinned POSITION-buffer bounds reflect native export's world-baked reference
+geometry rather than undeformed mesh-local coordinates.
+
+The manifest records clip frame ranges, FPS, reference frame, hashes and sampled
+proofs. `validate_lod_export` independently decodes files and recomputes recorded
+playback fingerprints (nine significant digits); it does not reevaluate Blender.
+The decoder supports this dense, four-influence native export profile, not every
+possible glTF encoding. The manifest is limited to 8 MiB, each GLB to 512 MiB,
+and native proof work to ten million vertex-frame samples per level. Storage
+estimates include geometry, sampled export keys and textures; progress reports
+current free space. Frame, action, metadata, visibility and selection restore on
+success, ordinary failure and cooperative cancellation. Crash-time staging
+reconciliation remains separate. Sampled checks do not certify every animation
+frame, silhouette, shader appearance or engine playback; re-import and visually
+review representative results before delivery.
 
 ## Existing skeleton and rest-hierarchy refinement
 

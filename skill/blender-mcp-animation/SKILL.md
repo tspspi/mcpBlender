@@ -50,8 +50,16 @@ budget. `sample_lod_chain` rechecks current-timeline deformation without clip
 switches and restores frame/visibility. Rest/weight/binding edits invalidate the
 chain; changed animation/control inputs require fresh pose review. The first skin
 workflow is linear, group-only, single modifier, up to four influences and no
-morphs. Export an activated mesh together with its rig through the existing explicit
-GLB tool and re-import/sample playback. Validated skin bundles remain separate.
+morphs. For validated bundles, call `inspect_lod_export`, carry its chain and
+animation fingerprints into `export_lod_chain` (`expected_chain`,
+`expected_animation`), and choose a fresh directory. All compatible simple local
+rig clips export with full integer frame ranges, starting at zero seconds; use
+manifest native frame starts/FPS when comparing original playback. Constraints,
+drivers and active NLA require a prior bake. `animations=false` delivers bind-only
+geometry even for controlled rigs. The decoder compares all joint matrices and
+sampled corresponding vertices at 3–9 frames per clip; this is not every-frame
+motion or appearance proof. Run `validate_lod_export`, then re-import/sample and
+review representative motion. See USER_MANUAL.md for profile and tolerance limits.
 
 Clips name the armature in `name` and the action in `clip`; tracks specify a
 `bone`, `property` and vector `keyframes`. Bone `rotation_degrees` uses XYZ Euler

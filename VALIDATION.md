@@ -1,5 +1,56 @@
 # Local validation: 0.2.0
 
+## Validated animated skeletal LOD bundles — 2026-11-02
+
+Final focused gate on system Blender 5.0.1:
+
+```sh
+MCPBLENDER_TEST_BLENDER=1 MCPBLENDER_SKIN_BUNDLE_EVIDENCE_DIR=/tmp/mb-skin-bundle-20261102 python3 -m pytest -q tests/test_skin_glb.py tests/test_skin_lod_export.py tests/test_skin_bundle_native.py tests/test_lod_contracts.py tests/test_skin_lods.py::test_control_driven_timeline_and_raw_binding_preserved --tb=short --maxfail=1
+```
+
+Result: **11 passed in 38.08s**. Six independent stdlib decoder tests include
+known-answer LINEAR/SLERP and CUBICSPLINE interpolation, malformed weights/joints/
+times/inverse binds and replay-proof mismatch refusal. The structured MCP fixture
+runs with arbitrary Python disabled. It generates textured 540/250/120-triangle
+skeletal levels and exports Bend, Idle and negative-start clips despite a shorter
+scene playback range. All clips retain their full ranges as zero-based seconds;
+manifest frame starts/FPS preserve the mapping. Bind-only export also succeeds.
+
+Every weight and inverse bind is checked against native source data. Decoded
+joint matrices and corresponding representative vertices match native samples
+within 0.001, including per-joint extrema. Re-imported far-LOD Bend playback is
+activated through structured NLA tools and matches native world bounds at three
+poses. Stale animation guards refuse output. The planner reports eligibility,
+compatible clips, reference frame and the full animation fingerprint.
+
+A separate native fixture preserves nondeforming bone-named mask groups, hidden/
+unselectable rig state, a fractional reference frame, action metadata and exact
+source/chain guards. Cancellation after a successful native comparison and an
+injected decoded-joint mismatch both remove staging output and restore ID counts.
+Retry succeeds without leaked proxy objects/meshes; fractional clip endpoints
+refuse before staging. A controlled rig refuses animated export and succeeds with
+`animations=false`. Source rig/clip bindings remain unchanged.
+
+Evidence: `/tmp/mb-skin-bundle-20261102/{animated-lods.blend,animated-bundle/}`.
+The existing LOD/native-skin/server/capability regression gate also passed:
+
+```sh
+MCPBLENDER_TEST_BLENDER=1 python3 -m pytest -q tests/test_lod_contracts.py tests/test_lods.py tests/test_lod_native.py tests/test_skin_lods.py tests/test_skin_lod_native.py tests/test_server.py tests/test_capabilities.py --tb=short --maxfail=1
+```
+
+Result: **19 passed in 84.30s**, with the existing Starlette/AnyIO deprecation
+warning. Both bundled design and animation skills pass the skill validator. No new render
+is claimed. No packages, virtual environments, installed runtime/skills, service
+configuration or user GUI were changed.
+
+This qualifies one dense native GLB profile, not arbitrary glTF. Replay proofs
+cover sampled frames/vertices, not exhaustive deformation, visual appearance or
+engine behavior. Native tiny-weight filtering is tolerated to 0.0004 and reported;
+vertex/matrix tolerances still gate publication. Animated export currently needs
+local non-overridden simple rigs/actions, integer endpoints, at most 32 clips and
+10,000-frame spans. Bind-only output can retain live controls. Morph transfer,
+linked-data copying, crash-time staging reconciliation and retention remain open.
+
 ## Linear skeletal LODs and sampled pose validation — 2026-11-02
 
 FreeBSD Blender 5.0.1/system Python, isolated source-checkout instances and MCP

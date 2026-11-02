@@ -236,7 +236,8 @@ def dispatch(command, params):
                                               export_yup=True, export_animations=params.get("animations", True),
                                               export_apply=params.get("apply_modifiers", False),
                                               export_animation_mode="ACTIONS", export_anim_single_armature=False,
-                                              export_merge_animation="ACTION", export_morph=True, export_morph_animation=True)
+                                              export_merge_animation="ACTION", export_morph=True, export_morph_animation=True,
+                                              **({"export_frame_range":False,"export_force_sampling":True,"export_frame_step":1,"export_anim_slide_to_zero":True,"export_negative_frame":"SLIDE","export_current_frame":True,"export_rest_position_armature":True,"export_def_bones":False} if params.get("_lod_animation_profile") else {}))
         if "FINISHED" not in result:
             raise RuntimeError(f"Export failed: {result}")
         return {"path": path, "bytes": Path(path).stat().st_size, "format": "GLB",
@@ -375,7 +376,7 @@ class BridgeServer:
                 reads.update({"inspect_simulations", "validate_simulation_bake", "sample_simulation"})
                 reads.update({"inspect_fluids", "validate_fluid_bake", "bake_fluid", "cleanup_fluid_job"})
                 reads.update({"inspect_fluid_job", "recover_fluid_job", "inspect_uv_layout"})
-                reads.update({"sample_lod_chain", "inspect_lod_source", "inspect_lod_chain", "export_lod_chain", "validate_lod_export", "inspect_armature_rest", "inspect_skin_weights", "inspect_animation_retarget", "inspect_nla", "inspect_animation_drivers", "inspect_animation_channels", "inspect_animation_constraints", "sample_constraint_animation"})
+                reads.update({"inspect_lod_export", "sample_lod_chain", "inspect_lod_source", "inspect_lod_chain", "export_lod_chain", "validate_lod_export", "inspect_armature_rest", "inspect_skin_weights", "inspect_animation_retarget", "inspect_nla", "inspect_animation_drivers", "inspect_animation_channels", "inspect_animation_constraints", "sample_constraint_animation"})
                 reads.update({"inspect_texture_bake", "bake_textures", "validate_texture_bake", "inspect_texture_job", "recover_texture_job", "cleanup_texture_job"})
                 mutates = self.active["command"] not in reads
                 if self.active["command"] == "run_action":

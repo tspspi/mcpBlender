@@ -106,9 +106,15 @@ protection helps preserve bends; triangle and sampled pose-error limits can stil
 refuse. Choose meaningful `pose_frames`, or review suggested action/timeline
 frames. Use `sample_lod_chain` again after motion/control changes: stored measurements
 cover recorded inputs only, and external dependencies are not frozen. Move the rig
-rather than the generated bind root. For delivery, activate a level and explicitly
-export its mesh plus rig with `export_objects_glb`, then re-import/sample playback.
-Static bundle export refuses skinned chains; dedicated skin bundles remain separate.
+rather than the generated bind root. For delivery, call `inspect_lod_export`, then
+carry its `chain_sha256` and `animation_sha256` as `expected_chain` and
+`expected_animation` into `export_lod_chain` with a fresh directory. Animated
+bundles independently compare decoded joints/weights/inverse binds and sampled
+corresponding vertices against native playback. Use `animations=false` for bind-only
+output. Animated delivery needs simple local rig/actions with integer clip endpoints;
+bake controls/drivers/active NLA first. Clips use zero-based seconds; manifest
+native frame starts/FPS preserve their original time mapping. Validate the bundle,
+then re-import/sample and visually review. Morph transfer remains separate.
 
 Prefer structured tools for the supported pipeline, including when Python
 execution is disabled: `create_primitive` / `create_mesh`, `configure_modifier`,

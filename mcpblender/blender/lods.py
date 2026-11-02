@@ -16,7 +16,7 @@ from .mesh_edit import geometry_digest
 from mcpblender.lod_files import MARKER,file_hash,glb_report,validate
 from mcpblender.storage import require_space
 
-COMMANDS={'sample_lod_chain','inspect_lod_source','generate_lod_chain','inspect_lod_chain','activate_lod_level','export_lod_chain','validate_lod_export'}
+COMMANDS={'inspect_lod_export','sample_lod_chain','inspect_lod_source','generate_lod_chain','inspect_lod_chain','activate_lod_level','export_lod_chain','validate_lod_export'}
 META='mcpblender_lod_chain'
 
 
@@ -287,7 +287,9 @@ def export(p):
     from .bridge import check_cancelled,report_progress,_bridge
     from .workflows import export_objects_glb
     _,_,objects,meta,records,_,signature=guarded(p);directory=Path(p['directory'])
-    if meta.get('skin'):raise ValueError('Skin bundles require a separate delivery workflow; activate a level and use export_objects_glb with its mesh and rig explicitly')
+    if meta.get('skin'):
+        from .skin_lod_export import export as export_skin
+        return export_skin(p)
     if directory.exists() or directory.is_symlink():raise FileExistsError('LOD output directory already exists')
     estimate=16*1024**2+sum(r['vertices']*128+r['triangles']*16 for r in records)
     images={n.image for obj in objects for mat in obj.data.materials if mat and mat.node_tree for n in mat.node_tree.nodes if n.type=='TEX_IMAGE' and n.image}
@@ -325,6 +327,9 @@ def export(p):
 
 
 def dispatch(command,p):
+    if command=='inspect_lod_export':
+        from .skin_lod_export import plan
+        return plan(p)
     if command=='sample_lod_chain':
         from .skin_lods import sample
         return sample(p)

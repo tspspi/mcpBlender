@@ -124,7 +124,9 @@ def test_control_driven_timeline_and_raw_binding_preserved(assets_live):
             repeated=await sample(client,'ControlSkinRig',frames=[1,3,5,7,9],meshes=['ControlSkinLOD'],sample_limit=0)
             assert [s['meshes'][0]['geometry_sha256'] for s in repeated['samples']]==[s['meshes'][0]['geometry_sha256'] for s in original['samples']]
             assert len(set(s['meshes'][0]['geometry_sha256'] for s in original['samples']))>=3, [(s['frame'],s['meshes'][0]['world_bounds']) for s in original['samples']]
-            # The static-only bundle surface must not drop skin data silently.
-            with pytest.raises(ToolError,match='Skin bundles require'):
+            # Animated delivery requires simple/baked clips; bind-only preserves controls.
+            with pytest.raises(ToolError,match='without constraints'):
                 await client.call_tool('export_lod_chain',{'params':{'chain':'ControlLOD','expected_chain':result['chain_sha256'],'directory':'not-a-static-bundle'},'wait':True})
+            bound=(await client.call_tool('export_lod_chain',{'params':{'chain':'ControlLOD','expected_chain':result['chain_sha256'],'directory':'controlled-bind','animations':False},'wait':True})).data
+            assert bound['valid'] and all(not l['skin']['clips'] for l in bound['levels'])
     asyncio.run(run())

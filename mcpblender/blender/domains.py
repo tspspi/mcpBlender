@@ -11,6 +11,7 @@ from . import actions
 from . import workflows
 from . import shaders
 from . import mesh_edit
+from .capabilities import workflow_support, DISCOVERY_NOTE
 
 COMMANDS = {"get_capabilities", "inspect_resources", "create_primitive", "create_mesh",
             "configure_material", "assign_material", "configure_light", "configure_camera",
@@ -64,11 +65,13 @@ def dispatch(command, p):
     from .bridge import object_info
     scene = bpy.context.scene
     if command == "get_capabilities":
+        support = workflow_support(COMMANDS)
         return {"blender_version": bpy.app.version_string,
-                "domains": ["mesh_modeling", "modifiers", "geometry_nodes", "materials", "shader_nodes",
-                            "lighting", "cameras", "animation", "rigging", "compositing", "video_sequencer", "asset_import_export"],
+                "domains": list(support), "domain_support": support,
+                "python_only_domains": [name for name, info in support.items() if info["support"] == "python_only"],
+                "discovery_note": DISCOVERY_NOTE,
                 "structured_commands": sorted(COMMANDS), "operations_protocol": 2,
-                "python_api": "All installed bpy functionality; discover optional add-ons before use",
+                "python_api": "Installed bpy functionality, subject to caller policy; discover optional APIs and add-ons before use",
                 "render_engines": ["BLENDER_WORKBENCH", "BLENDER_EEVEE"] + (["CYCLES"] if hasattr(scene, "cycles") else []),
                 "ffmpeg": bpy.app.build_options.codec_ffmpeg, "background": bpy.app.background}
     if command == "inspect_resources":

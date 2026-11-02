@@ -1,5 +1,14 @@
 # Local validation: 0.2.0
 
+## Capability classification — 2026-11-02
+
+`MCPBLENDER_TEST_BLENDER=1 python3 -m pytest -q tests/test_capabilities.py
+--tb=short --maxfail=1` passed **2 tests in 11.66 seconds**. The inventory is
+checked against registered command contracts, and a real MCP query with Python
+execution disabled verifies structured mesh/shader discovery, explicit Python-only
+gaps, and no checkpoint mutation. Inventory describes worker implementation;
+caller permissions and feature qualification remain separate concerns.
+
 ## Structured shaders and material presets
 
 On 2026-11-01, `MCPBLENDER_TEST_BLENDER=1 python3 -m pytest -q

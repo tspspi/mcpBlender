@@ -28,6 +28,15 @@ setup, see [persistent installation](docs/DEPLOYMENT.md).
 
 ## Blender startup and attachment
 
+`get_capabilities` reports the connected Blender version and worker command
+inventory. Its `domain_support` entries distinguish `structured_partial` (listed
+typed commands with an explicit scope) from `python_only` (no dedicated typed
+workflow). `python_only_domains` summarizes the latter. A domain name alone does
+not imply full Blender support, installed optional APIs or permission to execute
+Python. Use MCP `tools/list` for the current connection's permitted tools, and
+[VALIDATION.md](VALIDATION.md) for tested versions and scenarios. Discovery itself
+does not establish qualification or create a recovery checkpoint.
+
 The MCP server can start Blender through `start_blender`. With
 `launch.auto_start=true` (the default), the first operation needing Blender also
 starts it lazily when its key has startup permission. Set this false for explicit

@@ -52,6 +52,8 @@ WORKFLOWS = {
                           "Embedded rigid/cloth/soft/particle snapshots; fluid external bundles use isolated worker, manifest validation, interrupted-job reconciliation and guarded cleanup."),
     "texture_baking": ({"inspect_texture_bake", "bake_textures", "validate_texture_bake", "inspect_texture_job", "recover_texture_job", "cleanup_texture_job"},
                        "Isolated evaluated-mesh normal/AO/PBR PNG bundles, source guards, native asset binding and owned-worker lifecycle; static direct Principled shader graphs."),
+    "asset_lods": ({"inspect_lod_source", "generate_lod_chain", "inspect_lod_chain", "activate_lod_level", "export_lod_chain", "validate_lod_export"},
+                   "Independent static viewport snapshots, collapse/planar/unsubdivide reductions, strict per-level budgets, UV/material/normal checks and sampled bidirectional surface error; separate validated GLBs. Skinned/morph and botanical foliage/impostor LODs remain separate."),
     "compositing": (set(), "No structured compositor graph authoring yet."),
     "rendering": ({"configure_render", "render_animation", "render_video", "render_animation_preview"},
                   "Rendering uses the connected Blender instance; no separate render workers yet."),

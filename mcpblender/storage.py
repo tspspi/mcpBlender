@@ -37,6 +37,8 @@ def require_space(path, estimated_bytes=0, **policy):
 def estimate(command, params):
     if command in {"bake_rigid_bodies","bake_simulation","bake_fluid","bake_textures"}:
         return 16*1024**2, "initial_project_heuristic_worker_refines_with_body_count_and_range"
+    if command == "export_lod_chain":
+        return 16*1024**2, "initial_lod_bundle_heuristic_worker_refines_geometry_and_texture_estimate"
     if command == "run_action":
         return sum(s["storage"]["estimated_bytes"] for s in params["steps"]), "sum_known_action_outputs_some_steps_may_be_unknown"
     if command == "render_animation_preview":

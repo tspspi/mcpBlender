@@ -1,5 +1,66 @@
 # Local validation: 0.2.0
 
+## Static LOD chains and independently checked delivery — 2026-11-02
+
+Installed FreeBSD Blender 5.0.1 and system Python, isolated source-checkout
+background fixtures, MCP arbitrary Python disabled. Final focused qualification:
+
+```sh
+MCPBLENDER_TEST_BLENDER=1 MCPBLENDER_LOD_EVIDENCE_DIR=/tmp/mb-lod-20261102 python3 -m pytest -q tests/test_lod_contracts.py tests/test_lods.py tests/test_lod_native.py --tb=short --maxfail=1
+```
+
+**6 passed in 45.26 seconds.** Live tests cover source-preserving evaluated static
+snapshots, typed decreasing budgets, native collapse/planar/unsubdivide reductions,
+UV/material/render-map retention, normal transfer, sampled error limits,
+source/chain staleness, guarded level selection and save/reopen. Reload guards use
+stored basis/parent-inverse transforms: hidden objects' derived matrix caches can
+remain unevaluated after reload. Arbitrarily modified managed geometry is refused.
+A two-floor procedural building retains three used material regions and its packed
+PBR texture through snapshot/reduction and two-level GLB delivery.
+
+The textured sphere fixture reduces 960 → 498 → 150 triangles against budgets
+960/500/150. Its measured maximum sampled relative surface errors are approximately
+0/0.003036/0.010481. These are deterministic local-space bidirectional vertex/face-
+center samples, not exhaustive or projected silhouette bounds. Every GLB is
+independently decoded for positions, unit normals, UVs, triangle counts/budgets,
+indices, embedded image/buffer dependencies and +Y-up local surface bounds.
+Hashes and a manifest are re-read before publication and by the validation tool;
+corrupted members refuse validation. Re-import confirms far-LOD counts, UVs and
+world placement. The 192×192 Cycles far-LOD image is decoded for blue texture
+coverage and was opened/visually inspected. The source and exported mesh are
+staged away from the derived root to avoid overlap. Evidence:
+`/tmp/mb-lod-20261102/{lods.blend,lod_far.png,lod-bundle/}`.
+
+A separate native probe verifies object-linked material overrides, two material
+regions, exact object/mesh/collection counts after cancellation following generated
+LOD1, error-threshold refusal cleanup and source fingerprint preservation. Export
+cancellation after the first decoded GLB removes the owned staging directory,
+leaves no published bundle, and restores representation visibility/content guards;
+retry succeeds. MCP export progress includes storage information. These probes
+establish cooperative cleanup, not process-crash recovery or interrupted staging
+reconciliation. Native kernel/export calls remain noninterruptible.
+
+Existing asset/geometry/shader/server/storage/capability regression:
+
+```sh
+MCPBLENDER_TEST_BLENDER=1 python3 -m pytest -q tests/test_capabilities.py tests/test_server.py tests/test_asset_editing.py tests/test_geometry_presets.py tests/test_shaders.py tests/test_storage.py --tb=short --maxfail=1
+```
+
+**19 passed in 200.12 seconds**, with the existing Starlette/AnyIO deprecation
+warning. Final focused checks followed the last position-bound/region checks.
+Bundled design skill validation and whitespace/privacy checks passed. No package,
+venv, installed runtime/service/skill or normal GUI changes.
+
+This milestone is static LOD support. It does not qualify skinned/morph LOD
+transfer, every procedural attribute type, all coordinate scales/transforms,
+maximum workload, exact material/shader appearance or texture seam fidelity,
+automatic distance switching, botanical crown/leaf reconstruction, wind semantics,
+impostors, collision/shadow proxies, engine integration or crash-time cleanup.
+Shared materials remain editable, rather than frozen by mesh guards. Source
+staleness is informational for independently generated snapshots. The full asset
+assembly/delivery and botanical workflow requirements remain open.
+
+
 ## Existing skeleton/rest-hierarchy refinement — 2026-11-02
 
 FreeBSD Blender 5.0.1 and system Python, isolated source-checkout background

@@ -79,6 +79,25 @@ the first modifier on geometry without shape keys or armature deformation; bake
 upstream work explicitly. Their returned workload estimates explain candidate/
 face budgets, but do not bound later native/source edits or all memory use.
 
+For static LODs, inspect `inspect_lod_source` and carry `source_sha256` as
+`expected_source` into `generate_lod_chain` with a fresh `chain` and decreasing
+`levels` triangle budgets. Outputs are independent viewport snapshots; the source
+stays in place. COLLAPSE suits general geometry, PLANAR protects planar seams/
+materials, and UNSUBDIVIDE needs a regular grid. Review sampled bidirectional
+surface error and render small/thin details: budget/UV/material/normal checks do
+not certify silhouette or foliage density. Rig/morph LODs and botanical impostors
+are separate. Materials stay shared; edited per-level geometry requires a new chain.
+
+Use `inspect_lod_chain`, then `chain_sha256` as `expected_chain` for
+`activate_lod_level` or `export_lod_chain`. Activation hides other managed levels,
+not the original source; move the generated root for comparisons. Inspect its new
+fingerprint after changing level/root transform. Export creates separate GLBs and
+a checked manifest in a fresh directory; run `validate_lod_export`, then re-import
+and view representative results. Binary counts/bounds/UV/normal/dependency checks
+are not engine or appearance certification. Native calls cannot cancel internally;
+generation/export report progress/storage and clean owned resources on ordinary
+errors/cooperative cancellation. Full limits are in USER_MANUAL.md.
+
 Prefer structured tools for the supported pipeline, including when Python
 execution is disabled: `create_primitive` / `create_mesh`, `configure_modifier`,
 `apply_modifier` / `remove_modifier`, `generate_uv`, `duplicate_object`,

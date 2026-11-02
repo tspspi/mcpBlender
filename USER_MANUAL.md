@@ -1448,6 +1448,116 @@ otherwise exporting both versions also includes the editable source. Validate
 portable delivery by reimporting and comparing playback at key/intermediate
 frames. Shared materials remain editable through the existing material tools.
 
+## Static asset LOD chains
+
+`inspect_lod_source` takes mesh `name` and reports its current evaluated viewport
+geometry, UV maps/render map, material slots and used regions, supported named
+attribute schemas, surface bounds and `source_sha256`. The source must be visible
+in the current scene/view layer, Object mode, with a finite invertible transform.
+Object animation/constraints, armature deformation and shape keys require separate
+LOD workflows. Upstream procedural modifiers are evaluated at the current frame;
+this creates a static snapshot rather than retaining their generator or physics.
+The inspection never edits the source. Materials remain shared by reference.
+
+Pass the fingerprint as `expected_source` to `generate_lod_chain`, choose a fresh
+`chain` name (up to 40 UTF-8 bytes), and supply decreasing per-level budgets:
+
+```json
+{
+  "name": "Building",
+  "chain": "Building_LODs",
+  "expected_source": "<source_sha256>",
+  "levels": [
+    {"method": "COLLAPSE", "triangle_budget": 4000},
+    {"method": "COLLAPSE", "triangle_budget": 1000}
+  ],
+  "max_relative_error": 0.05
+}
+```
+
+The source must have more triangles than the first reduced budget. The tool
+creates a new named collection, an Empty `<chain>_Root` at the source's world
+transform, an independent `<chain>_LOD0` snapshot and up to seven reduced meshes.
+Every reduced level is built independently from LOD0, meets its own budget and
+must actually have fewer triangles than the previous level. It preserves the
+editable source and does not hide or move it. LOD0 is initially visible; other
+representations are hidden in viewport/render. Move the generated root to stage
+comparisons without overlapping the source. All outputs use identity stored local
+transforms; arbitrary edits to individual levels require a fresh chain.
+
+Strategies:
+
+- COLLAPSE adapts native decimation ratio to the requested budget, triangulating
+  the result, with at most eight evaluations. Small budgets can still fail quality
+  checks or produce unusable geometry; success is not guaranteed by a ratio.
+- PLANAR uses native limited dissolve with `angle_degrees` (default 5), protecting
+  UV/material/normal/seam/sharp delimiters and boundaries. Useful for planar hard
+  surfaces; failure to meet the budget refuses rather than silently changing the
+  requested angle.
+- UNSUBDIVIDE reverses a regular subdivided grid with `iterations` (1–6, default 1).
+  It is not a general reduction method for arbitrary triangle topology.
+
+All outputs require finite positions/normals/UVs, retained UV names/render map,
+material slots, presence of each used material index and supported named attribute
+schemas. Presence does not prove exact texture boundaries, mask semantics or
+material appearance. Native topology reduction interpolates data; inspect thin
+parts, seams and small material regions. `transfer_normals=true` (default) uses
+nearest-face-interpolated source custom normals; false explicitly accepts native
+recomputed normals. LOD0 preserves the source snapshot's normals.
+
+`error_samples` (16–4096, default 512) samples raw vertices and face centers in
+both directions against nearest triangle surfaces. The report includes maximum
+and RMS distance and maximum distance relative to the source bounding diagonal.
+`max_relative_error` (default 0.1) is a hard threshold for that sampled measurement.
+It is measured in asset-local coordinates, and does not establish an exhaustive
+Hausdorff bound, screen-space silhouette, foliage density or behavior under
+nonuniform world scale. Open the render and review the asset at intended sizes.
+
+`inspect_lod_chain` reports current geometry/visibility/recipes/quality, ownership
+issues and `chain_sha256`. Carry it as `expected_chain` into
+`activate_lod_level` with integer `level` or into `export_lod_chain`. The guard
+covers stored mesh content, UVs/attributes, normals, material assignments, root
+transform, relative transforms and representation visibility. Shared shader/image
+contents are not frozen. Missing/modified geometry, added modifiers/constraints/
+animation, changed collection membership or child transforms refuse management
+and export. Moving the root is allowed and changes the fingerprint. Source
+staleness/unavailability is informational because outputs are independent static
+snapshots; regenerate them when the source revision should be adopted.
+
+`activate_lod_level` chooses one representation for viewport/render. This is manual
+representation selection, not an automatic distance-switching system. Original
+source objects stay untouched and can overlap the chain; stage them appropriately
+for screenshots. Do not rely on an inactive hidden object's unevaluated world
+matrix; managed guards use its stored transforms.
+
+`export_lod_chain` takes a new `directory` under the active library. It exports
+`level_00.glb`, `level_01.glb`, etc. and `manifest.json`; it does not overwrite a
+bundle. Each representation is selected/unhidden temporarily, then its state and
+the user's selection are restored. Native glTF surface-material conversion applies;
+bake procedural shaders when the target needs PBR equivalence. The worker refines
+storage estimates from geometry and texture pixels, reports current storage in
+progress, and checks available space before output. Estimates are heuristic.
+
+Before publishing the directory, an independent binary parser checks embedded
+buffers/images, index bounds, finite positions/normals/UVs, unit normals, triangle
+counts/budgets and surface position bounds converted to glTF +Y-up coordinates.
+A manifest records file hashes, geometry/quality/budgets and source/chain guards.
+`validate_lod_export` re-reads those files independently, refusing missing,
+modified, oversized or symlinked members. This does not replace rendered or
+native re-import checks, verify every texture/shader visually or configure engine
+LOD switching. Each GLB is a separate static representation.
+
+Generate/export default to queued operations; poll/wait/cancel, or pass `wait=true`.
+Native evaluation/decimation/export cannot cancel internally. Cooperative errors
+or cancellation remove owned generated objects/data or the owned export staging
+directory. Publication happens after validation. Process crashes can leave an
+interrupted staging directory; crash-time reconciliation/retention is separate.
+Explicit completed bundles and source assets are not temporary-retention targets.
+Limits: 250,000 snapshot vertices, one million corners, 500,000 triangles per
+level, eight representations total and 512 MiB per validated GLB. Rig/morph-aware
+LOD transfer, foliage reconstruction/impostors/collision/shadow proxies and
+reusable collection-instance/batch delivery workflows remain separate milestones.
+
 ## Existing skeleton and rest-hierarchy refinement
 
 `inspect_armature_rest` reads an Object-mode armature's rest bones without

@@ -124,6 +124,16 @@ changes. Modified source keys/masks or generated links invalidate the chain.
 Validated morph GLB bundles remain separate: plan/export reports a blocker. See
 the manual for limits and key ordering.
 
+For file inspection, call `inspect_glb_deformation` on a library `.glb` path.
+It queues by default: poll/wait, or pass `wait=true`. Read target/joint/clip inventory,
+then page/select clips and inspect sampled glTF-world (+Y-up) bounds/vertex positions.
+Dense and sparse float morphs replay before optional linear skinning. A null clip
+sample uses stored default weights. This reads the file without importing it or
+changing the scene; it does not compare to authored Blender geometry or certify
+all-frame/appearance/engine fidelity. The native profile is one mesh, optional skin,
+up to 63 morphs; normalized/compressed/instanced/multiple-mesh assets are outside it.
+Morph LOD bundle publication and controller-graph baking remain separate work.
+
 Prefer structured tools for the supported pipeline, including when Python
 execution is disabled: `create_primitive` / `create_mesh`, `configure_modifier`,
 `apply_modifier` / `remove_modifier`, `generate_uv`, `duplicate_object`,

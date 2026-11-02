@@ -16,7 +16,7 @@ from .mesh_edit import geometry_digest
 from mcpblender.lod_files import MARKER,file_hash,glb_report,validate
 from mcpblender.storage import require_space
 
-COMMANDS={'inspect_lod_export','sample_lod_chain','inspect_lod_source','generate_lod_chain','inspect_lod_chain','activate_lod_level','export_lod_chain','validate_lod_export'}
+COMMANDS={'inspect_glb_deformation','inspect_lod_export','sample_lod_chain','inspect_lod_source','generate_lod_chain','inspect_lod_chain','activate_lod_level','export_lod_chain','validate_lod_export'}
 META='mcpblender_lod_chain'
 
 
@@ -342,6 +342,10 @@ def export(p):
 
 
 def dispatch(command,p):
+    if command=='inspect_glb_deformation':
+        from mcpblender.skin_glb import inspect_file
+        from .bridge import check_cancelled,report_progress
+        return inspect_file(p,check_cancelled=check_cancelled,progress=report_progress)
     if command=='inspect_lod_export':
         from .skin_lod_export import plan
         return plan(p)

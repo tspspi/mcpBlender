@@ -27,8 +27,20 @@ def test_readonly_lod_visibility_and_output_boundary(tmp_path):
     async def run():
         async with Client(server) as client:
             names={t.name for t in await client.list_tools()}
-            assert {'inspect_lod_source','inspect_lod_chain','validate_lod_export','sample_lod_chain','inspect_lod_export'}<=names
+            assert {'inspect_glb_deformation','inspect_lod_source','inspect_lod_chain','validate_lod_export','sample_lod_chain','inspect_lod_export'}<=names
             assert not {'generate_lod_chain','activate_lod_level','export_lod_chain'}&names
     asyncio.run(run())
     with pytest.raises(ValueError,match='inside'):
         state.prepare('export_lod_chain',{'chain':'Asset','expected_chain':'a'*64,'directory':'../outside'})
+
+
+def test_deformation_read_path_and_limits(tmp_path):
+    from mcpblender.lod_contracts import InspectGLB
+    config=Config();config.stdio.library_root=str(tmp_path/'library')
+    _,state=build_server(config)
+    assert State.input_paths('inspect_glb_deformation',{'path':'asset.glb'})==['asset.glb']
+    with pytest.raises(ValueError,match='inside'):state.prepare('inspect_glb_deformation',{'path':'../outside.glb'})
+    (tmp_path/'library').mkdir(exist_ok=True);(tmp_path/'library/scene.blend').write_bytes(b'fixture')
+    with pytest.raises(ValueError,match='end'):state.prepare('inspect_glb_deformation',{'path':'scene.blend'})
+    for patch in ({'limit':9},{'animation_samples':2},{'sample_limit':17},{'offset':33}):
+        with pytest.raises(ValueError):InspectGLB.model_validate({'path':'asset.glb'}|patch)

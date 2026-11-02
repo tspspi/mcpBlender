@@ -43,7 +43,7 @@ def read_glb(path):
     return doc,binary
 
 
-def glb_report(path,skinned=False):
+def glb_report(path,skinned=False,morphs=False):
     doc,binary=read_glb(path)
     if not skinned and (doc.get('skins') or doc.get('animations')):raise ValueError('Static LOD bundle cannot contain skins/animations')
     def attribute(index,components):
@@ -64,7 +64,7 @@ def glb_report(path,skinned=False):
     triangles=0;primitives=[]
     for mesh in doc.get('meshes',[]):
         for prim in mesh.get('primitives',[]):
-            if prim.get('mode',4)!=4 or prim.get('targets'):raise ValueError('Static triangle primitives required')
+            if prim.get('mode',4)!=4 or (prim.get('targets') and not morphs):raise ValueError('Triangle primitives required; morph targets need explicit morph validation')
             attrs=prim.get('attributes',{});current_normal=attrs.get('NORMAL')
             if 'POSITION' not in attrs or current_normal is None:raise ValueError('GLB requires positions and normals')
             position=attribute(attrs['POSITION'],3);normal=attribute(current_normal,3)

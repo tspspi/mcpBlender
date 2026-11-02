@@ -68,6 +68,16 @@ sampled corresponding vertices at 3–9 frames per clip; this is not every-frame
 motion or appearance proof. Run `validate_lod_export`, then re-import/sample and
 review representative motion. See USER_MANUAL.md for profile and tolerance limits.
 
+For file inspection, call `inspect_glb_deformation` on a library `.glb` path.
+It queues by default: poll/wait, or pass `wait=true`. Read target/joint/clip inventory,
+then page/select clips and inspect sampled glTF-world (+Y-up) bounds/vertex positions.
+Dense and sparse float morphs replay before optional linear skinning. A null clip
+sample uses stored default weights. This reads the file without importing it or
+changing the scene; it does not compare to authored Blender geometry or certify
+all-frame/appearance/engine fidelity. The native profile is one mesh, optional skin,
+up to 63 morphs; normalized/compressed/instanced/multiple-mesh assets are outside it.
+Morph LOD bundle publication and controller-graph baking remain separate work.
+
 Clips name the armature in `name` and the action in `clip`; tracks specify a
 `bone`, `property` and vector `keyframes`. Bone `rotation_degrees` uses XYZ Euler
 degrees relative to rest-bone axes, unlike object `set_keyframes` rotations in

@@ -147,7 +147,7 @@ class State:
         if command == "run_action":
             return [path for step in params["steps"] for path in State.input_paths(step["command"], step["params"])]
         paths = []
-        if command in {"open_blend", "import_asset", "upload_asset"}:
+        if command in {"open_blend", "import_asset", "upload_asset", "inspect_glb_deformation"}:
             paths.append(params["path"])
         if command == "vse_add_strip":
             paths.extend(params["paths"])
@@ -187,9 +187,9 @@ class State:
                 temporary.append({"kind": "sequence", "path": params["directory"], "frame_start": params["frame_start"],
                                   "frame_end": params["frame_end"], "frame_step": params["frame_step"],
                                   "video": command == "render_animation_preview" and params["make_video"]})
-        if command in ("open_blend", "import_asset", "save_blend", "export_glb", "export_objects_glb"):
+        if command in ("open_blend", "import_asset", "save_blend", "export_glb", "export_objects_glb", "inspect_glb_deformation"):
             params["path"] = str(self.library_path(params["path"], write=command in ("save_blend", "export_glb", "export_objects_glb")))
-            extension = {"save_blend": ".blend", "open_blend": ".blend", "export_glb": ".glb", "export_objects_glb": ".glb"}.get(command)
+            extension = {"save_blend": ".blend", "open_blend": ".blend", "export_glb": ".glb", "export_objects_glb": ".glb", "inspect_glb_deformation": ".glb"}.get(command)
             if extension and Path(params["path"]).suffix.lower() != extension:
                 raise ValueError(f"File must end in {extension}")
         if command in {"bake_rigid_bodies","bake_simulation"}:
@@ -420,7 +420,7 @@ def build_server(config: Config):
 
     def domain_tool(command):
         model, _, description = COMMANDS[command]
-        default_wait = command not in ("render_animation", "render_video", "render_animation_preview", "download_asset", "upload_asset", "request_asset_api", "sample_rigid_bodies", "bake_rigid_bodies", "sample_simulation", "bake_simulation", "bake_fluid", "bake_textures", "sample_constraint_animation", "bake_constraint_animation", "configure_nla_strip", "remove_nla_strip", "move_nla_track", "configure_nla_playback", "retarget_animation", "set_skin_weights", "repair_skin_weights", "smooth_skin_weights", "mirror_skin_weights", "edit_armature_rest", "generate_lod_chain", "export_lod_chain", "sample_lod_chain")
+        default_wait = command not in ("render_animation", "render_video", "render_animation_preview", "download_asset", "upload_asset", "request_asset_api", "sample_rigid_bodies", "bake_rigid_bodies", "sample_simulation", "bake_simulation", "bake_fluid", "bake_textures", "sample_constraint_animation", "bake_constraint_animation", "configure_nla_strip", "remove_nla_strip", "move_nla_track", "configure_nla_playback", "retarget_animation", "set_skin_weights", "repair_skin_weights", "smooth_skin_weights", "mirror_skin_weights", "edit_armature_rest", "generate_lod_chain", "export_lod_chain", "sample_lod_chain", "inspect_glb_deformation")
 
         async def operation(params=None, wait: bool = default_wait, request_id: str | None = None) -> dict:
             values = params.model_dump(exclude_none=True) if params is not None else {}

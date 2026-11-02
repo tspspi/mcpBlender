@@ -1726,6 +1726,54 @@ failed generation and cancellation remove owned temporary meshes/Key data; sourc
 animation is never cleared or switched during transfer. Crash-time recovery is
 separate from ordinary failure cleanup.
 
+## Independent GLB deformation inspection
+
+`inspect_glb_deformation` takes an existing `.glb` `path` under the active library.
+It reads the file without importing it or changing the Blender scene, actions or
+frame. By default it queues an operation; poll/wait/cancel normally, or use
+`wait=true`. Progress includes current storage information. The input path is
+protected from owned temporary-retention cleanup while the operation uses it.
+
+The result contains file `sha256`, geometry/dependency inventory, joint names,
+morph target names/default weights, clip inventory and sampled world playback.
+Each sample reports its clip/time, number of representative vertices,
+`sampled_world_bounds`, up to `sample_limit` vertex positions (default 8, maximum
+16) and a replay fingerprint. `clip=null` denotes the file's default pose, including
+its stored morph weights; it does not force all morphs to zero. World coordinates
+use glTF +Y up. Raw POSITION-buffer bounds in `geometry` use the buffer's coordinate
+system and can differ from sampled world bounds.
+
+Choose a named `clip` or page clips with `offset`/`limit` (default 4, maximum 8),
+then follow `next_offset`. Clip selection overrides paging. `animation_samples`
+(default 3, range 3–9) distributes sample times across each selected clip's stored
+range, including interpolation between sparse key times. The default pose is also
+sampled. Representatives cover distributed vertices, per-joint position extrema
+and per-target offset extrema; the bounds are sampled, not exhaustive. Sparse
+morph storage is supported with an implicit zero base or replacements over a
+dense base. Sparse indices must be ordered, distinct and within the accessor.
+LINEAR, STEP and CUBICSPLINE weight channels and default mesh/node weights replay;
+morph offsets apply before linear joint deformation.
+
+This is a bounded native export profile: one mesh node/mesh, optional single
+linear skin with up to 256 named joints/four influences, up to 63 non-Basis morph
+targets, 32 clips, two million exported vertices, two million animation value rows
+(morph weights counted individually) and four million target-vertex entries. Buffers/images must be embedded, positions/normals/
+UVs must pass the geometry reader, and weights/targets/curves must be finite.
+Float morph data can be dense or sparse; quantized/normalized attributes,
+compressed geometry, GPU instancing, multiple meshes and arbitrary glTF extensions
+are outside this inspection profile. Files are limited to 512 MiB with 16 MiB JSON.
+A second file-hash check refuses an asset changed during inspection. Cancellation
+is cooperative between decoder/replay work; file reads and geometry parsing can
+finish before a pending cancellation is observed.
+
+Inspection proves what this decoder can read and sample from that file. It does
+not compare the file to an authored Blender model, evaluate procedural shaders,
+certify every frame/vertex or establish target-engine behavior. Native comparison
+fixtures qualify selected exports; ordinary inspection is not that comparison.
+Validated morph LOD bundle publication and baking/detaching the shared source
+controller graph remain subsequent work. Current morph-chain delivery stays an
+editable `.blend` with its source Key dependency.
+
 ## Existing skeleton and rest-hierarchy refinement
 
 `inspect_armature_rest` reads an Object-mode armature's rest bones without

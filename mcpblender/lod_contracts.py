@@ -72,11 +72,21 @@ class Export(Guard):
     expected_animation: Digest | None = None
 
 
+class InspectGLB(Model):
+    path: str = Field(min_length=1)
+    clip: SafeName | None = None
+    offset: int = Field(default=0,ge=0,le=32)
+    limit: int = Field(default=4,ge=1,le=8)
+    animation_samples: int = Field(default=3,ge=3,le=9)
+    sample_limit: int = Field(default=8,ge=0,le=16)
+
+
 class Validate(Model):
     directory: str = Field(min_length=1)
 
 
 COMMANDS={
+ 'inspect_glb_deformation':(InspectGLB,(),'Independently decode a library GLB with a single native-profile mesh, optional linear skin and relative morph targets. Read-only joint/target/clip inventory, bounded sampled world playback and replay fingerprints; embedded dense/sparse float morph buffers; no compressed/instanced geometry. Does not compare to Blender or certify appearance.'),
  'inspect_lod_source':(Source,(),'Inspect STATIC viewport geometry, MORPH relative shape keys or SKINNED raw rest geometry/linear binding, UV/material/attribute inventory and source guard. Skin mode reports weights, rig and suggested pose frames. Morph weights follow original source controllers; object-motion sources remain separate.'),
  'generate_lod_chain':(Generate,('allow_scene_edit',),'Create independent LOD0 and reduced geometry in a managed collection/root. MORPH transfers relative keys/masks with source-controlled weights; SKINNED also retains the existing linear rig, native-interpolated normalized/pruned weights and sampled pose validation. COLLAPSE/PLANAR/UNSUBDIVIDE, decreasing budgets, UV/material/normal checks and sampled bidirectional surface error; preserves source and cleans up cancellation/failures.'),
  'sample_lod_chain':(SampleSkin,(),'Sample current-timeline deformation of a SKINNED or MORPH LOD chain versus its source. Reports bounded bidirectional surface error at chosen/recommended poses, restores frame/visibility and refuses stale guards or excessive error; does not switch clips.'),

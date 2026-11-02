@@ -1,5 +1,56 @@
 # Local validation: 0.2.0
 
+## Independent morph/skin GLB replay and inspection — 2026-11-02
+
+Final focused gate:
+
+```sh
+MCPBLENDER_TEST_BLENDER=1 MCPBLENDER_MORPH_GLB_EVIDENCE_DIR=/tmp/mb-morph-glb-20261102 python3 -m pytest -q tests/test_skin_glb.py tests/test_morph_glb.py tests/test_morph_glb_native.py tests/test_glb_deformation.py tests/test_lod_contracts.py --tb=short --maxfail=1
+```
+
+Result: **28 passed in 42.33s**. Known-answer tests cover default mesh/node
+weights, LINEAR/STEP/CUBICSPLINE scalar weight grouping, matrix-node morph channels
+and rotation of morph offsets before skinning. Sparse targets work with zero bases
+and dense overlays, including 16/32-bit indices and truncated-value refusal; duplicate/unsorted/out-of-range indices refuse. Incorrect
+counts/names, nonfinite data, changed target fingerprints, unsupported instancing,
+unknown clips, cancellation and changed-file readback are checked.
+
+System Blender 5.0.1 exports both a morph-only sphere and a combined skeletal/morph
+sphere, each with two shape targets (including a localized sparse target) and an animated clip. Every exported split
+vertex is mapped to native Basis data; decoded world positions at five frames
+match native evaluated positions within 3.39e-7 in both fixtures. The combined
+fixture includes bone rotation and shared rig/Key action slots. These are real
+native exports and comparisons, not only synthetic GLB tests.
+
+The structured fixture runs with arbitrary Python disabled. It creates a
+roof-lift morph, exports the GLB and inspects localized sparse morph data through
+the queued `inspect_glb_deformation` tool. It checks changing sampled bounds,
+current-storage progress, unchanged scene/frame/selection/animation and refusal
+of malformed files. Contracts test read-only discovery, path confinement, file
+extension and paging/sample limits. The input is registered with active retention
+protection. No import or authored-scene mutation is needed for inspection.
+
+Existing LOD/static/skin/morph/bundle/server/capability regression:
+
+```sh
+MCPBLENDER_TEST_BLENDER=1 python3 -m pytest -q tests/test_lods.py tests/test_lod_native.py tests/test_skin_lods.py tests/test_skin_lod_native.py tests/test_skin_lod_export.py tests/test_skin_bundle_native.py tests/test_morph_lods.py tests/test_morph_lod_native.py tests/test_server.py tests/test_capabilities.py --tb=short --maxfail=1
+```
+
+Result: **21 passed in 242.99s**, with the existing Starlette/AnyIO deprecation
+warning. Both bundled design and animation skills pass the skill validator.
+
+Evidence: `/tmp/mb-morph-glb-20261102/{MorphOnly.glb,MorphOnly.json,SkinMorph.glb,SkinMorph.json}`.
+No new rendered appearance or engine behavior qualification is claimed. Native
+comparison covers the fixture exports, not arbitrary imported assets. Ordinary
+inspection reports sampled file playback and does not establish authored-model
+correspondence, every-frame geometry, shading or a general glTF conformance result.
+The profile requires one embedded-buffer mesh, optional linear skin, float morphs,
+up to 63 targets and bounded curves/vertices. Compression, normalized/quantized
+attributes, GPU instances, multiple meshes and general extension handling remain
+outside this reader. Morph LOD bundle publication/controller-graph baking remains
+open. No package, virtual environment, installed runtime/skill, service or user GUI
+changes were made.
+
 ## Relative morph LOD transfer — 2026-11-02
 
 The structured MCP fixture runs with arbitrary Python disabled. It creates a

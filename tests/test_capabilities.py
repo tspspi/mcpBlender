@@ -20,7 +20,8 @@ def test_workflow_inventory_does_not_claim_unregistered_commands():
     assert support["geometry_nodes"]["support"] == "structured_partial"
     assert support["physics"]["support"] == "structured_partial"
     assert support["simulation_baking"]["support"] == "structured_partial"
-    for name in ("compositing", "particles"):
+    assert support["particles"]["support"] == "structured_partial"
+    for name in ("compositing",):
         assert support[name]["support"] == "python_only"
         assert support[name]["structured_commands"] == []
     # A missing worker command must never be advertised through a static mapping.
@@ -41,7 +42,7 @@ def test_live_capability_discovery_with_python_disabled(assets_live):
             result = await tool(client, "get_capabilities")
             assert result["operations_protocol"] == 2
             assert set(result["domains"]) == set(result["domain_support"])
-            assert "particles" in result["python_only_domains"]
+            assert "particles" not in result["python_only_domains"]
             assert "geometry_nodes" not in result["python_only_domains"]
             assert "attach_geometry_nodes" in result["domain_support"]["geometry_nodes"]["structured_commands"]
             assert "configure_shader_graph" in result["domain_support"]["shader_nodes"]["structured_commands"]

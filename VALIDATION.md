@@ -1,5 +1,68 @@
 # Local validation: 0.2.0
 
+## Cloth, soft bodies, particles and force helpers — 2026-11-02
+
+The initial point-cache suite passed **4 tests in 62.29 seconds**, using real
+Blender 5.0.1 through MCP with arbitrary Python execution disabled. It covers
+pinned cloth contacting a floor, soft-body collision, Newtonian object-instance
+particles, measurable wind response, static hair strand length and running bake
+cancellation. Expanded simulation/rigid/capability/server/storage checks passed
+**18 tests in 152.37 seconds**. The complete regression then passed **114 tests
+in 646.63 seconds**, including explicit coordinate-space metadata and collider
+enable-state fingerprints, with the existing Starlette/AnyIO warning. The final
+shared-mesh isolation guard is verified by additional focused checks below.
+
+After that guard, **15 focused tests passed in 92.38 seconds**:
+
+```sh
+MCPBLENDER_TEST_BLENDER=1 MCPBLENDER_SIM_EVIDENCE_DIR=/tmp/mb-sim-20261102 python3 -m pytest -q tests/test_simulations.py tests/test_simulation_contracts.py tests/test_capabilities.py tests/test_server.py tests/test_storage.py --tb=short --maxfail=1
+```
+
+Linked-mesh pin edits are refused without explicit isolation. After isolating and
+removing one object's cloth pins, a linked copy retains its pinned position under
+actual simulation. The bundled animation skill validator and `git diff --check`
+also passed. The full 114-test run precedes this final isolation refinement.
+
+Typed configuration uses an inspected simulation fingerprint; cloth pin indices
+also require a topology fingerprint. Dedicated static meshes, static collision
+objects and owned Empty force helpers are the supported dependency model. Shared
+particle settings require explicit isolation. Evaluated unbaked caches require
+explicit reset; baked caches must be cleared before configuration changes.
+Shared deform meshes and removal of shared pin weights require explicit
+`make_single_user=true`; the linked object's original geometry/weights remain.
+
+Sequential sampling restores the original frame. Embedded-cache baking saves a
+full-scene `.blend` copy, preserving the active project path. Validation compares
+source binding and bounded geometry/particle checkpoints, including a particle
+snapshot opened in a separate disposable Blender process. This is sampled
+validation, not an all-frame solver proof. Moving a dependency invalidates its
+binding; clearing live caches preserves the snapshot bytes.
+
+Frame/point/cache budgets and per-frame storage checks constrain work. Tracked
+progress includes free space and estimated output size. A broker restart preserves
+the running operation; cancellation restores the frame at a cooperative boundary
+and a repeated request ID does not replay it. Native cache finalization/save remain
+noninterruptible. Existing snapshot paths are refused.
+
+Native API checks caught three important behaviors: `hair_length` aliases emitter
+velocity, so it must only be assigned for hair; static hair needs NEWTON physics
+with dynamics disabled, as NO collapses strands; legacy `trail_count` normalizes
+from 0 to 1 on reload and is excluded from the physics fingerprint. Computed
+soft-body location/rotation/scale estimates are also excluded as solver outputs.
+
+External/disk/fluid caches, particle children/dynamic hair, animated/deforming
+sources, dynamic colliders and collection/texture dependencies are unsupported.
+Static hair is saved normally rather than frame-baked. Cache motion is not yet
+converted to exported animation. Explicit snapshots are protected deliverables;
+this feature does not implement their automatic retention/deletion. No installed
+service, package, dependency or installed skill was changed.
+
+Evidence under `/tmp/mb-sim-20261102/` includes cloth and particle renders, plus
+cloth/soft/particle `.blend` snapshots. Both renders were opened and inspected.
+The particle image was rendered after opening the saved cache in a fresh Blender
+process. These low-resolution functional previews do not establish final visual
+quality, target-engine behavior or long-duration workload stability.
+
 ## Capability classification — 2026-11-02
 
 `MCPBLENDER_TEST_BLENDER=1 python3 -m pytest -q tests/test_capabilities.py
@@ -594,6 +657,6 @@ Native blocking operations are not forcibly cancellable, and arbitrary Python
 cannot be assigned a reliable storage estimate. Recovery preserves the completed
 checkpoint, not edits after it, and does not imply rollback or power-failure proof.
 
-Absolute shape-key animation, physics bakes, constraints/drivers/active NLA blending, other Blender/platform versions,
+Absolute shape-key animation, fluid/external-cache bakes, constraints/drivers/active NLA blending, other Blender/platform versions,
 long-duration workloads, external HTTPS deployment, Godot behavior and real
 external generation services are not qualified by this suite.

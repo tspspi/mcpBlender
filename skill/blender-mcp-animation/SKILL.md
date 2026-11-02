@@ -82,7 +82,32 @@ establish source compatibility. Sampling/baking are asynchronous by default and
 report live storage; cancellation restores frame at boundaries, while final native
 cache/save calls cannot be interrupted. `clear_rigid_bake` clears live state and
 keeps saved files. This workflow does not yet convert physics motion to keyframes
-or provide cloth/fluid/particle caches; do not assume GLB exports cache animation.
+or provide fluid caches; do not assume GLB exports cache animation.
+
+For cloth, soft bodies or particles, first call `inspect_simulations` and pass its
+`simulation_sha256` as `expected_simulation` on edits/sampling/baking. Configure a
+dedicated static mesh with `configure_deform_simulation` (CLOTH or SOFT_BODY), or
+`configure_particles` (Newtonian EMITTER or static HAIR). Cloth pin indices also
+require `expected_topology` from mesh inspection. Pass `make_single_user=true`
+when configuring shared deform mesh data or removing shared pin weights; linked
+objects retain their original data. Use a separate static mesh with
+`configure_collision`; `configure_force_field` creates an owned Empty helper.
+Animated/deforming sources, mixed dynamic colliders, particle children, dynamic
+hair and collection/texture dependencies are outside this workflow. Shared
+particle settings need explicit `make_single_user=true` before changing them.
+
+Use `sample_simulation` for bounded world-space mesh/particle readback; static
+hair root/tip coordinates are in emitter object space. Sampling steps from the
+cache start and restores the original frame. Configuration edits require explicit
+`reset_unbaked=true` if evaluated caches exist, or clearing baked caches first.
+`bake_simulation` saves a full-scene `.blend` copy with the selected embedded cache;
+`validate_simulation_bake` checks source binding and bounded checkpoints after
+reopening. Static hair needs ordinary project saving rather than a time bake.
+`clear_simulation_cache` preserves saved snapshots; removal tools affect owned
+controllers/helpers. Frame/cache budgets and free-space checks constrain work.
+Watch tracked progress/storage and cancel at frame boundaries; native cache
+finalization/save remain noninterruptible. External disk/fluid caches, cache-to-
+keyframe export and automatic deletion of explicit snapshots are not provided.
 
 Render a small preview frame sequence before committing to expensive output.
 Prefer the named `animation_preview` action for PNG/video delivery without editing

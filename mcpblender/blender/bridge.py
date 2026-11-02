@@ -372,6 +372,7 @@ class BridgeServer:
                 reads.update({"shader_node_catalog", "inspect_shader_graph"})
                 reads.update({"geometry_node_catalog", "inspect_geometry_graph"})
                 reads.update({"inspect_physics", "validate_rigid_bake", "sample_rigid_bodies"})
+                reads.update({"inspect_simulations", "validate_simulation_bake", "sample_simulation"})
                 mutates = self.active["command"] not in reads
                 if self.active["command"] == "run_action":
                     mutates = any(step["command"] not in reads for step in self.active["params"]["steps"])

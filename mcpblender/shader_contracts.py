@@ -7,7 +7,7 @@ from .config import Model
 
 Name = Annotated[str, Field(min_length=1, max_length=255)]
 Socket = int | Name
-Value = FiniteFloat | bool | Annotated[list[FiniteFloat], Field(min_length=3, max_length=4)]
+Value = FiniteFloat | bool | Annotated[str, Field(max_length=255)] | Annotated[list[FiniteFloat], Field(min_length=3, max_length=4)]
 Color = Annotated[list[Annotated[FiniteFloat, Field(ge=0, le=1)]], Field(min_length=4, max_length=4)]
 NODE_TYPES = (
     "ShaderNodeBsdfPrincipled", "ShaderNodeBsdfDiffuse", "ShaderNodeBsdfGlass",
@@ -16,7 +16,7 @@ NODE_TYPES = (
     "ShaderNodeTexCoord", "ShaderNodeMapping", "ShaderNodeMath", "ShaderNodeVectorMath",
     "ShaderNodeMixRGB", "ShaderNodeNormalMap", "ShaderNodeBump", "ShaderNodeRGB",
     "ShaderNodeValue", "ShaderNodeSeparateColor", "ShaderNodeCombineColor", "ShaderNodeMapRange",
-    "ShaderNodeValToRGB",
+    "ShaderNodeValToRGB", "ShaderNodeVolumePrincipled", "ShaderNodeVolumeInfo", "ShaderNodeAttribute",
 )
 
 
@@ -31,6 +31,8 @@ class RampStop(Model):
 
 
 class NodeProperties(Model):
+    attribute_name: Annotated[str, Field(max_length=255)] | None = None
+    attribute_type: Literal["GEOMETRY", "OBJECT", "INSTANCER", "VIEW_LAYER"] | None = None
     operation: Name | None = None
     blend_type: Name | None = None
     noise_dimensions: Literal["1D", "2D", "3D", "4D"] | None = None
@@ -116,7 +118,7 @@ class ShaderCatalog(Model):
 
 class MaterialPreset(Model):
     material: Name
-    preset: Literal["PBR", "TEXTURED_PBR", "GLASS", "EMISSION"] = "PBR"
+    preset: Literal["PBR", "TEXTURED_PBR", "GLASS", "EMISSION", "VOLUME", "SMOKE", "FIRE"] = "PBR"
     replace: bool = False
     base_color: Color = [.8, .8, .8, 1]
     roughness: FiniteFloat = Field(default=.5, ge=0, le=1)
@@ -124,6 +126,11 @@ class MaterialPreset(Model):
     ior: FiniteFloat = Field(default=1.45, ge=1, le=4)
     emission_color: Color = [1, 1, 1, 1]
     emission_strength: FiniteFloat = Field(default=1, ge=0, le=100_000)
+    volume_density: FiniteFloat = Field(default=1, ge=0, le=1000)
+    anisotropy: FiniteFloat = Field(default=0, ge=-.99, le=.99)
+    volume_emission_strength: FiniteFloat = Field(default=0, ge=0, le=100_000)
+    blackbody_intensity: FiniteFloat = Field(default=1, ge=0, le=1000)
+    temperature_scale: FiniteFloat = Field(default=1000, ge=1, le=10000)
     base_color_texture: str | None = None
     roughness_texture: str | None = None
     metallic_texture: str | None = None
@@ -137,7 +144,7 @@ class MaterialPreset(Model):
         textures = any((self.base_color_texture, self.roughness_texture, self.metallic_texture, self.normal_texture))
         if self.preset == "TEXTURED_PBR" and not textures:
             raise ValueError("TEXTURED_PBR requires at least one texture")
-        if self.preset in {"GLASS", "EMISSION"} and textures:
+        if self.preset in {"GLASS", "EMISSION", "VOLUME", "SMOKE", "FIRE"} and textures:
             raise ValueError("Texture maps are supported by the PBR presets")
         return self
 
@@ -151,5 +158,5 @@ COMMANDS = {
     "connect_shader_nodes": (ConnectNodes, EDIT, "Connect named shader sockets; use identifiers or indexes for ambiguous socket names. Existing input links require replace_existing=true."),
     "disconnect_shader_input": (ShaderInput, EDIT, "Remove incoming links from a particular material node input."),
     "remove_shader_node": (RemoveNode, EDIT, "Remove a named material node and its links."),
-    "apply_material_preset": (MaterialPreset, EDIT, "Create PBR, TEXTURED_PBR, GLASS or EMISSION material graphs. PBR accepts packed base-color/roughness/metallic/normal maps. Existing material requires replace=true."),
+    "apply_material_preset": (MaterialPreset, EDIT, "Create PBR, TEXTURED_PBR, GLASS, EMISSION or VOLUME/SMOKE/FIRE graphs. Volume presets use density/anisotropy; FIRE uses temperature and flame-driven blackbody emission. Existing material requires replace=true."),
 }

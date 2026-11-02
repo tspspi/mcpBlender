@@ -8,6 +8,7 @@ COMMANDS = {"shader_node_catalog", "inspect_shader_graph", "configure_shader_gra
             "configure_shader_node", "connect_shader_nodes", "disconnect_shader_input",
             "remove_shader_node", "apply_material_preset"}
 PROPERTIES = {
+    "ShaderNodeAttribute": ("attribute_name", "attribute_type"),
     "ShaderNodeMath": ("operation",), "ShaderNodeVectorMath": ("operation",),
     "ShaderNodeMixRGB": ("blend_type",), "ShaderNodeTexNoise": ("noise_dimensions", "normalize"),
     "ShaderNodeTexVoronoi": ("voronoi_dimensions",),
@@ -23,7 +24,7 @@ NODE_TYPES = (
     "ShaderNodeTexCoord", "ShaderNodeMapping", "ShaderNodeMath", "ShaderNodeVectorMath",
     "ShaderNodeMixRGB", "ShaderNodeNormalMap", "ShaderNodeBump", "ShaderNodeRGB",
     "ShaderNodeValue", "ShaderNodeSeparateColor", "ShaderNodeCombineColor", "ShaderNodeMapRange",
-    "ShaderNodeValToRGB",
+    "ShaderNodeValToRGB", "ShaderNodeVolumePrincipled", "ShaderNodeVolumeInfo", "ShaderNodeAttribute",
 )
 
 
@@ -71,6 +72,11 @@ def set_value(socket, value):
         if not isinstance(value, bool):
             raise ValueError("Boolean socket requires a boolean")
         values = [value]
+    elif expected == "STRING":
+        if not isinstance(value,str) or len(value)>255:
+            raise ValueError("String socket requires at most 255 characters")
+        socket.default_value=value
+        return
     elif expected in {"VALUE", "INT"}:
         if isinstance(value, (bool, list)) or not isinstance(value, (int, float)):
             raise ValueError("Numeric socket requires a number")
@@ -278,6 +284,20 @@ def preset(p):
     links = []
     def link(source, output, target, input):
         links.append({"from_node": source, "from_socket": output, "to_node": target, "to_socket": input})
+    if p["preset"] in {"VOLUME","SMOKE","FIRE"}:
+        inputs=[value("Color",p["base_color"]),value("Color Attribute",""),
+                value("Density",p["volume_density"]),value("Density Attribute","" if p["preset"]=="VOLUME" else "density"),
+                value("Anisotropy",p["anisotropy"]),value("Emission Strength",p["volume_emission_strength"]),
+                value("Emission Color",p["emission_color"]),value("Blackbody Intensity",0),
+                value("Blackbody Tint",p["emission_color"]),value("Temperature",p["temperature_scale"]),
+                value("Temperature Attribute","temperature" if p["preset"]=="FIRE" else "")]
+        nodes.append({"name":"Volume","type":"ShaderNodeVolumePrincipled","inputs":inputs})
+        link("Volume","Volume","Output","Volume")
+        if p["preset"]=="FIRE":
+            nodes.extend([{"name":"Grids","type":"ShaderNodeVolumeInfo"},
+                          {"name":"FlameIntensity","type":"ShaderNodeMath","properties":{"operation":"MULTIPLY"},"inputs":[value(1,p["blackbody_intensity"])]}])
+            link("Grids","Flame","FlameIntensity",0);link("FlameIntensity",0,"Volume","Blackbody Intensity")
+        return edit("configure_shader_graph",{"material":p["material"],"replace":p["replace"],"nodes":nodes,"links":links})|{"preset":p["preset"]}
     if p["preset"] == "EMISSION":
         nodes.append({"name": "Surface", "type": "ShaderNodeEmission", "inputs": [value("Color", p["emission_color"]), value("Strength", p["emission_strength"])]})
     else:

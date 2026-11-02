@@ -1,5 +1,35 @@
 # Local validation: 0.2.0
 
+## Volume shader authoring — 2026-11-02
+
+Focused verification passed **5 tests with 1 expected failure in 81.89 seconds**:
+
+```sh
+MCPBLENDER_TEST_BLENDER=1 MCPBLENDER_EXPECT_EMPTY_CACHED_VOLUMES=1 MCPBLENDER_VOLUME_EVIDENCE_DIR=/tmp/mb-volumes-20261102 python3 -m pytest -q tests/test_volume_materials.py tests/test_shader_contracts.py tests/test_shaders.py tests/test_capabilities.py --tb=short --maxfail=1
+```
+
+With MCP Python execution disabled, typed tools create constant volume, smoke and
+flame/temperature-driven fire graphs. Invalid numeric-socket string edits preserve
+the graph. Attribute properties/string sockets and all volume graphs survive
+save/reopen, including a fluid asset saved outside its bundle. Cache validation
+continues to pass. Asset reporting flags target-engine volume conversion limits.
+A homogeneous emissive mesh volume produces over 100 additional warm pixels
+against its emission-off control; the rendered image was opened and inspected.
+
+The expected failure is deliberately **not a rendering pass**. The actual cached
+fire, emission-off and smoke renders are identical empty scenes. Separate native
+quick-smoke and direct OpenVDB fixtures reproduce missing volumes; cached density,
+flame and temperature grids are nonzero. The local Blender 5.0.1 build cache has
+`WITH_NANOVDB=OFF`, consistent with Cycles' upstream loader requiring NanoVDB.
+This explains the Cycles failure; the separate EEVEE failure remains unresolved.
+No renderer rebuild, package change or installed-runtime change was performed.
+The expected-failure opt-in applies only after graph/bundle persistence checks,
+at the actual visible-fire assertion. Without that explicit environment flag,
+the cached-render test fails normally. Other errors are never converted to xfail.
+Keep cached smoke/fire visual qualification open and rerun without the flag on
+a suitable Blender build. Evidence is under `/tmp/mb-volumes-20261102/`.
+
+
 ## Static-source fluid bundles — 2026-11-02
 
 The full regression passed **119 tests in 716.87 seconds**, with the existing

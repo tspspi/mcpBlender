@@ -116,6 +116,8 @@ def asset_report(p):
             issue("invalid_uv", "error", "Non-finite UV coordinates")
         if not obj.data.materials or any(material is None for material in obj.data.materials):
             issue("missing_material", "warning", "Missing material slots or unassigned slot")
+        if any(m and m.node_tree and any(n.type=="OUTPUT_MATERIAL" and n.is_active_output and n.inputs.get("Volume") and n.inputs["Volume"].is_linked for n in m.node_tree.nodes) for m in obj.data.materials):
+            issue("volume_material", "warning", "Volume shaders require a separate target-engine workflow; surface-material export does not recreate cached smoke/fire grids")
         if report["topology"]["non_manifold_edges"]:
             issue("non_manifold", "warning", "Open or non-manifold edges; suitability depends on the asset")
         if report["topology"]["degenerate_faces"]:

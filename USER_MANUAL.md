@@ -140,13 +140,32 @@ can still leave partial edits. Animated/driven or linked materials are refused.
 For incremental editing, use `configure_shader_node`, `connect_shader_nodes`,
 `disconnect_shader_input` and `remove_shader_node`. Omitted inputs/properties are
 preserved; existing input connections need `replace_existing=true` to replace.
-`apply_material_preset` creates `PBR`, `TEXTURED_PBR`, `GLASS` or `EMISSION` graphs.
+`apply_material_preset` creates `PBR`, `TEXTURED_PBR`, `GLASS`, `EMISSION`,
+`VOLUME`, `SMOKE` or `FIRE` graphs.
 PBR presets accept base-color, roughness, metallic and tangent-space normal maps,
 texture scaling and image packing. Base color uses sRGB; data maps use Non-Color.
 Roughness/metallic maps use their red channel. Existing materials require explicit
 replacement. Assign the result using `assign_material`. These presets provide
 Blender shading; arbitrary procedural graphs and glass need target-engine review
 or baking before delivery. The GLB qualification covers the textured PBR preset.
+
+Volume presets connect Principled Volume to the material's Volume output.
+`VOLUME` uses a constant density; `SMOKE` reads the native `density` grid; `FIRE`
+also reads `temperature` and multiplies the flame grid by `blackbody_intensity`.
+Controls include `volume_density`, `anisotropy`, `volume_emission_strength`,
+`emission_color` and `temperature_scale` (the multiplier for a temperature grid).
+The shader catalog includes Principled Volume, Volume Info and Attribute nodes;
+string sockets allow explicit grid names. Assign these materials to a closed
+mesh or gas domain with `assign_material`. Texture-map inputs belong to PBR presets.
+`asset_report` warns that volume materials need a separate target-engine workflow.
+
+Cached gas shading also depends on the Blender build. In Blender 5.0.1, Cycles'
+[volume loader](https://github.com/blender/blender/blob/v5.0.1/intern/cycles/scene/image_vdb.cpp)
+requires NanoVDB; OpenVDB cache loading alone does not prove rendering support.
+The tested FreeBSD build has NanoVDB disabled: caches contain nonzero density,
+but smoke/fire renders are empty. Homogeneous mesh-volume rendering and shader
+round-trips pass; cached smoke/fire appearance is **not qualified on that build**.
+
 
 ## Named actions and local recipes
 

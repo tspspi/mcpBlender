@@ -6,10 +6,13 @@ import pytest
 
 from mcpblender.config import Config
 from mcpblender.server import build_server
-from mcpblender.shader_contracts import ShaderGraph, ShaderNode
+from mcpblender.shader_contracts import ShaderGraph, ShaderNode, MaterialPreset
 
 
 def test_shader_types_paths_and_readonly_discovery(tmp_path):
+    for spec in ({"volume_density":float("nan")},{"anisotropy":1},{"preset":"SMOKE","base_color_texture":"a.png"}):
+        with pytest.raises(ValueError):MaterialPreset(material="Volume",**spec)
+    assert ShaderNode(name="V",type="ShaderNodeVolumePrincipled",inputs=[{"socket":"Density Attribute","value":"density"}]).inputs[0].value=="density"
     for spec in ({"name": "Script", "type": "ShaderNodeScript"},
                  {"name": "Noise", "type": "ShaderNodeTexNoise", "image_path": "anything"},
                  {"name": "Value", "type": "ShaderNodeValue", "output_value": float("nan")}):

@@ -15,6 +15,7 @@ from . import geometry
 from . import physics
 from . import simulations
 from . import fluids
+from . import uv
 from .capabilities import workflow_support, DISCOVERY_NOTE
 
 COMMANDS = {"get_capabilities", "inspect_resources", "create_primitive", "create_mesh",
@@ -32,6 +33,7 @@ COMMANDS.update(geometry.COMMANDS)
 COMMANDS.update(physics.COMMANDS)
 COMMANDS.update(simulations.COMMANDS)
 COMMANDS.update(fluids.COMMANDS)
+COMMANDS.update(uv.COMMANDS)
 
 
 def strips(editor):
@@ -56,6 +58,8 @@ def curves(action, slot):
 
 
 def dispatch(command, p):
+    if command in uv.COMMANDS:
+        return uv.dispatch(command, p)
     if command in fluids.COMMANDS:
         return fluids.dispatch(command, p)
     if command in simulations.COMMANDS:

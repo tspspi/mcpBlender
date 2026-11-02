@@ -16,7 +16,7 @@ use `inspect_mesh` for base/evaluated geometry, boundary/non-manifold edges,
 world bounds, UV coverage bounds and sampled world vertices at the current frame.
 Compare base and evaluated geometry to distinguish stored topology from modifier
 results. The geometry digest excludes UVs/materials; the checks do not detect
-self-intersection or UV overlap.
+self-intersection; use `inspect_uv_layout` for a bounded UV-overlap check.
 
 For base-mesh element edits, use `inspect_mesh_elements` and carry its
 `topology_sha256` into `expected_topology`; optionally guard coordinates with its
@@ -35,6 +35,16 @@ isolation. Inspect winding, UVs, material slots and a render after topology edit
 Boolean modifiers support explicit operand objects and difference/union/intersect;
 inspect the evaluated result before applying or exporting, and exclude cutters
 from deliverables unless requested. Imported dependency graphs still need review.
+
+For seam-based UV work, inspect `inspect_uv_layout` and carry its `uv_sha256`
+as `expected_uv` into each edit. Use `set_uv_seams` with indexed or named EDGE
+selections, `unwrap_uv_mesh`, then `pack_uv_islands`. `normalize_uv_density`
+uses area-based pixels per Blender world unit at the requested texture width/
+height; packing with `scale=false` preserves that density. Reinspect bounds and
+`overlap.complete`: a zero count with incomplete checking does not prove a clean
+layout. Use `activate_uv_map` to select the named map for rendering/export.
+These UV-only tools preserve geometry, shape keys and skinning; shared meshes
+still need explicit isolation. Native unwrap/packing cannot cancel mid-call.
 
 For procedural geometry, discover `geometry_node_catalog` and inspect named
 groups with `inspect_geometry_graph`. `configure_geometry_graph` builds supported

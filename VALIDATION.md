@@ -1,5 +1,45 @@
 # Local validation: 0.2.0
 
+## UV seam/layout/density tools — 2026-11-02
+
+The expanded UV/contracts/capability/server suite passed **25 tests in 80.15
+seconds**, with the existing Starlette/AnyIO warning. Final qualification added
+an independent density check after GLB reimport, MINIMUM_STRETCH and degenerate
+triangle overlap controls; **7 focused tests passed in 70.20 seconds**:
+
+```sh
+MCPBLENDER_TEST_BLENDER=1 MCPBLENDER_UV_EVIDENCE_DIR=/tmp/mb-uv-20261102 python3 -m pytest -q tests/test_uv_contracts.py tests/test_uv_editing.py tests/test_capabilities.py --tb=short --maxfail=1
+```
+
+Real Blender 5.0.1, with MCP Python execution disabled, isolates a shared
+rectangular box, assigns named edge seams and unwraps six nonoverlapping islands.
+Normalization reaches 128 pixels per world unit with nonuniform object scale;
+packing with scale=false preserves that density. Activating DeliveryUV chooses it
+for render/export. Geometry/topology remain unchanged; maps and their guarded
+fingerprints survive save/reopen. A checker preview was opened and inspected.
+GLB reimport has nondegenerate UVs and retains a six-island layout at the requested
+density. This verifies UV delivery; the procedural checker itself is not a baked
+PBR texture and its appearance is not claimed to survive GLB.
+
+Separate fixtures detect deliberately overlapping projections, remove overlap
+by packing, reject stale transform/map guards, normalize at a nonsquare texture
+size and refuse collapsed-world-area islands without changing the UV fingerprint.
+An exhausted overlap budget explicitly reports incomplete inspection. Native
+ANGLE_BASED, CONFORMAL and MINIMUM_STRETCH paths are exercised. A skinned limb
+with a relative shape key keeps its geometry, shape data, bone/weight inspection
+and object selection through seam edits, unwrap and packing. Read-only policy
+exposes inspection but hides the six UV editing tools. Pure clipping controls
+include reversed winding, partial overlap, disjoint triangles, boundary-only
+contacts and degenerate triangles. The bundled design skill validates.
+
+These tools edit the entire base-mesh UV map, not evaluated deformation. Density
+is area-based pixels per Blender world unit. Native unwrap/packing is blocking;
+inspection is bounded and incomplete overlap checks are never a clean-layout
+proof. High-to-low texture baking, pins/partial-face editing and general UDIM
+workflows are outside this milestone. Evidence: `/tmp/mb-uv-20261102/`.
+No packages, virtual environments or installed runtimes/skills were changed.
+
+
 ## Volume shader authoring — 2026-11-02
 
 Focused verification passed **5 tests with 1 expected failure in 81.89 seconds**:

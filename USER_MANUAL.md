@@ -484,6 +484,47 @@ Example `configure_modifier` arguments:
 {"params":{"name":"Prop","modifier":"SoftEdges","settings":{"type":"BEVEL","width":0.05,"segments":3}}}
 ```
 
+## UV seams, layout and texel density
+
+`inspect_uv_layout` reads a named base-mesh `uv_map` (default `UVMap`) and returns
+`uv_sha256`, including local geometry, world transform, seams, map coordinates and
+active/render map selection. Carry it as `expected_uv` into every UV edit and
+reinspect after each change. A missing map still has a fingerprint, allowing
+safe creation with `unwrap_uv_mesh`. Shared data requires `make_single_user=true`.
+
+Use `set_uv_seams` with `edges: {"indices": [...]}` or a named EDGE selection
+(`edges: {"selection": "..."}`). Modes are `ADD`, `REMOVE` and `SET`; SET replaces
+the complete seam set. `unwrap_uv_mesh` unwraps all faces using `ANGLE_BASED`,
+`CONFORMAL` or installed `MINIMUM_STRETCH`, with `margin`. `pack_uv_islands`
+packs a map into the unit tile, with optional `rotate` and `scale` controls.
+`activate_uv_map` selects an existing map for editing and rendering/export.
+UV edits preserve vertex geometry, shape keys, skin weights, object selection
+and unrelated UV map coordinates. Native unwrap/packing operates on a temporary
+mesh; only resulting coordinates are copied back. Native operators are blocking
+and do not provide mid-call cancellation. These tools require Object mode and
+local data; inspection describes the base mesh, not evaluated modifier output.
+
+Inspection groups faces joined by UV-continuous shared edges into islands and
+reports bounds, degenerate islands and area-based texel density for
+`texture_width`/`texture_height` (1024 each by default). Density is the square root
+of pixel area divided by base-mesh world-space surface area, in pixels per
+Blender world unit; scene unit labels do not convert it to pixels per meter.
+`normalize_uv_density` scales each island about its UV center to `pixels_per_unit`.
+It refuses degenerate islands before assignment. Normalization may create
+out-of-tile coordinates or overlaps: pack afterward with `scale=false` to retain
+the requested density. Such fixed-size islands may not all fit a single tile;
+inspect bounds rather than assuming the pack guarantees a fit.
+
+Overlap inspection clips UV triangles and counts positive-area face pairs,
+ignoring boundary-only contact and areas at or below 1e-12 UV units squared.
+Its bounded sweep reports `overlap.complete=false` when `overlap_budget` is
+exhausted; an incomplete zero count does not establish a clean layout. Island,
+seam and pair samples report truncation. Defaults allow 50000 overlap candidate
+checks (maximum 200000), 128 island samples (maximum 512), up to 100000 faces and
+500000 corners, with edge incidence limited to 64 faces. This is a bounded
+layout check, not a guarantee of target-engine texture quality. High-to-low
+texture baking is a separate workflow.
+
 ## Mesh element editing and cleanup
 
 Use `inspect_mesh_elements` with `domain=VERTEX`, `EDGE` or `FACE` to page the

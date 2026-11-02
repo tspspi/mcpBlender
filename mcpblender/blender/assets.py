@@ -329,6 +329,13 @@ def frame_objects(p):
     graph = bpy.context.evaluated_depsgraph_get()
     points = []
     for name in dict.fromkeys(p["objects"]):
+        candidate=bpy.data.objects.get(name)
+        if candidate and candidate.instance_type=='COLLECTION' and candidate.get('mcpblender_asset_instance'):
+            from .assemblies import instance
+            bounds=instance({'name':name})['world_bounds']
+            if not bounds:raise ValueError('Instance has no visible evaluated mesh geometry')
+            points.extend(Vector((x,y,z)) for x in (bounds['min'][0],bounds['max'][0]) for y in (bounds['min'][1],bounds['max'][1]) for z in (bounds['min'][2],bounds['max'][2]))
+            continue
         obj = mesh_object(name)
         if bpy.context.view_layer.objects.get(name) is not obj:
             raise ValueError(f"Object is outside the current view layer: {name}")

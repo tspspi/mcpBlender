@@ -26,6 +26,58 @@ Blender's Python environment is needed.
 For a wheel-based permanent runtime, FreeBSD service supervision and client/skill
 setup, see [persistent installation](docs/DEPLOYMENT.md).
 
+## Reusable asset assemblies
+
+Use `inspect_asset_assembly_source` with a closed set of local `objects`, including
+parents, rig controls and objects referenced by constraints, drivers or material
+nodes. Check `can_create` and resolve `blockers`. Pass its `source_sha256` as
+`expected_source` to `create_asset_assembly`, plus a fresh `collection` name.
+Creation defaults to a queued operation; use `wait_operation` for completion.
+Progress reports free storage in the configured output filesystem and the native
+transfer's temporary filesystem. The result includes a final `temporary_storage`
+snapshot. The estimate is a heuristic, not a guaranteed allocation ceiling.
+
+Creation copies native objects, data, materials and clips into a persistent,
+initially unlinked collection. Parents and native references follow the copied
+graph. `copied_objects` maps original names to new component names. Existing managed
+nested prototypes remain shared. Source objects and their graph remain intact.
+Origin defaults to `BOUNDS_BOTTOM`; alternatives are `BOUNDS_CENTER`,
+`WORLD_ORIGIN`, or `CUSTOM` with a world-space `origin` vector.
+
+Inspect with `inspect_asset_assembly`. Pass its `assembly_sha256` as
+`expected_asset` to `place_asset_instance`, supplying a fresh object `name`,
+`location`, `rotation_degrees` and `scale`. Placements share the prototype's data
+and active animation. They do not have independent animation clocks. Negative
+scale is supported; zero and near-zero scale are refused.
+
+`set_asset_assembly_editing` takes the same guard and `enabled=true` to link the
+prototype directly into the current scene. Edit its mapped components with the
+ordinary structured geometry, shader, rig and animation tools; copied managed
+clip, driver and NLA metadata follows the copied targets. Disable editing to
+remove that direct scene link. This changes only the current scene's direct link;
+existing placements remain. Reinspect after edits to obtain a fresh guard.
+Membership changes, renaming/adopting/removing prototype components and general
+rebuild management are separate workflows.
+
+`inspect_asset_instance` reports evaluated viewport leaf transforms and world
+bounds, with `leaf_offset`/`leaf_limit` paging and an `instance_sha256` guard.
+`frame_objects` and `setup_preview_stage` accept managed placements for camera
+framing. `remove_asset_instance` takes `expected_instance` and removes only that
+placement; references from other objects/drivers and prototype membership block
+removal. Save the scene normally to retain prototypes, placements and clips.
+
+This workflow requires Object mode, local nonoverridden data and a closed native
+graph. Scene/World dependencies and drivers requiring arbitrary Python are refused.
+Limits include 128 direct members, eight nesting levels, 20,000 dependency IDs,
+two million raw mesh vertices, four million shape-key entries, and two million
+curve points in total (200,000 per action). Instance inspection caps evaluated
+records at 2,048 and mesh vertices at two million. Guards cover the documented
+current native state; image pixel buffers, external file contents and arbitrary
+Python dependencies are not frozen. Native write/append calls are not interruptible;
+cooperative cancellation and ordinary failure clean owned transfer data. External
+linked-library loading, realization/export, collision generation and independent
+instance simulation are not covered by these tools.
+
 ## Blender startup and attachment
 
 `get_capabilities` reports the connected Blender version and worker command

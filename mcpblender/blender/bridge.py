@@ -376,7 +376,7 @@ class BridgeServer:
                 reads.update({"inspect_simulations", "validate_simulation_bake", "sample_simulation"})
                 reads.update({"inspect_fluids", "validate_fluid_bake", "bake_fluid", "cleanup_fluid_job"})
                 reads.update({"inspect_fluid_job", "recover_fluid_job", "inspect_uv_layout"})
-                reads.update({"inspect_glb_deformation", "inspect_lod_export", "sample_lod_chain", "inspect_lod_source", "inspect_lod_chain", "export_lod_chain", "validate_lod_export", "inspect_armature_rest", "inspect_skin_weights", "inspect_animation_retarget", "inspect_nla", "inspect_animation_drivers", "inspect_animation_channels", "inspect_animation_constraints", "sample_constraint_animation"})
+                reads.update({"inspect_asset_assembly_source", "inspect_asset_assembly", "inspect_asset_instance", "inspect_glb_deformation", "inspect_lod_export", "sample_lod_chain", "inspect_lod_source", "inspect_lod_chain", "export_lod_chain", "validate_lod_export", "inspect_armature_rest", "inspect_skin_weights", "inspect_animation_retarget", "inspect_nla", "inspect_animation_drivers", "inspect_animation_channels", "inspect_animation_constraints", "sample_constraint_animation"})
                 reads.update({"inspect_texture_bake", "bake_textures", "validate_texture_bake", "inspect_texture_job", "recover_texture_job", "cleanup_texture_job"})
                 mutates = self.active["command"] not in reads
                 if self.active["command"] == "run_action":

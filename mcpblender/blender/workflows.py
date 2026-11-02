@@ -173,6 +173,12 @@ def setup_preview_stage(p):
     # Inspect every input before creating anything; reject off-layer or empty assets.
     bounds = []
     for name in dict.fromkeys(p["objects"]):
+        candidate=bpy.data.objects.get(name)
+        if candidate and candidate.instance_type=='COLLECTION' and candidate.get('mcpblender_asset_instance'):
+            from .assemblies import instance
+            value=instance({'name':name})['world_bounds']
+            if not value:raise ValueError('Preview instance has no visible evaluated mesh geometry')
+            bounds.append(value);continue
         obj = assets.mesh_object(name)
         if bpy.context.view_layer.objects.get(name) is not obj:
             raise ValueError(f"Object is outside the current view layer: {name}")

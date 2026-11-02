@@ -376,3 +376,17 @@ targets and weight channels as well as joint animation. Imported files can conta
 bone-display meshes; identify the actual morph mesh using shape-key counts or
 inspection. Preserve
 the `.blend`, inspect the GLB skin/clip contents and re-import when useful.
+
+For reusable components, inspect `inspect_asset_assembly_source` with a closed
+local object set (include rig controls and referenced objects). Resolve blockers,
+then `create_asset_assembly` with its guard and a fresh collection name. Wait for
+the queued operation and use `copied_objects` to find independent components.
+Inspect the prototype for `assembly_sha256`, then `place_asset_instance` with
+`expected_asset` and typed placement. Instances share the prototype and active
+animation. Enable `set_asset_assembly_editing` to edit its mapped components using
+structured tools; disable it afterward and reinspect guards. Existing placements
+update together; sources remain intact. `inspect_asset_instance` gives current
+viewport leaves/bounds; camera framing and preview setup accept managed placements.
+Save the scene for editable delivery. No independent instance timing, external
+library loading or realized/exported assembly delivery is implied; consult
+USER_MANUAL.md for ownership, dependency and guard limits.

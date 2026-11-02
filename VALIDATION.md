@@ -1,5 +1,52 @@
 # Local validation: 0.2.0
 
+## Reusable native asset assemblies — 2026-11-03
+
+Focused structured/native gate:
+
+```sh
+MCPBLENDER_TEST_BLENDER=1 MCPBLENDER_ASSEMBLY_EVIDENCE_DIR=/tmp/mb-assembly-20261103 python3 -m pytest -q tests/test_assembly_contracts.py tests/test_assembly_native.py tests/test_assemblies.py --tb=short --maxfail=1
+```
+
+Result: **5 passed in 30.42s** on FreeBSD Blender 5.0.1. With Python execution
+disabled, a packed-texture procedural building is copied to an independent native
+prototype and placed twice. Editing the copied Geometry Nodes floor input changes
+both instances from two to three floors, without changing the source geometry.
+A stale prototype guard refuses placement. Managed instance bounds support preview
+stage setup and camera framing. A 192×192 Cycles render is decoded and checked for
+material color coverage; visual inspection confirms the expected three-story
+building, windows, roof and textured walls. Scene save/reopen retains placements
+and evaluated bounds. The rig fixture copies a native rig/skin with a managed
+property driver, verifies remapped typed-editable targets, and changes the copied
+control without changing the source target.
+
+The native fixture covers parent, constraint, Key driver and material object
+reference remapping, independent data/materials, active/inactive managed clips,
+nested prototype reuse without leaked copied nested data, linked placements,
+source frame/selection/active state and fingerprints, and referenced-placement
+removal refusal. Ordinary cancellation after append restores the exact native ID
+set and source fingerprint. A subsequent regression also checks cancellation after
+final prototype verification. Evidence includes editable native scenes, a render
+and structured proof JSON under the command's evidence directory.
+
+Existing camera/preview, Geometry Nodes, storage, server and capability regression,
+including the expanded native assembly cancellation fixture:
+
+```sh
+MCPBLENDER_TEST_BLENDER=1 python3 -m pytest -q tests/test_assembly_native.py tests/test_capabilities.py tests/test_storage.py tests/test_server.py tests/test_action_integration.py::test_preview_setup_fits_offset_assets_and_refuses_collisions tests/test_geometry.py --tb=short --maxfail=1
+```
+
+Result: **16 passed in 71.57s**, with the existing Starlette/AnyIO deprecation
+warning. Both bundled design/animation skills pass their structural validator.
+
+These are scoped current-scene tests. External library linking, independent
+instance animation/simulation, membership migration, realized assembly export,
+collision proxies and botanical assets are not qualified. Guards do not freeze
+image pixel buffers or external files. Native write/append is synchronous and
+cannot be interrupted mid-call; process-crash cleanup is not established here.
+See USER_MANUAL.md for graph limits and ownership rules.
+
+
 ## Timeline-baked morph LOD bundles — 2026-11-02
 
 Final focused gate:

@@ -35,6 +35,9 @@ def report_progress(progress):
             progress = decorate_progress(progress)
         policy = _bridge.active.get("storage", {})
         progress = progress | {"storage": snapshot(policy.get("path", _bridge.path.parent),
+                                                    estimated_bytes=policy.get("estimated_bytes",0),
+                                                    estimate_kind=policy.get("estimate_kind","unknown"),
+                                                    warn_below_bytes=policy.get("warn_below_bytes",2*1024**3),
                                                     reserve_bytes=policy.get("reserve_bytes", 256 * 1024**2))}
         for attempt in range(3):
             try:
@@ -368,6 +371,7 @@ class BridgeServer:
                 reads.update({"asset_report", "preflight_game_asset", "render_animation_preview"})
                 reads.update({"shader_node_catalog", "inspect_shader_graph"})
                 reads.update({"geometry_node_catalog", "inspect_geometry_graph"})
+                reads.update({"inspect_physics", "validate_rigid_bake", "sample_rigid_bodies"})
                 mutates = self.active["command"] not in reads
                 if self.active["command"] == "run_action":
                     mutates = any(step["command"] not in reads for step in self.active["params"]["steps"])
@@ -415,7 +419,7 @@ class BridgeServer:
                             self.iterator.throw(OperationCancelled("Cancelled at an action boundary; partial effects may remain"))
                         else:
                             self.iterator.close()
-                            self.finish("cancelled", error="Cancelled between animation frames; completed files remain")
+                            self.finish("cancelled", error="Cancelled at a cooperative operation boundary; partial effects may remain")
                 except StopIteration as completed:
                     self.finish("succeeded", completed.value)
                 except OperationCancelled as exc:

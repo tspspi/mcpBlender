@@ -626,6 +626,73 @@ later source edits, native UI edits, fields or stacked modifiers. Distances and
 density operate in object-local coordinates; object scale changes world spacing.
 Inspect evaluated geometry, materials/UVs and a render before delivery.
 
+## Rigid-body simulation and embedded bakes
+
+Rigid tools work with Python execution disabled. Start with `inspect_physics`;
+carry its `physics_sha256` into `expected_physics` for subsequent operations.
+The fingerprint covers qualified rigid sources: world/FPS/gravity/cache range,
+body properties, original transforms and base mesh coordinates/connectivity.
+It excludes materials, temporary evaluation frame and volatile native cache flags.
+Inspection paginates bodies and reports unsupported sources explicitly. A missing
+fingerprint means the source set cannot be guarded by this workflow.
+
+1. `configure_rigid_world` sets cache `frame_start`/`frame_end` (1–10000), FPS,
+   gravity, time scale, solver iterations and substeps. These affect the whole scene.
+2. `configure_rigid_body` binds/configures a named local mesh as `ACTIVE` or
+   `PASSIVE`. Choose a convex primitive/hull shape for dynamic bodies; concave
+   `MESH` collision is supported for passive bodies. Parameters include mass,
+   friction, restitution, damping and collision margin. Existing configured
+   parameters use the supplied model defaults when omitted.
+3. `sample_rigid_bodies` takes up to 64 `objects` and 64 unique `sample_frames`,
+   steps sequentially from cache start, and returns evaluated world matrices.
+   It restores the original frame/subframe and retains the unbaked memory cache.
+4. `bake_rigid_bodies` evaluates the entire configured range, finalizes the native
+   cache, verifies pose checkpoints and writes an embedded-cache `.blend` copy to
+   explicit `path` under `library_root`. Existing output is refused. The copy
+   contains the **entire scene**, with source binding and start/middle/end poses;
+   the active project path and original frame are preserved.
+5. `validate_rigid_bake` checks the source binding and checkpoint matrices against
+   the live baked cache. Validate after opening a snapshot, before relying on it.
+   `clear_rigid_bake` explicitly frees the live cache/binding and rewinds to its
+   start; saved snapshot files remain unchanged. `remove_rigid_body` removes only
+   the binding, preserving the mesh/object.
+
+For example, after inspecting the source fingerprint:
+
+```json
+{"params":{"name":"FloorCollider","type":"PASSIVE","collision_shape":"BOX",
+  "expected_physics":"<physics_sha256>","reset_unbaked":true}}
+```
+
+Reinspect after configuration changes. Editing an evaluated unbaked cache requires
+`reset_unbaked=true`; unknown/localized native cache descriptions are treated
+conservatively. A baked cache must be cleared explicitly before editing its
+configuration. Direct source edits make a saved bake's binding fail validation.
+Native `is_outdated` is reported separately: the qualified installed Blender marks
+reloaded embedded data outdated even when source binding and saved poses validate.
+The native baked flag alone is not proof of a reusable result.
+
+Sampling/baking return an operation immediately by default. Use `request_id` and
+poll `get_operation` / `wait_operation`; `wait=true` is available for short runs.
+Progress includes the current frame, completion counts and current free/available
+storage. Bake estimates combine current project size, mesh/packed-image heuristics
+and body-frame counts; available storage is checked before and during stepping
+and before saving. Estimates are not hard output-size bounds. Cancellation works
+between frames and restores the original frame, retaining partial memory caches.
+Native finalization and `.blend` saving cannot be interrupted midway. Broker
+restart does not replay evaluation; process interruption still requires inspecting
+the operation outcome and latest completed project/checkpoint.
+
+The qualified surface requires unparented, unconstrained, unanimated static local
+collider meshes with positive scales, no modifiers/shape keys, BASE collision
+geometry and no rigid constraints/compound colliders or force-field dependencies.
+Use separate static proxy colliders or explicitly bake modeling modifiers first.
+Body count is limited to 500 and source vertices to two million for fingerprinting.
+The embedded workflow requires step-one caches with native disk/external flags
+disabled. It does not supply cloth/soft-body/fluid/particle baking or convert rigid
+motion to keyframes/GLB clips. Snapshot paths are explicit protected deliverables;
+temporary-cache retention/cleanup for other backends remains separate work.
+
 ## Structured skeletal animation
 
 `create_armature`, `bind_mesh` and `inspect_rig` take typed `params` and work with

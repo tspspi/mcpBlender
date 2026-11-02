@@ -67,6 +67,23 @@ project dirty. Check transforms, framing and intended endpoints;
 successful key insertion does not prove the motion is right. Save a `.blend`
 project and force a recovery `checkpoint` at useful milestones.
 
+For rigid dynamics, inspect `inspect_physics` and carry `physics_sha256` into
+`expected_physics` on world/collider/sampling/bake calls. Use static local proxy
+colliders when the visual asset has modifiers, rigging or animation. Set up the
+world, active bodies and passive collision surfaces with typed tools. Reinspect
+after configuration changes; evaluated unbaked work requires explicit
+`reset_unbaked=true`, and baked work must be cleared before configuration edits.
+`sample_rigid_bodies` steps sequentially and restores the user's frame; compare
+evaluated matrices, not original transform channels, to assess the motion.
+`bake_rigid_bodies` saves a full-scene `.blend` copy with embedded cache and pose
+checkpoints. It preserves the active project path. Validate with
+`validate_rigid_bake` after reopening; native baked/outdated flags alone do not
+establish source compatibility. Sampling/baking are asynchronous by default and
+report live storage; cancellation restores frame at boundaries, while final native
+cache/save calls cannot be interrupted. `clear_rigid_bake` clears live state and
+keeps saved files. This workflow does not yet convert physics motion to keyframes
+or provide cloth/fluid/particle caches; do not assume GLB exports cache animation.
+
 Render a small preview frame sequence before committing to expensive output.
 Prefer the named `animation_preview` action for PNG/video delivery without editing
 the user's sequencer. Discover its schema with `describe_action` and validate with

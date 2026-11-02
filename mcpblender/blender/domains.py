@@ -12,6 +12,7 @@ from . import workflows
 from . import shaders
 from . import mesh_edit
 from . import geometry
+from . import physics
 from .capabilities import workflow_support, DISCOVERY_NOTE
 
 COMMANDS = {"get_capabilities", "inspect_resources", "create_primitive", "create_mesh",
@@ -26,6 +27,7 @@ COMMANDS.update(workflows.COMMANDS)
 COMMANDS.update(shaders.COMMANDS)
 COMMANDS.update(mesh_edit.COMMANDS)
 COMMANDS.update(geometry.COMMANDS)
+COMMANDS.update(physics.COMMANDS)
 
 
 def strips(editor):
@@ -50,6 +52,8 @@ def curves(action, slot):
 
 
 def dispatch(command, p):
+    if command in physics.COMMANDS:
+        return physics.dispatch(command, p)
     if command in geometry.COMMANDS:
         return geometry.dispatch(command, p)
     if command in mesh_edit.COMMANDS:

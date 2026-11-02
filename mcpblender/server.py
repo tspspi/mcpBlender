@@ -190,6 +190,10 @@ class State:
             extension = {"save_blend": ".blend", "open_blend": ".blend", "export_glb": ".glb", "export_objects_glb": ".glb"}.get(command)
             if extension and Path(params["path"]).suffix.lower() != extension:
                 raise ValueError(f"File must end in {extension}")
+        if command == "bake_rigid_bodies":
+            params["path"] = str(self.library_path(params["path"],write=True))
+            if Path(params["path"]).suffix.lower() != ".blend":
+                raise ValueError("Embedded bake snapshot must end in .blend")
         if command == "configure_material" and params.get("image_path"):
             params["image_path"] = str(self.library_path(params["image_path"]))
         if command in {"configure_shader_graph", "configure_shader_node"}:
@@ -408,7 +412,7 @@ def build_server(config: Config):
 
     def domain_tool(command):
         model, _, description = COMMANDS[command]
-        default_wait = command not in ("render_animation", "render_video", "render_animation_preview", "download_asset", "upload_asset", "request_asset_api")
+        default_wait = command not in ("render_animation", "render_video", "render_animation_preview", "download_asset", "upload_asset", "request_asset_api", "sample_rigid_bodies", "bake_rigid_bodies")
 
         async def operation(params=None, wait: bool = default_wait, request_id: str | None = None) -> dict:
             values = params.model_dump(exclude_none=True) if params is not None else {}

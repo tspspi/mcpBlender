@@ -18,7 +18,9 @@ def test_workflow_inventory_does_not_claim_unregistered_commands():
     assert "extrude_mesh_faces" in support["mesh_modeling"]["structured_commands"]
     assert support["shader_nodes"]["support"] == "structured_partial"
     assert support["geometry_nodes"]["support"] == "structured_partial"
-    for name in ("compositing", "physics", "particles", "simulation_baking"):
+    assert support["physics"]["support"] == "structured_partial"
+    assert support["simulation_baking"]["support"] == "structured_partial"
+    for name in ("compositing", "particles"):
         assert support[name]["support"] == "python_only"
         assert support[name]["structured_commands"] == []
     # A missing worker command must never be advertised through a static mapping.

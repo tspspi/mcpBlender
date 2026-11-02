@@ -123,18 +123,65 @@ local Object-mode meshes without shape keys/armature deformation, not sculpting,
 retopology or arbitrary imported dependency graphs. Generated UV quality still
 needs review. The installed user service/skills were not upgraded or restarted.
 
+## Rigid-body evaluation and embedded cache snapshots — 2026-11-02
+
+The initial focused physics suite passed **3 tests in 33.04 seconds**; adding a
+fresh-process restore check passed **5 physics/capability checks in 67.81 seconds**.
+Source binding was then expanded to include collision masks, deactivation
+settings, effector weights and cache mode, with final source rechecks.
+The final focused physics/capability run passed **5 tests in 49.38 seconds**:
+
+```sh
+MCPBLENDER_TEST_BLENDER=1 python3 -m pytest -q tests/test_physics.py tests/test_physics_contracts.py tests/test_capabilities.py --tb=short --maxfail=1
+```
+
+After diff review caught and corrected displaced legacy filename validation,
+**10 host tests passed in 11.69 seconds** (`test_physics_contracts.py`,
+`test_server.py`, `test_storage.py`), including explicit preservation of existing
+open/save/GLB suffix checks. The animation skill source validates.
+
+Real Blender 5.0.1 runs with arbitrary Python tools disabled. Typed setup creates
+active/passive BOX colliders. Sequential simulation shows a cube falling from
+Z=6 to a resting center at Z=1 on its collision floor, within 0.05 Blender units.
+Sampling restores the original frame; stale fingerprints and implicit unbaked
+cache invalidation are refused. A native embedded bake is saved as a `.blend`
+copy without changing the active project path. Start/middle/end matrices validate
+after reopen, including in a second disposable Blender process. Source transform
+changes break the binding; restoring the source permits checkpoint validation.
+Native outdated flags after load are reported separately from those checks.
+
+Broker restart during a running simulation preserves Blender's PID and operation;
+cancellation at a frame boundary restores the original frame. Reusing the same
+request ID returns the original cancelled/completed operation. Progress includes
+current free bytes and a worker-refined output estimate. Clearing the live bake
+leaves the saved snapshot byte-for-byte unchanged, and body removal preserves the
+mesh. The rendered settled cube was opened and visually inspected; evidence is
+retained outside Git under `/tmp/mb-physics-20261102/`.
+
+An API probe demonstrated that external-cache flags can produce a native baked
+flag without valid data/files. The implemented workflow therefore requires native
+disk/external flags disabled and checks pose checkpoints. Another probe confirmed
+rigid data can be embedded and restored from a project. Validation covers source
+binding and pose checkpoints, not every cached frame or arbitrary imported
+physics dependencies. This milestone is not cloth/fluid/particle baking, automatic
+cache snapshot retention/deletion or conversion to animation keyframes. Native
+finalization/project save remain blocking calls. No installed runtime was changed.
+
 ## Latest complete regression — 2026-11-02
 
 ```sh
 MCPBLENDER_TEST_BLENDER=1 python3 -m pytest -q --tb=short --maxfail=1
 ```
 
-**103 tests passed in 424.37 seconds**, with the existing host Starlette/AnyIO
+**110 tests passed in 591.35 seconds**, with the existing host Starlette/AnyIO
 deprecation warning. This source-checkout run covers the mesh editing, capability
-and Geometry Nodes foundations alongside the existing recovery, retention,
+and Geometry Nodes/preset and rigid-body foundations alongside recovery, retention,
 modeling, materials, skeletal/morph animation and video workflows. The expanded
-Geometry Nodes fixture also passed separately as documented above. No installed
+physics source guard changes were checked separately as documented above. No installed
 service deployment or Godot work was performed.
+
+The preceding complete run passed 103 tests in 424.37 seconds before procedural
+presets and rigid-body/cache tools were added.
 
 ## Previous complete regression — 2026-11-01
 

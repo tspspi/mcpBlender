@@ -85,8 +85,8 @@ For static LODs, inspect `inspect_lod_source` and carry `source_sha256` as
 stays in place. COLLAPSE suits general geometry, PLANAR protects planar seams/
 materials, and UNSUBDIVIDE needs a regular grid. Review sampled bidirectional
 surface error and render small/thin details: budget/UV/material/normal checks do
-not certify silhouette or foliage density. Rig/morph LODs and botanical impostors
-are separate. Materials stay shared; edited per-level geometry requires a new chain.
+not certify silhouette or foliage density. For linear skeletal LODs, select `deformation="SKINNED"` as described below.
+Morph transfer and botanical impostors remain separate. Materials stay shared; edited per-level geometry requires a new chain.
 
 Use `inspect_lod_chain`, then `chain_sha256` as `expected_chain` for
 `activate_lod_level` or `export_lod_chain`. Activation hides other managed levels,
@@ -97,6 +97,18 @@ and view representative results. Binary counts/bounds/UV/normal/dependency check
 are not engine or appearance certification. Native calls cannot cancel internally;
 generation/export report progress/storage and clean owned resources on ordinary
 errors/cooperative cancellation. Full limits are in USER_MANUAL.md.
+
+For skeletal LODs, inspect/generate with `deformation="SKINNED"`. This uses
+raw rest geometry with one enabled linear group-only Armature modifier, normalized
+complete weights (up to four influences), and the original rig. Additional mesh
+modifiers, DQ/envelopes/masks and morphs require another workflow. Joint-weight
+protection helps preserve bends; triangle and sampled pose-error limits can still
+refuse. Choose meaningful `pose_frames`, or review suggested action/timeline
+frames. Use `sample_lod_chain` again after motion/control changes: stored measurements
+cover recorded inputs only, and external dependencies are not frozen. Move the rig
+rather than the generated bind root. For delivery, activate a level and explicitly
+export its mesh plus rig with `export_objects_glb`, then re-import/sample playback.
+Static bundle export refuses skinned chains; dedicated skin bundles remain separate.
 
 Prefer structured tools for the supported pipeline, including when Python
 execution is disabled: `create_primitive` / `create_mesh`, `configure_modifier`,

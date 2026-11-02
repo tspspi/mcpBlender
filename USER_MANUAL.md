@@ -1450,12 +1450,13 @@ frames. Shared materials remain editable through the existing material tools.
 
 ## Static asset LOD chains
 
-`inspect_lod_source` takes mesh `name` and reports its current evaluated viewport
+In default `deformation="STATIC"` mode, `inspect_lod_source` takes mesh `name`
+and reports its current evaluated viewport
 geometry, UV maps/render map, material slots and used regions, supported named
 attribute schemas, surface bounds and `source_sha256`. The source must be visible
 in the current scene/view layer, Object mode, with a finite invertible transform.
-Object animation/constraints, armature deformation and shape keys require separate
-LOD workflows. Upstream procedural modifiers are evaluated at the current frame;
+Object animation/constraints and shape keys require separate LOD workflows.
+Linear armature bindings use SKINNED mode below. Upstream procedural modifiers are evaluated at the current frame;
 this creates a static snapshot rather than retaining their generator or physics.
 The inspection never edits the source. Materials remain shared by reference.
 
@@ -1505,7 +1506,7 @@ parts, seams and small material regions. `transfer_normals=true` (default) uses
 nearest-face-interpolated source custom normals; false explicitly accepts native
 recomputed normals. LOD0 preserves the source snapshot's normals.
 
-`error_samples` (16–4096, default 512) samples raw vertices and face centers in
+`error_samples` (16–4096, default 512) samples raw vertices and triangle centers in
 both directions against nearest triangle surfaces. The report includes maximum
 and RMS distance and maximum distance relative to the source bounding diagonal.
 `max_relative_error` (default 0.1) is a hard threshold for that sampled measurement.
@@ -1554,9 +1555,80 @@ directory. Publication happens after validation. Process crashes can leave an
 interrupted staging directory; crash-time reconciliation/retention is separate.
 Explicit completed bundles and source assets are not temporary-retention targets.
 Limits: 250,000 snapshot vertices, one million corners, 500,000 triangles per
-level, eight representations total and 512 MiB per validated GLB. Rig/morph-aware
-LOD transfer, foliage reconstruction/impostors/collision/shadow proxies and
+level, eight representations total and 512 MiB per validated GLB. Morph transfer, broader skinning, foliage reconstruction/impostors/collision/
+shadow proxies and
 reusable collection-instance/batch delivery workflows remain separate milestones.
+
+## Skeletal LODs and sampled deformation validation
+
+Use `inspect_lod_source(name=..., deformation="SKINNED")` for raw rest mesh
+geometry, named vertex weights, original rig/binding, known rig-animation guard
+and suggested pose frames. Pass that guard to `generate_lod_chain` with the same
+`deformation="SKINNED"`. Static-mode inspection refuses armature deformation
+rather than silently flattening it.
+
+The first supported skin workflow uses one enabled linear Armature modifier and
+no additional mesh modifiers, envelope mixing, preserve-volume/DQ, mask, multiple
+modifier mixing or shape keys. Bind the intended geometry before skinning. The
+source mesh has no object constraints/animation or mesh-data animation; it can be
+unparented or object-parented directly to its rig. The rig is in Object/POSE
+position with at most 256 single-segment bones and no armature-data animation.
+Rig object/bone animation, constraints and drivers can continue evaluating.
+Source deform weights must already be finite, normalized and complete with at
+most four positive influences. Use `inspect_skin_weights`/`repair_skin_weights`
+explicitly before generation if required.
+
+LOD0 copies source rest geometry and weights. Reduced levels retain native
+interpolated deform layers; `skin_max_influences` (1–4, default 4) caps/prunes and
+normalizes their unlocked derived weights without changing the source. This
+whole-chain limit also includes LOD0, which is not silently reweighted. Named
+nondeform masks survive native interpolation. Source group-lock flags are copied;
+derived weights are computed rather than edits to the locked source data.
+
+For COLLAPSE, `skin_joint_importance` (0–1000, default 10) protects mixed and
+rapidly changing bone-weight regions with a temporary native reduction group.
+Zero disables protection. The group is removed before publication, and the
+original source never receives it. Joint protection can prevent satisfying an
+aggressive triangle budget; adjust the budget/profile rather than treating a
+rest-only match as good deformation. PLANAR/UNSUBDIVIDE retain their existing
+strategy constraints and still undergo pose checks.
+
+`pose_frames` optionally provides 1–16 distinct finite frames, including fractional
+frames, within ±1048574. Otherwise suggested current/start/mid/end frames derive
+from the active action/nonmuted NLA ranges, with the scene range as fallback.
+Choose frames that stress the actual motion and joint extremes. The operation
+evaluates the current timeline without switching clips. Each source/LOD surface
+comparison must meet `max_pose_error` (default 0.1), in addition to the rest error
+threshold. Vertex/triangle-center samples lie on triangulated surfaces, including
+bent nonplanar quads; reports remain sampled rather than exhaustive error bounds.
+Pose verification is limited to ten million source/target vertex-frame samples.
+
+Generated meshes retain the original rig and follow its clips and object motion.
+Their root copies the source's parent/bind transform. Move the rig when moving a
+skeletal asset; changing the generated root's bind transform invalidates ownership.
+Geometry, group definitions/memberships, modifier binding and rig rest definition
+are guarded. Changing animation can leave the geometry valid while making prior
+pose measurements stale: `pose_validation_inputs_changed` reports known source/
+rig-definition changes. Arbitrary external control/dependency values are not
+frozen by these guards. Stored `pose_validation` records refer to their original
+frames/inputs, not a perpetual animation-quality certificate.
+
+`sample_lod_chain` takes `chain`, `expected_chain`, optional `pose_frames`,
+`error_samples` and `max_pose_error` to compare the current source and derived
+skins again. It is a read-authorized queued operation; `wait=true` blocks for the
+result. Frames and representation visibility restore on success, error or
+cooperative cancellation. Generation failure removes all owned meshes/groups/
+collection/root while retaining source data and rig/clip bindings. Native calls
+are noninterruptible internally; crash-time atomicity is not implied.
+
+For animated GLB delivery in this milestone, activate the wanted level and use
+`export_objects_glb` with both the level mesh and its existing rig explicitly,
+`animations=true`, and `apply_modifiers=false`. Native glTF exports compatible
+rig clips and joint weights. Independently re-import and sample playback; bake
+complex control/NLA composition when the delivery needs that result. The static
+`export_lod_chain` bundle tool explicitly refuses skinned chains rather than
+omitting their deformation. Dedicated validated skin bundles and morph-animation
+transfer remain separate milestones. This workflow reduces meshes, not skeletons.
 
 ## Existing skeleton and rest-hierarchy refinement
 

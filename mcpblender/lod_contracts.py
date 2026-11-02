@@ -8,6 +8,7 @@ from .nla_contracts import SafeName
 
 class Source(Model):
     name: SafeName
+    deformation: Literal['STATIC','SKINNED'] = 'STATIC'
 
 
 class Level(Model):
@@ -24,9 +25,14 @@ class Generate(Source):
     transfer_normals: bool = True
     max_relative_error: FiniteFloat = Field(default=.1,ge=0,le=1)
     error_samples: int = Field(default=512,ge=16,le=4096)
+    skin_max_influences: int = Field(default=4,ge=1,le=4)
+    skin_joint_importance: FiniteFloat = Field(default=10,ge=0,le=1000)
+    pose_frames: list[FiniteFloat] | None = Field(default=None,min_length=1,max_length=16)
+    max_pose_error: FiniteFloat = Field(default=.1,ge=0,le=1)
     @model_validator(mode='after')
     def recipe(self):
         if len(self.chain.encode('utf-8'))>40:raise ValueError('Chain name supports at most 40 UTF-8 bytes')
+        if self.pose_frames is not None and (len(set(self.pose_frames))!=len(self.pose_frames) or any(abs(f)>1048574 for f in self.pose_frames)):raise ValueError('Pose frames must be distinct and within native limits')
         budgets=[l.triangle_budget for l in self.levels]
         if any(a<=b for a,b in zip(budgets,budgets[1:])):raise ValueError('LOD budgets must strictly decrease')
         return self
@@ -44,6 +50,16 @@ class Activate(Guard):
     level: int = Field(strict=True,ge=0,le=7)
 
 
+class SampleSkin(Guard):
+    pose_frames: list[FiniteFloat] | None = Field(default=None,min_length=1,max_length=16)
+    error_samples: int = Field(default=512,ge=16,le=4096)
+    max_pose_error: FiniteFloat = Field(default=.1,ge=0,le=1)
+    @model_validator(mode='after')
+    def frames(self):
+        if self.pose_frames is not None and (len(set(self.pose_frames))!=len(self.pose_frames) or any(abs(f)>1048574 for f in self.pose_frames)):raise ValueError('Pose frames must be distinct and within native limits')
+        return self
+
+
 class Export(Guard):
     directory: str = Field(min_length=1)
 
@@ -53,8 +69,9 @@ class Validate(Model):
 
 
 COMMANDS={
- 'inspect_lod_source':(Source,(),'Inspect a finite static evaluated mesh snapshot, UV/material/attribute inventory and a source fingerprint. Rig/morph/object-animation sources require a separate workflow.'),
- 'generate_lod_chain':(Generate,('allow_scene_edit',),'Create independent LOD0 and reduced static snapshots in a managed named collection/root. COLLAPSE/PLANAR/UNSUBDIVIDE, decreasing budgets, UV/material/normal checks and sampled bidirectional surface error; preserves source and cleans up cancellation/failures.'),
+ 'inspect_lod_source':(Source,(),'Inspect STATIC viewport geometry or SKINNED raw rest geometry/linear binding, UV/material/attribute inventory and source guard. Skin mode reports weights, rig and suggested pose frames; morph/object-motion sources remain separate.'),
+ 'generate_lod_chain':(Generate,('allow_scene_edit',),'Create independent LOD0 and reduced geometry in a managed collection/root. SKINNED mode retains the existing linear rig, native-interpolated normalized/pruned weights and sampled pose validation. COLLAPSE/PLANAR/UNSUBDIVIDE, decreasing budgets, UV/material/normal checks and sampled bidirectional surface error; preserves source and cleans up cancellation/failures.'),
+ 'sample_lod_chain':(SampleSkin,(),'Sample current-timeline deformation of a SKINNED LOD chain versus its source. Reports bounded bidirectional surface error at chosen/recommended poses, restores frame/visibility and refuses stale guards or excessive error; does not switch clips.'),
  'inspect_lod_chain':(Chain,(),'Inspect managed LOD meshes, recipes/budgets, sampled quality, source staleness and current-content fingerprint. Invalid or modified chains are not silently exportable.'),
  'activate_lod_level':(Activate,('allow_scene_edit',),'Select one managed LOD representation by viewport/render visibility, preserving source objects and geometry. Requires a current chain fingerprint.'),
  'export_lod_chain':(Export,('allow_library_write',),'Export each static LOD into a separate GLB plus a checked manifest, independently decode counts/positions/normals/UVs, restore visibility/selection and publish a new bundle directory only after success.'),

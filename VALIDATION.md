@@ -1,5 +1,66 @@
 # Local validation: 0.2.0
 
+## Linear skeletal LODs and sampled pose validation — 2026-11-02
+
+FreeBSD Blender 5.0.1/system Python, isolated source-checkout instances and MCP
+arbitrary Python disabled. Final focused/static regression:
+
+```sh
+MCPBLENDER_TEST_BLENDER=1 MCPBLENDER_SKIN_LOD_EVIDENCE_DIR=/tmp/mb-skin-lod-20261102 python3 -m pytest -q tests/test_lod_contracts.py tests/test_skin_lods.py tests/test_skin_lod_native.py tests/test_lods.py tests/test_lod_native.py --tb=short --maxfail=1
+```
+
+**10 passed in 69.78 seconds.** `deformation="SKINNED"` inspects raw rest data
+and linear bindings, then generates independent LOD meshes following the existing
+rig/clips. The dense two-bone tube reduces 540 → 250 → 120 triangles with normalized
+native-interpolated weights. An unprotected reduction fails the posed-error gate;
+the temporary mixed/gradient-weight joint protection passes, with maximum sampled
+relative errors about 0.02730/0.02754 for the two reduced levels at the bent pose.
+LOD0/source self-comparison stays below 1e-6. Surface sampling now uses triangle
+centers: polygon centers can lie off bent nonplanar quads and give a false positive
+error even when comparing identical meshes. Older static measurements above
+retain their original vertex/face-center scope.
+
+Live checks cover source weight/action invariance, automatic parent/bind following,
+frame/visibility restoration, additional fractional pose frames, guard failures,
+modified derived weight detection, save/reopen and raw region/UV/normal checks.
+Rig-object root motion follows into the reduced mesh. Explicit existing GLB
+mesh-plus-rig delivery contains one skin/two joints, joint/weight attributes and
+animation; re-imported playback bounds match the native far LOD at frames 1/5/9
+within 0.001 world units. A pose-space COPY_ROTATION control fixture produces at
+least three distinct source shapes, passes five-pose LOD validation and retains
+its original geometry samples afterward. No new render is claimed here.
+
+A native probe verifies nondeform pin-mask retention, removal of temporary joint
+protection groups, preserve-volume refusal, cancellation during generation pose
+verification with exact object/mesh/collection counts and source guard restoration,
+and cancellation while sampling a published chain with unchanged content/visibility
+fingerprint and restored fractional frame. Rig rest changes invalidate ownership.
+Static bundle export explicitly refuses a skin chain; it does not silently discard
+the skin. New frame/influence/profile contracts and read-policy visibility pass.
+
+Preceding existing LOD/capability/skeletal/weight regression:
+
+```sh
+MCPBLENDER_TEST_BLENDER=1 python3 -m pytest -q tests/test_lod_contracts.py tests/test_lods.py tests/test_lod_native.py tests/test_capabilities.py tests/test_skeletal_animation.py tests/test_skin_contracts.py tests/test_skin_weights.py tests/test_skin_native.py --tb=short --maxfail=1
+```
+
+**19 passed in 182.07 seconds**, followed by the final ten-test run after the
+triangle-center correction and control fixture were finalized. Bundled animation
+and design skill validation, compile checks and staged whitespace/privacy checks
+passed. Evidence: `/tmp/mb-skin-lod-20261102/{skin-lods.blend,skin-lod.glb,pose-comparison.json}`.
+
+This covers one enabled linear group-only Armature modifier, up to four influences
+and 256 single-segment bones. Additional mesh modifiers, envelopes (including bone
+multiplication), DQ/preserve-volume, masks, morph transfer, skeleton reduction and
+all imported rig/scale/strategy combinations remain unqualified/unsupported as
+specified in USER_MANUAL.md. Skin COLLAPSE is qualified; PLANAR/UNSUBDIVIDE retain
+static qualifications and still require their skin pose checks. External control
+values/dependencies are not frozen by source/rig signatures. Pose samples are not
+an exhaustive animation or silhouette guarantee. Dedicated validated animated
+skin bundles, interrupted staging reconciliation and broader asset assembly remain
+open. No package/venv/installed-runtime/service/skill or normal GUI changes.
+
+
 ## Static LOD chains and independently checked delivery — 2026-11-02
 
 Installed FreeBSD Blender 5.0.1 and system Python, isolated source-checkout

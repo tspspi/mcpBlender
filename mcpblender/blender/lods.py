@@ -16,7 +16,7 @@ from .mesh_edit import geometry_digest
 from mcpblender.lod_files import MARKER,file_hash,glb_report,validate
 from mcpblender.storage import require_space
 
-COMMANDS={'inspect_lod_source','generate_lod_chain','inspect_lod_chain','activate_lod_level','export_lod_chain','validate_lod_export'}
+COMMANDS={'sample_lod_chain','inspect_lod_source','generate_lod_chain','inspect_lod_chain','activate_lod_level','export_lod_chain','validate_lod_export'}
 META='mcpblender_lod_chain'
 
 
@@ -65,8 +65,11 @@ def summary(mesh):
 
 
 def source_snapshot(p):
+    if p.get('deformation')=='SKINNED':
+        from .skin_lods import source_snapshot as snapshot
+        return snapshot(p)
     obj=mesh_object(p['name']);require_static(obj)
-    if obj.find_armature() or obj.data.shape_keys:raise ValueError('Static LODs require no armature or shape keys; rig/morph-aware LODs use a separate workflow')
+    if obj.find_armature() or obj.data.shape_keys:raise ValueError('Static LODs require no armature or shape keys; choose deformation=SKINNED for linear skins, while morph transfer remains separate')
     if obj.name not in bpy.context.scene.objects or bpy.context.view_layer.objects.get(obj.name)!=obj or not obj.visible_get():raise ValueError('LOD source must be visible in the current scene/view layer')
     bpy.context.view_layer.update()
     if any(not math.isfinite(v) for row in obj.matrix_world for v in row) or abs(obj.matrix_world.determinant())<1e-12:raise ValueError('Finite invertible source transform required')
@@ -87,7 +90,7 @@ def source_snapshot(p):
 def inspect_source(p):
     obj,mesh,report,signature=source_snapshot(p)
     try:return report|{'name':obj.name,'source_sha256':signature,'frame':bpy.context.scene.frame_current,
-                       'matrix_world':matrix(obj.matrix_world),'snapshot':'Current static viewport evaluation. Materials remain shared; external procedural dependencies are not frozen beyond this evaluated content.'}
+                       'matrix_world':matrix(obj.matrix_world),'snapshot':('Raw skinned rest data, original linear binding and rig clips; object motion/morph transfer remain separate.' if report.get('skin') else 'Current static viewport evaluation. Materials remain shared; external procedural dependencies are not frozen beyond this evaluated content.')}
     finally:bpy.data.meshes.remove(mesh)
 
 
@@ -98,11 +101,12 @@ def surface(mesh):
 
 
 def samples(mesh,count):
-    # Deterministic vertex and face-center samples cover surfaces without claiming
+    # Deterministic vertex and triangle-center samples cover surfaces without claiming
     # an exhaustive Hausdorff or projected-silhouette bound.
     points=[v.co.copy() for v in mesh.vertices][::max(1,len(mesh.vertices)//max(1,count//2))][:count//2]
-    faces=list(mesh.polygons)
-    points.extend(p.center.copy() for p in faces[::max(1,len(faces)//max(1,count-len(points)))][:count-len(points)])
+    mesh.calc_loop_triangles();triangles=list(mesh.loop_triangles)
+    for triangle in triangles[::max(1,len(triangles)//max(1,count-len(points)))][:count-len(points)]:
+        a,b,c=triangle.vertices;points.append((mesh.vertices[a].co+mesh.vertices[b].co+mesh.vertices[c].co)/3)
     return points
 
 
@@ -118,7 +122,7 @@ def quality(base,target,count):
             distances.append(found[3])
     return {'sample_count':len(distances),'max_distance':max(distances),'rms_distance':math.sqrt(sum(v*v for v in distances)/len(distances)),
             'source_diagonal':diagonal,'max_relative_error':max(distances)/diagonal,
-            'scope':'Deterministic bidirectional raw-vertex/face-center samples in asset-local coordinates; not exhaustive silhouette/density or world-scale certification.'}
+            'scope':'Deterministic bidirectional raw-vertex/triangle-center samples in asset-local coordinates; not exhaustive silhouette/density or world-scale certification.'}
 
 
 def native_chain(p):
@@ -128,7 +132,7 @@ def native_chain(p):
     encoded=collection[META]
     if not isinstance(encoded,str) or len(encoded)>2*1024**2:raise ValueError('Invalid LOD metadata')
     meta=json.loads(encoded)
-    if meta.get('format')!=MARKER or not 2<=len(meta.get('levels',[]))<=8:raise ValueError('Invalid LOD ownership marker')
+    if meta.get('format') not in {MARKER,'mcpblender-skinned-lod-v1'} or not 2<=len(meta.get('levels',[]))<=8:raise ValueError('Invalid LOD ownership marker')
     root=bpy.data.objects.get(meta['root']);issues=[];records=[];objects=[]
     if not root or root.type!='EMPTY' or root.name not in collection.objects:raise ValueError('LOD root missing or changed')
     if collection.library or collection.override_library or root.library or root.override_library:issues.append('LOD ownership must be local')
@@ -138,7 +142,7 @@ def native_chain(p):
         objects.append(obj)
         if obj.library or obj.override_library or obj.data.library or obj.data.override_library:issues.append('LOD mesh must be local')
         if obj.parent!=root or obj.name not in collection.objects or len(obj.users_collection)!=1:issues.append('LOD hierarchy/collection changed')
-        if obj.modifiers or obj.constraints or obj.animation_data or obj.data.shape_keys:issues.append('LOD mesh gained procedural deformation')
+        if (obj.modifiers and not meta.get('skin')) or obj.constraints or obj.animation_data or obj.data.shape_keys:issues.append('LOD mesh gained procedural deformation')
         if any(max(abs(value[i][j]-(1 if i==j else 0)) for i in range(4) for j in range(4))>1e-6 for value in (obj.matrix_basis,obj.matrix_parent_inverse)):issues.append('LOD relative transform changed')
         report=summary(obj.data)
         if report['mesh_sha256']!=level['mesh_sha256']:issues.append('LOD mesh/material assignments changed')
@@ -146,17 +150,23 @@ def native_chain(p):
         records.append(level|report|{'hide_viewport':obj.hide_viewport,'hide_render':obj.hide_render})
     if {o.name for o in collection.objects}!={meta['root'],*(l['object'] for l in meta['levels'])}:issues.append('LOD collection contents changed')
     if any(o.name not in {l['object'] for l in meta['levels']} for o in root.children):issues.append('LOD root has external children')
+    if meta.get('skin'):
+        from .skin_lods import native_checks
+        native_checks(root,objects,meta,issues)
     signature=digest({'metadata':meta,'levels':records,'root_matrix':matrix(root.matrix_world),'issues':issues})
     return collection,root,objects,meta,records,issues,signature
 
 
 def inspect_chain(p):
     collection,root,objects,meta,records,issues,signature=native_chain(p)
-    try:source=inspect_source({'name':meta['source']});stale=source['source_sha256']!=meta['source_sha256']
+    source=None
+    try:source=inspect_source({'name':meta['source'],'deformation':'SKINNED' if meta.get('skin') else 'STATIC'});stale=source['source_sha256']!=meta['source_sha256']
     except (ValueError,RuntimeError):stale=True
     return {'chain':collection.name,'root':root.name,'chain_sha256':signature,'valid':not issues,'issues':sorted(set(issues)),
             'source':meta['source'],'source_stale_or_unavailable':stale,'source_sha256':meta['source_sha256'],'levels':records,
-            'note':'Independent static snapshots; source staleness is informational. Visibility selects representations, not automatic distance switching. Materials remain shared.'}
+            'deformation':'SKINNED' if meta.get('skin') else 'STATIC','skin':meta.get('skin'),'pose_validation':meta.get('pose_validation'),'skin_profile':meta.get('skin_profile'),
+            'pose_validation_inputs_changed':bool(meta.get('skin') and (source is None or source['skin']['animation_sha256']!=meta['skin']['animation_sha256'] or stale)),
+            'note':'Independent mesh data; skin mode follows the original rig. Source staleness is informational. Visibility selects representations, not automatic distance switching. Materials remain shared.'}
 
 
 def guarded(p):
@@ -169,7 +179,9 @@ def guarded(p):
 def reduce(obj,base,recipe):
     from .bridge import check_cancelled,report_progress
     mod=obj.modifiers.new('LOD_Reduction','DECIMATE');method=recipe['method'];mod.decimate_type={'COLLAPSE':'COLLAPSE','PLANAR':'DISSOLVE','UNSUBDIVIDE':'UNSUBDIV'}[method]
-    if method=='COLLAPSE':mod.ratio=min(.999999,recipe['triangle_budget']/base['triangles']);mod.use_collapse_triangulate=True
+    if method=='COLLAPSE':
+        mod.ratio=min(.999999,recipe['triangle_budget']/base['triangles']);mod.use_collapse_triangulate=True
+        if recipe.get('_skin_group'):mod.vertex_group=recipe['_skin_group'];mod.vertex_group_factor=recipe['_skin_factor'];mod.invert_vertex_group=True
     elif method=='PLANAR':mod.angle_limit=math.radians(recipe['angle_degrees']);mod.delimit={'NORMAL','MATERIAL','SEAM','SHARP','UV'};mod.use_dissolve_boundaries=False
     else:mod.iterations=recipe['iterations']
     reduced=None
@@ -185,7 +197,7 @@ def reduce(obj,base,recipe):
             mod.ratio*=.98*recipe['triangle_budget']/count
         finally:
             if candidate!=reduced:bpy.data.meshes.remove(candidate)
-    if reduced is None:raise ValueError('Collapse could not satisfy triangle budget')
+    if reduced is None:raise ValueError(f'Collapse could not satisfy triangle budget: triangles={count}, budget={recipe["triangle_budget"]}, ratio={mod.ratio:.6g}')
     obj.modifiers.remove(mod);obj.data=reduced
     return reduced
 
@@ -201,14 +213,23 @@ def generate(p):
         check_cancelled();collection=bpy.data.collections.new(p['chain']);bpy.context.scene.collection.children.link(collection)
         if collection.name!=p['chain']:raise ValueError('Native collection name changed unexpectedly')
         root=bpy.data.objects.new(root_name,None);created.append(root);collection.objects.link(root);root.matrix_world=source.matrix_world.copy()
+        if base_report.get('skin'):
+            from . import skin_lods
+            skin_lods.setup_root(root,source)
         records=[];previous=base_report['triangles']+1
         for i,name in enumerate(names):
             check_cancelled();mesh=base if i==0 else base.copy()
             if i:meshes.append(mesh)
             obj=bpy.data.objects.new(name,mesh);created.append(obj);collection.objects.link(obj);obj.parent=root;obj.matrix_parent_inverse=Matrix.Identity(4);obj.matrix_basis=Matrix.Identity(4)
             if obj.name!=name:raise ValueError('Native LOD object name changed unexpectedly')
+            if base_report.get('skin'):skin_lods.setup_groups(obj,source)
             if i:
-                mesh=reduce(obj,base_report,p['levels'][i-1]);meshes.append(mesh)
+                recipe=dict(p['levels'][i-1]);protection=None
+                if base_report.get('skin') and recipe['method']=='COLLAPSE':
+                    protection=skin_lods.protect_joints(obj,source,p)
+                    if protection:recipe.update(_skin_group=protection,_skin_factor=p['skin_joint_importance'])
+                mesh=reduce(obj,base_report,recipe);meshes.append(mesh)
+                if protection:obj.vertex_groups.remove(obj.vertex_groups[protection])
                 if p['transfer_normals']:
                     with active_object(obj):
                         mod=obj.modifiers.new('LOD_Normals','DATA_TRANSFER');mod.object=created[1];mod.use_loop_data=True;mod.data_types_loops={'CUSTOM_NORMAL'};mod.loop_mapping='POLYINTERP_NEAREST'
@@ -221,13 +242,18 @@ def generate(p):
             if any(a not in report['attributes'] for a in base_report['attributes']):raise ValueError('LOD lost named attribute schema')
             measurement=quality(base,obj.data,p['error_samples']) if i else {'sample_count':0,'max_relative_error':0}
             if measurement['max_relative_error']>p['max_relative_error']:raise ValueError('LOD sampled surface error exceeds max_relative_error')
+            if base_report.get('skin'):report['skin_weights']=skin_lods.attach(obj,source,base_report,p,reduced=i!=0)
             records.append(report|{'object':obj.name,'level':i,'triangle_budget':p['levels'][i-1]['triangle_budget'] if i else base_report['triangles'],
                                    'recipe':p['levels'][i-1] if i else {'method':'SNAPSHOT'},'quality':measurement})
             report_progress({'phase':'verified LOD level','level':i,'levels':len(names),'triangles':report['triangles'],'fraction':(i+1)/len(names)})
-        fresh=inspect_source({'name':source.name})
+        poses=None
+        if base_report.get('skin'):
+            for obj in created[1:]:obj.modifiers[0].show_viewport=True
+            poses=skin_lods.measure(source,created[1:],p.get('pose_frames') or base_report['skin']['recommended_pose_frames'],p['error_samples'],p['max_pose_error'])
+        fresh=inspect_source({'name':source.name,'deformation':p.get('deformation','STATIC')})
         if fresh['source_sha256']!=signature:raise ValueError('Source changed during LOD generation')
         for i,obj in enumerate(created[1:]):obj.hide_viewport=i!=0;obj.hide_render=i!=0
-        collection[META]=json.dumps({'format':MARKER,'id':uuid.uuid4().hex,'source':source.name,'source_sha256':signature,'root':root.name,
+        collection[META]=json.dumps({'format':skin_lods.MARKER if base_report.get('skin') else MARKER,'skin':base_report.get('skin'),'pose_validation':poses,'skin_profile':{'max_influences':p['skin_max_influences'],'joint_importance':p['skin_joint_importance']} if base_report.get('skin') else None,'id':uuid.uuid4().hex,'source':source.name,'source_sha256':signature,'root':root.name,
                                     'blender_version':bpy.app.version_string,'levels':records},sort_keys=True,allow_nan=False)
         bpy.context.view_layer.update();check_cancelled();result=inspect_chain({'chain':p['chain']})
         if not result['valid']:raise ValueError('Created LOD chain did not pass ownership validation')
@@ -261,6 +287,7 @@ def export(p):
     from .bridge import check_cancelled,report_progress,_bridge
     from .workflows import export_objects_glb
     _,_,objects,meta,records,_,signature=guarded(p);directory=Path(p['directory'])
+    if meta.get('skin'):raise ValueError('Skin bundles require a separate delivery workflow; activate a level and use export_objects_glb with its mesh and rig explicitly')
     if directory.exists() or directory.is_symlink():raise FileExistsError('LOD output directory already exists')
     estimate=16*1024**2+sum(r['vertices']*128+r['triangles']*16 for r in records)
     images={n.image for obj in objects for mat in obj.data.materials if mat and mat.node_tree for n in mat.node_tree.nodes if n.type=='TEX_IMAGE' and n.image}
@@ -298,6 +325,9 @@ def export(p):
 
 
 def dispatch(command,p):
+    if command=='sample_lod_chain':
+        from .skin_lods import sample
+        return sample(p)
     if command=='inspect_lod_source':return inspect_source(p)
     if command=='generate_lod_chain':return generate(p)
     if command=='inspect_lod_chain':return inspect_chain(p)

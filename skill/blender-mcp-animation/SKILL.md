@@ -41,6 +41,18 @@ explicit isolation. Existing skinning/animation/attachments require
 can change. Compare evaluated poses, not only rest geometry. Renaming/removal and
 pose-to-rest/animation rebasing are separate; read manual limits before editing.
 
+For reduced skeletal meshes, use `inspect_lod_source`/`generate_lod_chain` with
+`deformation="SKINNED"` and the source guard. The chain follows the existing rig
+and clips, retaining normalized native-interpolated weights. Choose representative
+`pose_frames`; inspect rest and posed error rather than only triangle counts.
+Joint protection can preserve bending regions but cannot guarantee a requested
+budget. `sample_lod_chain` rechecks current-timeline deformation without clip
+switches and restores frame/visibility. Rest/weight/binding edits invalidate the
+chain; changed animation/control inputs require fresh pose review. The first skin
+workflow is linear, group-only, single modifier, up to four influences and no
+morphs. Export an activated mesh together with its rig through the existing explicit
+GLB tool and re-import/sample playback. Validated skin bundles remain separate.
+
 Clips name the armature in `name` and the action in `clip`; tracks specify a
 `bone`, `property` and vector `keyframes`. Bone `rotation_degrees` uses XYZ Euler
 degrees relative to rest-bone axes, unlike object `set_keyframes` rotations in

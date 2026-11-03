@@ -168,3 +168,14 @@ independent of translucency; colors require opaque alpha. Linked target inputs
 refuse default patches. Check both leaf close-ups and tree views, including
 backlighting. This artistic native shader is not physical thickness, alpha-card
 shading or qualified glTF/runtime equivalence. Wind and atlases remain separate.
+
+For native botanical detail, create_botanical_surface supplies OAK_BARK and
+OAK_LEAF recipes. Existing tree materials can use inspect_botanical_surface then
+configure_botanical_surface with expected_material and profile/settings. Shared
+material identity and original color/normal sources remain; leaf optics stay
+independently editable. Inspect detail_valid before rebuilding/removing and
+preserve manual shader edits. Bark uses growth-aligned named UVs for
+fissures/grain; leaves use blade UVs for paired vein color/bump. Bump is shader
+relief, not geometry. Bark can use the ordinary PBR bake pipeline; thin-leaf lobes
+still need a separately qualified explicit front-PBR adapter. Do not claim an
+atlas, physical vascular model or runtime-equivalent shading from these recipes.

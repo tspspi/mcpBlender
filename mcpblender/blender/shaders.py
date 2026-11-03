@@ -9,6 +9,7 @@ COMMANDS = {"shader_node_catalog", "inspect_shader_graph", "configure_shader_gra
             "remove_shader_node", "apply_material_preset"}
 PROPERTIES = {
     "ShaderNodeAttribute": ("attribute_name", "attribute_type"),
+    "ShaderNodeUVMap": ("uv_map",),
     "ShaderNodeMath": ("operation",), "ShaderNodeVectorMath": ("operation",),
     "ShaderNodeMixRGB": ("blend_type",), "ShaderNodeTexNoise": ("noise_dimensions", "normalize"),
     "ShaderNodeTexVoronoi": ("voronoi_dimensions",),
@@ -21,9 +22,9 @@ NODE_TYPES = (
     "ShaderNodeBsdfPrincipled", "ShaderNodeBsdfDiffuse", "ShaderNodeBsdfGlass",
     "ShaderNodeEmission", "ShaderNodeMixShader", "ShaderNodeAddShader", "ShaderNodeOutputMaterial",
     "ShaderNodeTexImage", "ShaderNodeTexNoise", "ShaderNodeTexVoronoi", "ShaderNodeTexChecker",
-    "ShaderNodeTexCoord", "ShaderNodeMapping", "ShaderNodeMath", "ShaderNodeVectorMath",
+    "ShaderNodeTexCoord", "ShaderNodeUVMap", "ShaderNodeMapping", "ShaderNodeMath", "ShaderNodeVectorMath",
     "ShaderNodeMixRGB", "ShaderNodeNormalMap", "ShaderNodeBump", "ShaderNodeRGB",
-    "ShaderNodeValue", "ShaderNodeSeparateColor", "ShaderNodeCombineColor", "ShaderNodeMapRange",
+    "ShaderNodeValue", "ShaderNodeSeparateColor", "ShaderNodeSeparateXYZ", "ShaderNodeCombineColor", "ShaderNodeMapRange",
     "ShaderNodeValToRGB", "ShaderNodeVolumePrincipled", "ShaderNodeVolumeInfo", "ShaderNodeAttribute",
 )
 

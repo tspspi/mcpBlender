@@ -1252,6 +1252,81 @@ wind deformation, collision/LOD/impostor quality and general species/organ growt
 remain separate milestones. Keep the canonical model alongside the editable
 `.blend` when developing those downstream representations.
 
+## Procedural botanical surface detail
+
+Use `create_botanical_surface` to create a reusable native material with
+`settings.profile` equal to `OAK_BARK` or `OAK_LEAF`, then `assign_material` to
+objects. These are bounded procedural recipes, not scanned textures or an atlas.
+For an existing tree, use the bark material name from `inspect_botanical_tree` or
+the leaf material name from its `foliage` report. Inspect that material with
+`inspect_botanical_surface`, then configure it using the returned `material_sha256`
+as `expected_material`:
+
+```json
+{
+  "material": "Oak_LeafSurface",
+  "expected_material": "<fresh material_sha256>",
+  "settings": {
+    "profile": "OAK_LEAF",
+    "vein_pairs": 6,
+    "vein_slope": 1.5,
+    "vein_width": 0.1,
+    "midrib_width": 0.025,
+    "vein_color": [0.18, 0.29, 0.045, 1],
+    "color_strength": 0.35,
+    "bump_distance": 0.0004,
+    "bump_strength": 0.35
+  }
+}
+```
+
+Pass this to `configure_botanical_surface` inside `params`. Leaf detail requires
+a managed thin-leaf material. It adds a paired UV vein pattern and midrib color/
+bump while retaining the original front/back color source and thin-leaf shader.
+`configure_foliage_material` still edits roughness, front/back colors and optical
+mix independently. Veins are an artistic procedural pattern, not a biological
+vascular reconstruction or extra mesh topology.
+
+`OAK_BARK` requires a direct surface-only Principled material. Its controls are
+`cross_scale` (default 24), `length_scale` (2), `dark_color`, `light_color`,
+`bump_distance` (0.012) and `bump_strength` (0.5). Elongated cellular fissures,
+plateaus and fine noise produce color and bump. Use growth-aligned BarkUV for tree
+wood; ordinary meshes can supply their own named UVs. The settings use UV
+coordinates and native bump distance, not calibrated world-metre displacement.
+Existing roughness stays unchanged. RGBA color alpha must be one.
+
+Both profiles use a named UV map (`uv_map`, default `BarkUV` or `LeafUV`) and keep
+the material's native identity. Set `uv_map="UVMap"` for ordinary primitive meshes.
+The name must exist on every relevant mesh; inspection reports mesh users missing
+it, without changing those meshes. This source binding stays fixed when
+baking to a different target UV map.
+Editing affects all material users. Existing color/normal input sources are retained
+for removal; unrelated nodes remain. A staged node graph is connected before the
+old owned detail nodes are deleted. Cooperative failure before final deletion
+restores the old links and removes newly created nodes. `detail_valid` identifies
+unchanged owned detail; manual edits to its nodes/links or nested color ramps
+refuse rebuilding/removal until reconciled. Fresh material guards are required.
+Local unanimated node materials are supported. A profile change requires removing
+the old detail and supplying a compatible base shader; creating a separate
+material is simpler when changing between PBR bark and thin foliage. Assign new
+materials before saving to retain them under Blender's
+ordinary material-user rules.
+
+`remove_botanical_surface` takes `material` and `expected_material`, restores the
+original color/normal inputs and removes only owned detail nodes. It keeps the
+material and independent optical controls. Tree growth regeneration reuses these
+shared materials, so their detail survives without rebuilding the shader.
+
+For tiled growth UVs, keep the named source UVs and create a separate packed
+unit-tile target UV map (or low mesh) for delivery. Bark's direct PBR graph works
+with the existing `inspect_texture_bake` /
+`bake_textures` pipeline: normal baking includes connected bump, and base-color/
+roughness maps can be delivered in the ordinary PBR bundle. Native thin-leaf
+shader lobes are still outside that direct-PBR bake profile. An explicit lossy
+front-surface adapter, fitted alpha cards, atlases, thickness/transmission maps and
+runtime shader equivalence require separate qualification. The procedural native
+graph itself is not a promise of equivalent GLB shading.
+
 ## Modular leaves and instanced botanical foliage
 
 `plan_leaf_template` accepts a `leaf` shape: length/width/petiole in metres,

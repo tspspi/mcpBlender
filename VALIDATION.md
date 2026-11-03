@@ -4,6 +4,52 @@
 
 
 
+## Procedural botanical bark and leaf surface detail — 2026-11-03
+
+Structured create/inspect/configure/remove tools add reusable UV-driven OAK_BARK
+and OAK_LEAF detail while preserving shared material identity. Bark combines
+elongated cellular fissures, fine noise, colors and bump; leaf veins/midrib add
+color/bump without replacing the existing front/back thin-leaf optical shader.
+These are artistic shader recipes, not scanned biology, mesh displacement,
+physical vascular reconstruction or a finished foliage atlas.
+
+After binding source UV names explicitly, the final surface/native ownership/
+existing shader/addon/capability suite passed **6 tests in 126.61 seconds** on
+Blender 5.0.1. Profile, shader, texture and server contract checks passed
+**12 tests in 34.40 seconds**, with the existing Starlette/AnyIO deprecation warning. Both bundled design/render skill
+validators and whitespace checks passed.
+
+The structured MCP fixture disables arbitrary Python tools. It creates leaf detail
+on an editable leaf and bark detail on a UV plane, changes leaf optics independently,
+renders Cycles close-ups, saves/reopens the editable scene and checks ownership.
+The bark normal/base-color/roughness maps are baked by the existing isolated worker
+into a separate `DeliveryUV` layout while the procedural source remains explicitly
+bound to `UVMap`. Inspection also reports mesh users missing the configured UV map;
+the baked asset is reopened and validated against its file/native binding. Normal
+and base-color channels have nonconstant values (normal red approximately 0.357–
+0.643, base-color red approximately 0.188–0.498); roughness remains its original
+constant value. This is a representative 96x96 functional bake, not a final texture
+resolution recommendation. The final leaf and fissured bark previews were opened
+and visually inspected. Editable source, previews and PBR bundle are retained in
+local surface-fixture evidence.
+
+The native fixture verifies exact material/node preservation on cancelled output
+handoff, cancelled removal and cancelled creation, node-count stability on rebuild,
+original source restoration, preservation of unrelated nodes and independent
+optical controls, and refusal of edited color-ramp stops/interpolation. A botanical
+tree with foliage receives both detailed materials; growth regeneration keeps the
+tree valid and reuses the same native material IDs and detail graphs.
+
+Bump distance is a native shader control, not a calibrated physical length across
+arbitrary objects/UVs. Both profiles require suitable named source UVs
+(BarkUV/LeafUV by default); ordinary meshes can explicitly choose another UV name. Native
+thin-leaf output still deliberately refuses the direct-Principled texture-bake
+profile: an explicit front-PBR approximation and fitted alpha cards/atlases remain
+open. Procedural graph interchange, back-color/translucency/thickness transfer,
+vegetation wind/LODs and realistic mature-oak/bark appearance are not qualified
+by this milestone. No installed service, package, environment or installed skill
+was changed, and no Git publication was performed.
+
 ## Projected botanical coverage and density refinement — 2026-11-03
 
 `inspect_botanical_coverage` adds tracked read-only current/proposed foliage

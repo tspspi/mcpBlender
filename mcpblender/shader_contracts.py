@@ -13,9 +13,9 @@ NODE_TYPES = (
     "ShaderNodeBsdfPrincipled", "ShaderNodeBsdfDiffuse", "ShaderNodeBsdfGlass",
     "ShaderNodeEmission", "ShaderNodeMixShader", "ShaderNodeAddShader", "ShaderNodeOutputMaterial",
     "ShaderNodeTexImage", "ShaderNodeTexNoise", "ShaderNodeTexVoronoi", "ShaderNodeTexChecker",
-    "ShaderNodeTexCoord", "ShaderNodeMapping", "ShaderNodeMath", "ShaderNodeVectorMath",
+    "ShaderNodeTexCoord", "ShaderNodeUVMap", "ShaderNodeMapping", "ShaderNodeMath", "ShaderNodeVectorMath",
     "ShaderNodeMixRGB", "ShaderNodeNormalMap", "ShaderNodeBump", "ShaderNodeRGB",
-    "ShaderNodeValue", "ShaderNodeSeparateColor", "ShaderNodeCombineColor", "ShaderNodeMapRange",
+    "ShaderNodeValue", "ShaderNodeSeparateColor", "ShaderNodeSeparateXYZ", "ShaderNodeCombineColor", "ShaderNodeMapRange",
     "ShaderNodeValToRGB", "ShaderNodeVolumePrincipled", "ShaderNodeVolumeInfo", "ShaderNodeAttribute",
 )
 

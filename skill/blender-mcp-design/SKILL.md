@@ -371,3 +371,10 @@ chosen recipe with fresh guards and render the same camera. Coarse samples can
 miss small leaves and exclude wood/material optics. Raise resolution for review;
 never use summed blade area as projected coverage. Work is bounded by an explicit
 per-view triangle budget. See USER_MANUAL.md for mask coordinates and limits.
+
+Managed trees reuse shared bark/leaf materials across regeneration. Use the
+botanical surface tools for guarded UV fissure/vein color and bump without
+realizing foliage or replacing the material ID. Render close-ups and retain the
+editable project; bake procedural bark with the existing texture tools before
+portable PBR delivery. Native thin-leaf optics and atlas/wind/vegetation LOD work
+remain separate. See USER_MANUAL.md for surface ownership and removal guards.

@@ -1,5 +1,65 @@
 # Local validation: 0.2.0
 
+## Botanical wind interchange and shared templates — 2026-11-03
+
+New inspect/export/validate botanical bundle tools bind canonical wind settings,
+model hierarchy and leaf attachment tables to verified wood/shoot numeric GLBs
+and one static GLB per leaf variant. Export derives branch index, parent index,
+whole-axis anchor, individual-segment pivot, phase, stiffness and height weight
+on disposable copies. Axis anchors and solver pivots are deliberately distinct.
+The semantic JSON retains stable branch/bud/leaf IDs, generator/seed, full parent
+hierarchy, compiled wind field/solver/placement, shoots, leaf XYZ orientation,
+scale, variant, phase and flutter. Original native prototypes stay shared; exported
+instances reference shared template files rather than realized population meshes.
+
+The final native plus structured workflow tests passed before a policy-fixture
+argument error, **2 passed in the 32.64-second stopped run**. Corrected path/policy,
+capability, semantic-mapping and dependency-free add-on checks passed **5 tests in
+19.35 seconds**. Final nested-sub-bundle and whole-bundle cancellation/semantic
+checks passed **2 tests in 15.47 seconds**. Both bundled skills validate; whitespace
+checks pass. These focused gates do not constitute a fresh full-project suite.
+The placement bug uncovered by the first fixture was fixed and committed
+separately; see the exact-placement qualification below.
+
+The structured fixture disables arbitrary Python execution, exports a 5m,
+37-branch tree with 28 leaves and three templates, waits through the tracked
+operation, revalidates decoded files, saves/reopens the editable source and then
+removes it. File-only validation still succeeds. The five delivered GLBs contain
+772 wood triangles, 168 shoot triangles and 196 triangles per leaf variant;
+wood/template UVs remain intact. This fixture has no authored UV2; the generic
+numeric exporter separately qualifies UV2, and managed-master UV2 editing remains
+unqualified here. Semantic branch rows are compared to the hierarchy, template
+vertices to canonical template generation and the entire seeded attachment table
+to regenerated canonical data. Version, wind field, compact foliage, source plan
+and content hashes are checked. Sidecar modification fails both ordinary hash
+checking and deeper attachment/binding checks after its file inventory is rehashed.
+
+A native .01-scene-unit fixture adds translated/rotated/uniformly scaled placement.
+Every actual Geometry Nodes leaf instance is matched uniquely by variant and rest
+position/orientation/scale to the table. For its 28 instances, maximum physical
+position difference was about 5.84e-7m and maximum normalized linear-matrix
+component difference about 3.49e-7. Bare export produces only wood. Stale guards
+and byte bounds refuse. Cancellation inside a numeric sub-bundle and after full
+botanical verification preserves the exact source guard/native ID set, selected
+objects, active object and frame, removing only owned staging/native copies.
+Successful exports preserve these too. Root guard inputs canonicalize numeric
+wind defaults so equivalent inspected/exported options do not become stale.
+
+The retained source project, ordinary bundle, centimetre bundle and proof JSON
+are local under `/tmp/mb-botanical-export-20261103`; both copied bundles were
+independently validated with system Python. The output is GLB files plus a shared
+instance/hierarchy sidecar, not EXT_mesh_gpu_instancing, a single engine scene,
+an executable wind shader or optical/backlighting/vein equivalence. Native shader
+export losses are explicit; PBR baking remains a separate workflow. Bud geometry
+stays in semantic organs. Controlled/edited managed masters refuse; corner,
+instance, component, file traversal and byte budgets bound work. Native glTF calls
+are cooperatively cancellable only between calls. Free-space estimates/progress
+exclude unknown material images until actual sizes are available. Multi-file
+publication is not hard-crash atomic: partial/staging directories need inspection.
+Large populations, default full-tree export throughput, vegetation LODs, continuous
+native wind and engine parity remain unqualified. No packages, venvs, installed
+runtime/services or user Blender sessions changed; nothing was pushed.
+
 ## Exact botanical placement through regeneration — 2026-11-03
 
 Regeneration copies the root's rotation mode, ordinary/delta transform channels

@@ -456,3 +456,12 @@ expensive/undersampled requests. Source/frame/selection stay preserved. Inspect
 the preview for a fresh removal guard; foreign/shared dependencies block deletion.
 Runtime wind attributes/GLB packing remain separate. See USER_MANUAL.md for timing,
 native-main-thread cancellation, interpolation and recovery limits.
+
+For portable botanical wind delivery, use inspect_botanical_export then
+export_botanical_bundle with its expected_export guard, identical options and a
+new directory. validate_botanical_bundle checks the saved files independently.
+The format keeps the canonical wind solver/hierarchy, segment pivots, distinct
+axis anchors and per-instance leaf rotation/phase/flutter; leaf template GLBs stay
+shared. These are rest-geometry/semantic correspondence proofs, not an engine wind
+shader or continuous-motion test. Use the existing sampled native wind preview
+for Blender motion review, keep the .blend, and read USER_MANUAL.md for limits.

@@ -39,7 +39,7 @@ def estimate(command, params):
         return 16*1024**2, "initial_project_heuristic_worker_refines_with_body_count_and_range"
     if command in {"create_botanical_tree", "regenerate_botanical_tree", "create_asset_assembly","create_botanical_wind_preview"}:
         return 16*1024**2, "initial_native_graph_transfer_heuristic_worker_refines_mesh_and_image_size"
-    if command in {"export_lod_chain", "export_asset_package", "export_attribute_bundle"}:
+    if command in {"export_lod_chain", "export_asset_package", "export_attribute_bundle", "export_botanical_bundle"}:
         return 16*1024**2, "initial_lod_bundle_heuristic_worker_refines_geometry_and_texture_estimate"
     if command == "run_action":
         return sum(s["storage"]["estimated_bytes"] for s in params["steps"]), "sum_known_action_outputs_some_steps_may_be_unknown"

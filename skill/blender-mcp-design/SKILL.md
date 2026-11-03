@@ -436,3 +436,13 @@ decodes fields/positions/triangles/UVs/metre placement. Scalar lanes preserve ra
 components; they do not auto-convert anchor vectors into GLB axes/metres. UV2 stays
 available for lightmaps. Integers outside +/-2^24 refuse. Save the .blend separately;
 complete botanical wind packing and downstream engine behavior remain separate.
+
+For owned tree wind interchange, inspect_botanical_export with collection/wind,
+then export_botanical_bundle with the same options, expected_export and a new
+directory. validate_botanical_bundle works after source removal. It carries full
+canonical hierarchy/leaf orientation/phase/flutter semantics and verified branch
+fields, wood/shoot GLBs and one shared GLB per leaf variant. Segment pivots differ
+from whole-axis anchors; read the recorded coordinate contract. Buds remain
+semantic points. No UV channel is used for wind. Keep the editable .blend and bake
+PBR separately; native shader optics, continuous motion, engine import and
+vegetation LODs remain unqualified. Native rest-instance checks precede publication.

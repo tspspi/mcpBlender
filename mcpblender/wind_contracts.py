@@ -87,3 +87,21 @@ COMMANDS={
  'sample_botanical_wind':(Sample,(),'Sample the common wind field and hierarchical branch rotations without editing Blender. Page branches/leaves; report all-segment length/junction/root-anchor errors and rotation/displacement budgets. Not native animated geometry or a mechanical solver.'),
  'export_botanical_wind':(Export,('allow_library_write',),'Export guarded versioned wind field/solver settings, canonical branch hierarchy, placement and explicit foliage attachments to JSON. Atomically publish a bounded semantic sidecar with space checks. No GLB attribute packing or native preview certification.'),
 }
+
+class BotanicalExportPlan(Plan):
+    max_instances: int = Field(default=30000,strict=True,ge=0,le=100000)
+    max_corners: int = Field(default=500000,strict=True,ge=1,le=1000000)
+
+class BotanicalExport(BotanicalExportPlan):
+    expected_export: Digest
+    directory: str = Field(min_length=1)
+    max_bytes: int = Field(default=512*1024**2,strict=True,ge=1024,le=512*1024**2)
+
+class BotanicalBundle(Model):
+    directory: str = Field(min_length=1)
+
+COMMANDS.update({
+ 'inspect_botanical_export':(BotanicalExportPlan,(),'Plan engine-independent botanical wind interchange: canonical hierarchy/instance semantics, shared leaf-template GLBs and verified branch fields. Return a source/settings/budget guard; no native edits.'),
+ 'export_botanical_bundle':(BotanicalExport,('allow_library_write',),'Export a guarded owned botanical master into a new directory. Independently verify branch-field GLBs, shared leaf prototypes and canonical attachment semantics; compare every native leaf rest instance before publication. Retain source IDs and UVs. No engine shader/optical equivalence.'),
+ 'validate_botanical_bundle':(BotanicalBundle,(),'Independently validate botanical bundle inventory, GLB fields/geometry/UVs/metre placement, branch hierarchy mappings and seeded leaf prototypes/attachment semantics. No Blender source or engine required.'),
+})

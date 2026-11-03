@@ -3472,6 +3472,72 @@ This generic format does not yet populate complete botanical branch hierarchy,
 leaf orientation/flutter or a wind runtime shader. Preserve the canonical wind
 semantic JSON alongside later vegetation deliveries.
 
+## Botanical wind interchange bundles
+
+Use `inspect_botanical_export` with the managed tree `collection` and optional
+`wind` settings. Pass its `export_sha256` as `expected_export` to
+`export_botanical_bundle`, with the same settings/budgets and a new `directory`.
+`validate_botanical_bundle` verifies a saved bundle independently of the original
+Blender project. These tools work with arbitrary Python execution disabled.
+Keep the editable `.blend` alongside the bundle; it is not embedded automatically.
+
+The versioned `mcpblender-botanical-wind-bundle-v1` layout contains:
+
+- `semantics.json`: canonical model/generator/seed, stable branch/bud IDs and parent
+  hierarchy, compiled wind field/solver/placement, full shoot and leaf attachment
+  tables, variant, local XYZ orientation, scale, phase and flutter.
+- `wood/` and, for populated foliage, `shoots/`: numeric-field GLB bundles with
+  branch index, parent index, axis anchor, segment pivot, phase, stiffness and bend
+  weight. Root parent index is -1. Anchors/pivots remain raw root-local metres.
+- `leaf-0/` through the configured variant count: one verified static GLB per
+  template, referenced by all leaf instance records. Templates stay shared; no
+  leaf population realization or `EXT_mesh_gpu_instancing` is emitted.
+- `manifest.json`: source/plan guards, file hashes, component inventory, native
+  rest-instance comparison metrics and explicit material conversion limits.
+
+Axis anchors and segment pivots have distinct meanings: the anchor is the first
+attachment of an entire branch axis; the hierarchical solver rotates each segment
+around its own start. Bend weight is the existing clamped local Z/tree-height
+profile. The full hierarchy/solver supplies the actual parent-first motion; the
+weight field alone is not a complete wind shader. Leaf flutter is a rigid local-X
+rotation after attachment rotation, with per-instance phase/amplitude. No wind data
+uses UV coordinates. Custom vector lanes stay in canonical Z-up metres; GLB
+positions use +Y up and normalized world metres. Consumers must apply the recorded
+coordinate contract and placement rather than treating custom vectors as POSITION.
+
+Every native leaf rest instance is matched to its canonical variant, position,
+orientation and scale before export. Numeric sub-bundle validation checks all
+encoded mesh fields, positions, oriented triangles, UV channels and metre placement.
+The independent botanical validator additionally checks model/wind bindings,
+branch semantic rows, regenerated seeded leaf attachments and canonical template
+vertices. Revalidation needs the files only, even after the source is removed.
+These are correspondence checks against unsigned witnesses, not authenticated
+provenance, a runtime shader test or continuous-motion certification.
+
+Sources must satisfy managed botanical ownership/content checks and frozen positive
+uniform placement. Manually edited derived meshes require a separate delivery
+workflow; this export does not bypass master ownership validation. The woody mesh
+retains BarkUV; shared templates retain LeafUV. The general numeric exporter also
+qualifies UV2 preservation, but authored lightmap UV2 on managed botanical masters
+has not been qualified by this fixture. Bud points remain in canonical semantic
+organs, without a separate point-only GLB. Bare trees produce only the wood asset.
+
+Default budgets are 30,000 leaf instances, 500,000 total corners and 512 MiB output;
+limits are 100,000 instances and one million corners. Numeric sub-bundle scalar
+component limits also apply. The initial geometry/semantic estimate excludes
+unknown embedded material image sizes; per-component progress and free-storage
+checks continue through verification. Native glTF calls are not interruptible;
+cancellation is cooperative between native calls and during bounded decoding.
+
+Existing directories are refused. Cooperative failure removes only owned native
+copies/staging data and preserves the source, selection and frame. Publication
+moves several component folders/files into an exclusively reserved directory;
+it is not hard-crash atomic. A crash can leave a hidden staging or partial output
+directory requiring inspection. Native thin-leaf/bark graphs are passed through
+Blender's glTF exporter; optical/backlighting/vein fidelity is not certified.
+Bake PBR with the existing texture workflow when needed. Vegetation LODs,
+continuous wind, engine shaders and the final mature-oak reference remain separate.
+
 ## Blender to Godot
 
 Use Blender for modeling, materials, UVs, rigging and animation; export selected

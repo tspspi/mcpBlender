@@ -4,6 +4,61 @@
 
 
 
+## Projected botanical coverage and density refinement — 2026-11-03
+
+`inspect_botanical_coverage` adds tracked read-only current/proposed foliage
+comparison. Coverage uses the union of opaque blade triangles sampled at pixel
+centers in canonical local-metre orthographic frames. It reports the declared
+crown ellipse coverage, union/outside area, reflection asymmetry and clipping.
+Resolution, margins, projection work limits and optional mask rows are explicit.
+Root placement, wood/shoot/petiole geometry, shader optics and perspective are
+excluded. It creates no native data or files. No GPU or biological interpretation
+is implied; small blades may be missed at coarse resolution.
+
+Focused portable coverage, native-render comparison, structured MCP refinement
+and addon isolation checks passed **6 tests in 99.89 seconds**. Portable tests
+cover triangle unions/overlap, zero-area projections, rotation, source/work guards
+and cooperative cancellation. A final clipping/capability refinement passed
+**4 tests in 4.47 seconds**. Foliage/core coverage, capabilities and server checks
+also passed **13 tests in 17.99 seconds**, with the existing Starlette/AnyIO warning.
+After restricting projection/clipping to blade vertices, the final portable, native
+and structured coverage suite passed **5 tests in 147.84 seconds**, while the
+larger density render was also running. The bundled design skill validator passed.
+This is focused regression, not a new complete-project qualification.
+
+The native 128x128 orthographic fixture independently renders generated Geometry
+Nodes leaf instances in Cycles. Its opaque-alpha threshold finds 5,418 pixels,
+versus 5,083 CPU blade samples (approximately 6.6% difference). Raster samples and
+antialiased rendered silhouettes are different measurements; native petioles also
+remain visible. The fixture's tolerance is 15%, not a guarantee for other meshes,
+resolutions or view angles.
+
+The structured Python-disabled fixture compares a 3m source with sparse and dense
+proposed recipes at fixed 64x64 frames. Sampled crown coverage increases from
+1.34% to 44.35% front, 2.59% to 46.26% side and 8.43% to 75.29% top. Proposal
+inspection preserves the tree fingerprint. Applying the chosen recipe reproduces
+the proposed masks and keeps the inspected fingerprint unchanged during the
+subsequent coverage operation. This verifies a closed-loop geometric control,
+not final mature-oak visual quality or density under arbitrary growth parameters.
+
+The standalone native 14m density study keeps its front sampling frame and
+resolution (128x128) fixed: covered crown pixels increase from 773/6,364 (12.15%)
+to 3,082/6,364 (48.43%). The selected recipe uses 67,008 leaves, 4,188 modeled
+shoots and three shared prototypes; expanded leaf geometry is estimated at
+13,133,568 triangles under an explicitly raised 20-million budget. Defaults remain
+unchanged. The Cycles preview was rendered and visually inspected; the editable
+`oak-dense.blend` and JSON comparison are retained with local fixture evidence.
+A separate fresh Blender process reopened that file, confirmed the guarded tree
+validity, counted exactly 67,008 native instances backed by three prototypes,
+and checked that the saved engine is Cycles.
+This larger study uses a native test helper; the separate 3m refinement test proves
+the corresponding agent workflow through structured MCP with Python disabled.
+An initial scratch preview inherited Eevee/software OpenGL and was deliberately
+stopped; it supplies no Eevee performance or quality qualification. The corrected
+run explicitly selected Cycles and reproduced both coverage results exactly.
+The denser crown remains an artistic study, with realistic bark/junctions, final
+oak appearance, atlases, wind, vegetation LODs and delivery still unfinished.
+
 ## Modular leaf geometry and shared foliage — 2026-11-03
 
 Blender 5.0.1 native checks verify deterministic leaf attachment, shared Geometry

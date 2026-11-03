@@ -362,3 +362,12 @@ list_botanical_leaves pages attachment metadata. Growth regeneration preserves t
 foliage recipe/material; owned removal includes its native dependencies. Manually
 edited derived data needs explicit discard consent; canonical edits refuse rebuild.
 See USER_MANUAL.md for lifecycle and optics boundaries.
+
+Use inspect_botanical_coverage (async) to compare current or proposed foliage
+recipes without editing. Fix views, resolution and margin across comparisons.
+It samples opaque blade triangles in root-local orthographic projections; inspect
+crown coverage, outside-envelope area, asymmetry and clipping, then plan/apply the
+chosen recipe with fresh guards and render the same camera. Coarse samples can
+miss small leaves and exclude wood/material optics. Raise resolution for review;
+never use summed blade area as projected coverage. Work is bounded by an explicit
+per-view triangle budget. See USER_MANUAL.md for mask coordinates and limits.

@@ -6,7 +6,7 @@ from mathutils import Vector
 from mcpblender import botany,foliage
 from . import assemblies,assembly_realization as realization
 from .botanical_trees import attribute,frame
-COMMANDS={'inspect_foliage_material','configure_foliage_material','plan_leaf_template','create_leaf_template','plan_botanical_foliage','configure_botanical_foliage','remove_botanical_foliage','list_botanical_leaves'}
+COMMANDS={'inspect_botanical_coverage','inspect_foliage_material','configure_foliage_material','plan_leaf_template','create_leaf_template','plan_botanical_foliage','configure_botanical_foliage','remove_botanical_foliage','list_botanical_leaves'}
 
 
 def material(name):
@@ -196,6 +196,13 @@ def dispatch(command,p):
     values=trees.inventory(p);state=values[-1];model=values[-2]
     if state['ownership_blockers'] or state['replacement_blockers'] or state['model_error']:raise ValueError('Foliage requires an owned botanical master with valid canonical models and root controls')
     if state['issues'] and command!='plan_botanical_foliage' and not (command=='configure_botanical_foliage' and p.get('discard_derived_edits')):raise ValueError('Derived edits require discard_derived_edits=true explicitly')
+    if command=='inspect_botanical_coverage':
+        from mcpblender import foliage_coverage
+        meta=state.get('foliage');cfg=p.get('foliage') or (meta['recipe'] if meta else None)
+        if cfg is None:raise ValueError('Supply a foliage recipe or configure foliage first')
+        from .bridge import check_cancelled,report_progress
+        result=foliage_coverage.analyze(model,build_layout(model,cfg),resolution=p['resolution'],views=p['views'],margin=p['margin'],max_projected_triangles=p['max_projected_triangles'],include_masks=p['include_masks'],progress=report_progress,cancelled=check_cancelled)
+        return result|{'tree_sha256':state['tree_sha256'],'proposed_recipe':p.get('foliage') is not None}
     if command=='list_botanical_leaves':
         meta=json.loads(values[0][trees.META]).get('foliage')
         if not meta:raise ValueError('Tree has no foliage component')

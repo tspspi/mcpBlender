@@ -1326,6 +1326,52 @@ also operates in Cycles. This native shader is not calibrated physical thickness
 an alpha-card shader or a promise of equivalent glTF/runtime shading. Alpha atlases,
 baked vein/bark maps, seasonal optics and vegetation-specific delivery remain open.
 
+## Botanical coverage and crown refinement
+
+`inspect_botanical_coverage` measures the projected union of opaque blade triangles,
+not the sum of overlapping leaf areas. Supply a managed `collection`; omit `foliage`
+to inspect its current foliage, or supply a proposed foliage recipe to compare
+without editing native data. The tree must pass its content/ownership checks.
+The result includes `tree_sha256`, model/foliage guards and `proposed_recipe`.
+This is a tracked read-only operation, asynchronous by default: poll its operation
+or use `wait=true` for bounded work. It creates no native geometry or output files.
+Large layouts can take minutes; progress and cooperative cancellation occur between
+leaf batches. Existing operation status supplies current free-storage information.
+
+Options are `views` (distinct FRONT, SIDE, TOP), `resolution` (32–256; default 128),
+`margin` (0–5m; default 2.5), `max_projected_triangles` (default 60 million; maximum
+100 million) and `include_masks` (default false). The work budget counts each
+blade triangle in each requested view, before projection. Reduce views or density
+when necessary; increasing raster resolution improves sampling but not geometry.
+
+For each view the report provides local-metre projection axes/frame, pixel size,
+covered pixels, pixels inside the declared crown ellipse, `crown_coverage_fraction`,
+projected union area, area outside that ellipse, reflected-silhouette asymmetry
+and `frame_clipped`. Optional `mask_rows_hex` encodes each row as a hexadecimal
+integer: row zero is the minimum second projection coordinate, and bit zero is
+the minimum first coordinate. FRONT projects X/Z, SIDE Y/Z, TOP X/Y. Frames are
+centered on the canonical crown, expanded by the margin; root placement/scale
+is deliberately excluded. Keep model, views, margin and resolution fixed when
+comparing foliage recipes. Changed tree growth can change that reference frame.
+
+Only pixel centers inside blade triangles count. Wood, shoots, petioles, shader
+alpha/translucency, perspective, lighting and wind are excluded. Subpixel leaves
+may be missed; check a higher resolution and actual renders before assessing
+visual quality. Degenerate projected triangles contribute nothing. Asymmetry
+compares occupied samples to their horizontal reflection; random fine foliage can
+produce high values even when the broad crown is balanced. These are geometric
+sampling metrics, not optical leaf-area index, biological validation or GPU overdraw.
+
+A refinement loop is: inspect current coverage; compare a proposed density recipe;
+plan that recipe with `plan_botanical_foliage`; apply it with fresh tree/foliage
+guards; render the same camera and inspect coverage again. Existing controls can
+increase shoot count, attachment nodes and shoot reach while retaining shared
+prototypes. For a dense study of the default 14m source, a tested proposal uses
+12 shoots/bud, 16 attachment nodes, `shoot_length=1.2`, `spread=1.1` and an explicit
+`max_expanded_triangles=20000000`. This is a higher-cost density study, not a
+completed realistic-oak preset or vegetation LOD. Detailed bark, branch junctions,
+atlases and wind remain separate milestones.
+
 ## Structured Geometry Nodes
 
 These tools accept `params` and work with Python execution disabled. Use

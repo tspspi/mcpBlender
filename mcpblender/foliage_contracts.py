@@ -51,6 +51,17 @@ class Configure(LayoutPlan):
     expected_tree: Digest
     expected_foliage: Digest
     discard_derived_edits: bool = False
+class Coverage(Tree):
+    foliage: Foliage|None = None
+    resolution: int = Field(default=128,strict=True,ge=32,le=256)
+    views: Annotated[list[Literal['FRONT','SIDE','TOP']],Field(min_length=1,max_length=3)] = ['FRONT','SIDE','TOP']
+    margin: FiniteFloat = Field(default=2.5,ge=0,le=5)
+    max_projected_triangles: int = Field(default=60000000,strict=True,ge=1,le=100000000)
+    include_masks: bool = False
+    @model_validator(mode='after')
+    def unique_views(self):
+        if len(set(self.views))!=len(self.views):raise ValueError('Coverage views must be distinct')
+        return self
 class Elements(Tree):
     offset: int = Field(default=0,ge=0,le=100000)
     limit: int = Field(default=32,ge=1,le=128)
@@ -71,6 +82,7 @@ class Optical(Material):
         if any(getattr(self,k) is not None and getattr(self,k)[3]!=1 for k in ('front_color','back_color','transmission_color')):raise ValueError('Leaf color alpha must be one; alpha-mask optics are separate')
         return self
 COMMANDS={
+ 'inspect_botanical_coverage':(Coverage,(),'Inspect repeatable orthographic blade-triangle pixel coverage against the declared crown ellipse, local metre bounds, asymmetry and work budgets. Uses current managed foliage or a proposed recipe without editing. Reports resolution/clipping limits; excludes wood and shader opacity.'),
  'inspect_foliage_material':(Material,(),'Inspect actual managed thin-leaf front/back colors, roughness, translucency and explicit two-sided shader state with a shared-material guard. These optics are distinct from alpha masking and thickness.'),
  'configure_foliage_material':(Optical,('allow_scene_edit',),'Guardedly patch a shared managed leaf material without rebuilding leaves. Separate translucency from explicit backface transparency; preserve unknown graph edits and restore settings on cooperative failure.'),
  'plan_leaf_template':(ShapePlan,(),'Inspect a portable lobed leaf blade/petiole template with curvature, raised midrib, UVs, triangle and area metrics. Return leaf guard; no native edits.'),

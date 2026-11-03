@@ -11,7 +11,7 @@ META='mcpblender_vegetation_lods'
 OWNER='mcpblender_vegetation_lod_owner'
 TEXT='mcpblender_vegetation_lod_semantics'
 COMMANDS={'inspect_botanical_lod_source','create_botanical_lods','inspect_botanical_lods','activate_botanical_lod','remove_botanical_lods'}
-TABLES={'Collection':'collections','Object':'objects','Mesh':'meshes','GeometryNodeTree':'node_groups','Text':'texts'}
+TABLES={'Collection':'collections','Object':'objects','Mesh':'meshes','GeometryNodeTree':'node_groups','Text':'texts','Material':'materials','Image':'images','ShaderNodeTree':'node_groups'}
 
 
 def plan(p):
@@ -32,7 +32,12 @@ def plan(p):
     return values,population,result,summary
 
 
-def signature(owned):return wind_preview.signature(owned,metadata_key=META)
+def signature(owned):
+    base=wind_preview.signature(owned,metadata_key=META)
+    private=[v for v in owned if isinstance(v,bpy.types.Material)]
+    if not private:return base
+    from . import textures
+    return botany.digest({'native':base,'baked_materials':{m.name:textures.material_signature(m,source=False) for m in sorted(private,key=lambda m:m.name)}})
 
 
 def inspect(p):
@@ -45,18 +50,18 @@ def inspect(p):
         if value is None or value.get(OWNER)!=meta['owner']:raise ValueError('Botanical LOD owned ID missing/renamed or ownership changed')
         owned.add(value)
     if len(owned)!=len(meta['owned']) or col not in owned:raise ValueError('Duplicate botanical LOD ownership')
-    blockers=[];users=bpy.data.user_map()
+    blockers=[];users=bpy.data.user_map();embedded={v.node_tree for v in owned if isinstance(v,bpy.types.Material) and v.node_tree}
     for value in owned:
         if value.library or value.override_library or value.use_fake_user:blockers.append('Owned LOD data became linked/persistent: '+value.name)
         for user in users.get(value,set()):
-            if user in owned or value==col and isinstance(user,(bpy.types.Scene,bpy.types.Collection)) or isinstance(value,bpy.types.Object) and isinstance(user,bpy.types.Scene):continue
+            if user in owned or user in embedded or value==col and isinstance(user,(bpy.types.Scene,bpy.types.Collection)) or isinstance(value,bpy.types.Object) and isinstance(user,bpy.types.Scene):continue
             blockers.append('External reference: '+value.name)
         if isinstance(value,bpy.types.Collection) and any(v not in owned for v in [*value.objects,*value.children]):blockers.append('Foreign collection member: '+value.name)
     current=signature(owned);issues=[]
     if current!=meta['content_sha256']:issues.append('Botanical LOD contents changed')
     guard=botany.digest({'content':current,'meta':meta,'users':sorted((v.name,sorted((u.bl_rna.identifier,u.name) for u in users.get(v,set()))) for v in owned)})
     result={'lod_collection':col.name,'lods_sha256':guard,'valid':not issues and not blockers,'issues':issues,'ownership_blockers':sorted(set(blockers)),
-            'levels':meta['levels'],'active_level':meta['active_level'],'root':meta['root'],'prototypes':meta['prototypes'],'source':meta['plan']['source'],'semantic_text':getattr(col.get(TEXT),'name',None),'plan':meta['plan'],'verification':meta['verification']}
+            'levels':meta['levels'],'active_level':meta['active_level'],'root':meta['root'],'prototypes':meta['prototypes'],'source':meta['plan']['source'],'semantic_text':getattr(col.get(TEXT),'name',None),'plan':meta['plan'],'verification':meta['verification'],'baked_materials':meta.get('baked_materials',{})}
     return col,owned,meta,result
 
 
@@ -172,7 +177,7 @@ def dispatch(command,p):
     if result['ownership_blockers']:raise ValueError('Botanical LOD external ownership references prevent mutation/removal')
     if command=='remove_botanical_lods':
         if result['issues'] and not p.get('discard_derived_edits',False):raise ValueError('Edited derived LODs need explicit discard_derived_edits')
-        name=col.name;bpy.data.batch_remove(ids=tuple(owned));return {'removed':name,'materials_preserved':True}
+        name=col.name;private_materials=sum(isinstance(v,bpy.types.Material) for v in owned);bpy.data.batch_remove(ids=tuple(owned));return {'removed':name,'materials_preserved':True,'shared_source_materials_preserved':True,'owned_baked_materials_removed':private_materials}
     if not result['valid']:raise ValueError('Cannot activate modified botanical LODs')
     if not 0<=p['level']<len(meta['levels']):raise ValueError('Botanical LOD level out of range')
     for level in meta['levels']:

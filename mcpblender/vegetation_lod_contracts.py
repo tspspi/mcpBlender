@@ -55,7 +55,7 @@ COMMANDS={
  'create_botanical_lods':(Create,('allow_scene_edit',),'Create guarded independent near/mid botanical LODs plus full LOD0, with shared leaf templates, canonical wind IDs and native pose/count verification. Refuse failed coverage/triangle gates; preserve source. Cards/impostors/LOD GLB packaging remain separate.'),
  'inspect_botanical_lods':(Read,(),'Inspect owned botanical LOD contents, active level, coverage plan, native pose readback, shared prototypes and current mutation/removal guard.'),
  'activate_botanical_lod':(Activate,('allow_scene_edit',),'Guardedly select one native botanical LOD for viewport/render visibility. Preserve editable source and other scene objects.'),
- 'remove_botanical_lods':(Remove,('allow_scene_edit',),'Guardedly remove only owned botanical LOD data, retaining materials and source. Foreign members/references refuse; edited derived data needs explicit discard.'),
+ 'remove_botanical_lods':(Remove,('allow_scene_edit',),'Guardedly remove only owned botanical LOD data, including private adopted materials/images. Retain shared source materials and the source. Foreign members/references refuse; edited derived data needs explicit discard.'),
 }
 
 class Export(Edit):

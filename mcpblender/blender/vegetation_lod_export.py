@@ -32,10 +32,10 @@ def export(p):
     if p['expected_lods']!=state['lods_sha256']:raise ValueError('Botanical LOD fingerprint is stale')
     if not state['valid']:raise ValueError('Botanical LOD export requires valid unchanged owned content')
     materials=None
-    if p.get('material_mode')=='PARAMETERS':
+    if p.get('material_mode')=='PARAMETERS' or meta.get('baked_materials'):
         from . import vegetation_materials
         materials=vegetation_materials.contract(vegetation_materials.lod_objects(col,meta))
-        if materials['materials_sha256']!=p.get('expected_materials'):raise ValueError('Vegetation material fingerprint is stale; inspect materials again')
+        if p.get('material_mode')=='PARAMETERS' and materials['materials_sha256']!=p.get('expected_materials'):raise ValueError('Vegetation material fingerprint is stale; inspect materials again')
     destination=Path(p['directory'])
     if destination.exists():raise FileExistsError(destination)
     text=col.get(vegetation_lods.TEXT)
@@ -54,12 +54,16 @@ def export(p):
               'source_wind':source_wind,'wind':delivery_wind,'placement_mode':p['placement'],'displayed_placement':shown,'levels':descriptors,'templates':templates,
               'coordinates':common.semantics(model,population,delivery_wind)['coordinates']}
     if materials is not None:semantic['materials']=materials
+    if meta.get('baked_materials'):semantic['baked_materials']=meta['baked_materials']
     encoded=(json.dumps(semantic,sort_keys=True,allow_nan=False)+'\n').encode()
     if len(encoded)>p['max_bytes']:raise ValueError('LOD semantics exceed max_bytes')
     estimate=len(encoded)*2+sum(len(bpy.data.objects[n].data.loops)*256 for level in meta['levels'] for n in level['objects'][:2])+16*1024**2
+    # Adopted inputs have a known conservative uncompressed base-image budget.
+    estimate+=2*sum(r['rgba8_base_bytes'] for r in meta.get('baked_materials',{}).values())
+    estimate_kind='lod_geometry_semantic_and_adopted_rgba8_heuristic_excludes_other_material_images' if meta.get('baked_materials') else 'lod_geometry_semantic_heuristic_excludes_embedded_material_images'
     policy=_bridge.active.get('storage',{}) if _bridge and _bridge.active else {}
-    if _bridge and _bridge.active:_bridge.active['storage'].update(estimated_bytes=estimate,estimate_kind='lod_geometry_semantic_heuristic_excludes_embedded_material_images')
-    storage=require_space(destination,estimate,reserve_bytes=policy.get('reserve_bytes',256*1024**2),estimate_kind='lod_geometry_semantic_heuristic_excludes_embedded_material_images')
+    if _bridge and _bridge.active:_bridge.active['storage'].update(estimated_bytes=estimate,estimate_kind=estimate_kind)
+    storage=require_space(destination,estimate,reserve_bytes=policy.get('reserve_bytes',256*1024**2),estimate_kind=estimate_kind)
     report_progress({'phase':'staging shared vegetation LOD bundle','storage':storage});check_cancelled()
     job=p.get('_export_job');stage=job.stage if job else Path(tempfile.mkdtemp(prefix='.mcpblender-vegetation-lods-',dir=destination.parent));assets=[]
     if job:stage.mkdir(mode=0o700);job.created()

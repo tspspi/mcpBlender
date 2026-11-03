@@ -69,7 +69,7 @@ def material_signature(mat,*,source=True,thin_foliage_mode='REFUSE'):
     records=[]
     for node in tree.nodes:
         if node.bl_idname not in shaders.NODE_TYPES or node.type in {'ATTRIBUTE','VOLUME_INFO','PRINCIPLED_VOLUME'}:
-            if not (adapter and THIN_NODES.get(node.name)==node.bl_idname or not source and node.type=='GROUP' and node.node_tree and node.node_tree.get('mcpblender_baked_ao')):
+            if not (adapter and THIN_NODES.get(node.name)==node.bl_idname or node.type=='GROUP' and baked_ao_group(node.node_tree)):
                 raise ValueError(f'Unsupported bake material node: {node.bl_idname}')
         if node.type=='TEX_COORD' and node.object:raise ValueError('External texture-coordinate objects are unsupported')
         record={'name':node.name,'type':node.bl_idname,'properties':{k:v for k,v in props(node).items() if k not in NODE_UI},
@@ -252,3 +252,24 @@ def cleanup(p):
 
 def dispatch(command,p):
     return {'inspect_texture_bake':inspect,'bake_textures':bake,'validate_texture_bake':validate,'inspect_texture_job':job_info,'recover_texture_job':recover,'cleanup_texture_job':cleanup}[command](p)
+
+
+def baked_material(images,uv_map):
+    """Build the shared explicit-UV PBR recipe from already verified images."""
+    properties={'BASE_COLOR':'Base Color','ROUGHNESS':'Roughness','METALLIC':'Metallic','EMISSION':'Emission Color','ALPHA':'Alpha'}
+    mat=bpy.data.materials.new('BakedPBR');mat.use_nodes=True;tree=mat.node_tree;surface=tree.nodes.get('Principled BSDF');surface.name='Surface';tree.nodes.get('Material Output').name='Output'
+    for kind,image in images.items():
+        node=tree.nodes.new('ShaderNodeTexImage');node.name=kind;node.image=image
+        coords=tree.nodes.new('ShaderNodeUVMap');coords.uv_map=uv_map;tree.links.new(coords.outputs['UV'],node.inputs['Vector'])
+        if kind=='NORMAL':
+            normal=tree.nodes.new('ShaderNodeNormalMap');normal.uv_map=uv_map;tree.links.new(node.outputs['Color'],normal.inputs['Color']);tree.links.new(normal.outputs['Normal'],surface.inputs['Normal'])
+        elif kind=='AO':
+            group=bpy.data.node_groups.new('glTF Material Output','ShaderNodeTree');group.interface.new_socket(name='Occlusion',in_out='INPUT',socket_type='NodeSocketFloat');group.nodes.new('NodeGroupInput');group.nodes.new('NodeGroupOutput');group['mcpblender_baked_ao']=True
+            settings=tree.nodes.new('ShaderNodeGroup');settings.node_tree=group;tree.links.new(node.outputs['Color'],settings.inputs['Occlusion'])
+        else:tree.links.new(node.outputs['Color'],surface.inputs[properties[kind]])
+    if 'EMISSION' in images:surface.inputs['Emission Strength'].default_value=1
+    return mat
+
+
+def baked_ao_group(group):
+    return bool(group and not group.animation_data and group.get('mcpblender_baked_ao') and len(group.nodes)==2 and {n.bl_idname for n in group.nodes}=={'NodeGroupInput','NodeGroupOutput'} and not group.links and [(s.name,s.in_out,s.socket_type) for s in group.interface.items_tree if s.item_type=='SOCKET']==[('Occlusion','INPUT','NodeSocketFloat')])

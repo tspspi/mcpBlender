@@ -77,5 +77,8 @@ def validate(root,*,cancelled=None,progress=None):
         vegetation_materials.validate(data['materials'])
         if record.get('materials_sha256')!=data['materials']['materials_sha256']:raise ValueError('LOD material source binding changed')
         if record.get('material_delivery')!={a:vegetation_materials.delivery(root/a/'asset.glb',data['materials'],a) for a in assets}:raise ValueError('Encoded LOD material delivery changed')
+    if data.get('baked_materials'):
+        from . import vegetation_adoption
+        vegetation_adoption.verify(root,data['baked_materials'],assets)
     return {'format':FORMAT,'levels':reports,'shared_leaf_templates':len(templates),'assets':proofs,'placement_mode':data['placement_mode'],
             'semantic_sha256':botany.digest(data),'scope':'Independent mesh/field/UV/metre placement, canonical hierarchy/selection/instance correspondence. No engine shader, animated LOD/optical or GPU runtime qualification.'}

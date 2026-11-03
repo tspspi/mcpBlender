@@ -1,5 +1,65 @@
 # Local validation: 0.2.0
 
+## Guarded vegetation PBR map adoption — 2026-11-03
+
+The combined local FreeBSD/Blender 5.0.1 gate passed nine tests in 96.68s:
+structured adoption with native rollback probes, existing bake preparation,
+seven-map high-to-low baking/GLB/render regression, source-path/claim/UV checks,
+capability discovery and dependency-light add-on import. A subsequent three-test
+pure gate passed in 8.59s; standalone revalidation of the retained five-asset
+bundle also passed after adding the explicit encoded texture UV-channel check.
+This validates a bounded static delivery workflow, not a finished mature-tree
+asset or animated receiving-engine shader.
+
+The MCP fixture disabled arbitrary execution, built a one-variant small tree and
+near LOD, configured procedural bark/leaf detail, then removed the original tree.
+It prepared and self-baked the shared leaf prototype and reduced wood component
+(BASE_COLOR/NORMAL/AO/ROUGHNESS/ALPHA, 64x64, two samples). Optical-loss refusal,
+a 4096-byte texture budget refusal and stale adoption guard refusal preserved the
+profile. Explicit FRONT_PBR acceptance permitted the guarded batch. All ten map
+inputs contributed 163840 bytes to the conservative base RGBA8 estimate. These
+are small plumbing fixtures, not final texture quality or GPU-memory evidence.
+
+Packed private images/materials and prepared UVs survived preparation removal,
+deletion of both external bake directories, native save/reopen and export with
+the default material mode. Both adopted components encoded normal and occlusion
+textures. The bundle retained material/image inventories, optical-loss acceptance,
+copy-only missing-UV sampling changes, canonical leaf IDs, branch/wind fields and
+all original/target UV layouts. The full profile was removed and its files still
+validated independently. Adopted UV records are checked against numeric corner
+witnesses and decoded GLB textures must use the adopted channel. Source PNG hashes
+do not assert byte identity after exporter channel packing/reencoding.
+
+Native fault injection reused the actual worker outputs and pre-adoption .blend.
+Cancellation after packing one component and a forced post-swap verification
+failure restored exact native IDs, names, metadata and the original LOD guard.
+Modified PNG bytes refused before staging. A supplemental native ownership probe also passed: an external material
+referencing an adopted image blocked profile deletion. Removing that reference
+allowed cleanup of both private baked materials and their resources while the
+independent preparation remained valid. Hidden LOD objects may retain stale cached matrix_world values
+on native file load; preparation/adoption now compose static parent channels,
+including parent inverses, rather than relying on those hidden-object caches.
+The existing sheared-placement preparation regression passed in the combined gate.
+
+The standard worker and adoption share one explicit-UV PBR material recipe.
+Its inert glTF AO socket group is accepted only with the expected interface,
+nodes, no links and no animation. Native LOD ownership includes private baked
+materials, images and AO groups; image content enters the profile guard. Source
+materials remain shared/unowned. Export storage estimates include twice the known
+adopted base-image budget in addition to geometry/semantics; they still exclude
+unknown other native material images and are heuristics, not file-size bounds.
+Actual output byte limits and storage checks remain active.
+
+Evidence under `/tmp/mb-vegetation-adoption-20261103` contains adopted.blend, the
+five-component delivery, and a pre-adoption snapshot with actual bake inputs for
+reproduction. Scene adoption has cooperative rollback, not power-loss durability
+or automatic crash replay. Existing adopted roles refuse replacement. Projection/
+cage/atlas adoption, revision controls, full-profile texture quality, mipmap/GPU
+budgets, physical thickness/transmission, shadow/optical parity, animated engine
+LODs and cards/impostors/collision remain open. The unsigned source witnesses are
+not authenticated provenance. No packages, venvs, installed runtime/service
+changes or pushes were performed.
+
 ## Owned vegetation bake preparation — 2026-11-03
 
 A four-test gate passed locally on FreeBSD/Blender 5.0.1 in 49.99s: native owned

@@ -155,16 +155,7 @@ def main():
         image.filepath='//textures/'+kind.lower()+'.png';images[kind]=image
         maps.append({'map':kind,'path':'textures/'+kind.lower()+'.png','width':job['width'],'height':job['height'],'color_space':image.colorspace_settings.name,'statistics':stats})
     status('assembling baked PBR asset',completed_maps=len(maps))
-    mat=bpy.data.materials.new('BakedPBR');mat.use_nodes=True;tree=mat.node_tree;surface=tree.nodes.get('Principled BSDF');surface.name='Surface';tree.nodes.get('Material Output').name='Output'
-    for kind,image in images.items():
-        node=tree.nodes.new('ShaderNodeTexImage');node.name=kind;node.image=image
-        if kind=='NORMAL':
-            normal=tree.nodes.new('ShaderNodeNormalMap');normal.uv_map=job['uv_map'];tree.links.new(node.outputs['Color'],normal.inputs['Color']);tree.links.new(normal.outputs['Normal'],surface.inputs['Normal'])
-        elif kind=='AO':
-            group=bpy.data.node_groups.new('glTF Material Output','ShaderNodeTree');group.interface.new_socket(name='Occlusion',in_out='INPUT',socket_type='NodeSocketFloat');group.nodes.new('NodeGroupInput');group.nodes.new('NodeGroupOutput');group['mcpblender_baked_ao']=True
-            settings=tree.nodes.new('ShaderNodeGroup');settings.node_tree=group;tree.links.new(node.outputs['Color'],settings.inputs['Occlusion'])
-        else:tree.links.new(node.outputs['Color'],surface.inputs[PROPERTIES[kind]])
-    if 'EMISSION' in images:surface.inputs['Emission Strength'].default_value=1
+    mat=textures.baked_material(images,job['uv_map'])
     low.data.materials.clear();low.data.materials.append(mat)
     for face in low.data.polygons:face.material_index=0
     for obj in list(bpy.data.objects):

@@ -3764,8 +3764,69 @@ removes only its owned collection, objects, meshes and private materials. Foreig
 members, external references and persistent/linked owned IDs block deletion.
 Changed owned content can be inspected for a current cleanup guard; it is not
 silently used as an unchanged preparation. Baked file bundles remain independent.
-Automatic adoption of baked maps/UVs into botanical LOD profiles and shared-template
-bundle exports is separate work; keep the prepared .blend and each baked asset.
+Use the guarded adoption workflow below to transfer verified maps and prepared
+UVs into native LOD profiles. Keep the prepared .blend and baked assets when
+additional revisions are needed.
+
+## Adopt vegetation PBR bakes into native LODs
+
+Prepare the native `lod_collection` with the bake tools above, selecting the exact
+asset roles to texture. Bake each component using its initial prepared fingerprint,
+self-bake inputs and BakeUV. `inspect_vegetation_bake_adoption` accepts that
+`lod_collection`, its `bake_collection`, and distinct `entries` containing `asset`
+and the successful texture-bundle `directory`. Tree preparations, projections,
+cages and atlas bundles are not inputs to this operation. Material/geometry/UV/
+placement changes to a target component require fresh preparation; so does a bake
+whose fingerprint differs from the preparation's initial snapshot, including a
+changed bake frame. Other already adopted roles can remain in the profile.
+
+Inspection verifies the successful job/manifest/source/adapter bindings, strict
+file inventory and hashes, PNG dimensions/color spaces/map inventory, matching
+native source mesh/materials and unchanged preparation. `max_bytes` bounds the
+aggregate source deliverables verified, and `max_texture_bytes` bounds the whole
+profile's conservative base RGBA8 estimate, including prior adoptions. It counts
+all map images separately and excludes mipmaps, driver compression and runtime
+allocations. Managed leaf FRONT_PBR maps require explicit `accept_front_pbr=true`;
+review the retained optical omissions and any copy-only source UV fallback first.
+This acceptance is part of the plan guard.
+
+Call `adopt_vegetation_bakes` with identical options and `expected_plan` from that
+inspection. Both tools default to tracked asynchronous operations. Adoption
+reconstructs the existing standard bake-worker PBR recipe with explicit BakeUV
+inputs and packs verified PNGs into private native images. It copies the prepared
+mesh layout into the matching LOD component, preserving geometry, original UVs
+and numeric wind fields. A shared leaf prototype remains shared across levels.
+It does not import or execute the bake's asset.blend. Materials have one PBR slot;
+front/back/translucent native optics are represented by the recorded lossy
+FRONT_PBR approximation, not by a physical transmission/thickness shader.
+
+Files and native guards are rechecked before the batch swap. Cancellation while
+packing and failures during final native verification roll back the created IDs,
+meshes, metadata and names. Cancellation does not interrupt native image packing
+or individual native API calls. This is cooperative transaction behavior, not
+crash/power-loss durability; save the edited project after success. Replacing an
+already adopted role currently refuses; keep the original editable profile if a
+new texture revision is needed. Foreign references block owned profile cleanup.
+Shared source materials remain outside the adopted resource ownership.
+
+The returned `baked_materials` records bind source fingerprints, map hashes,
+dimensions/color spaces, every original/target UV layout, optical acceptance and
+sampling changes. The owned LOD guard now includes private materials and packed
+image contents. Preparations and bake directories may be removed after adoption;
+the profile survives save/reopen without those files. Owned private materials,
+images and AO socket groups are removed with the profile when unreferenced.
+
+Export adopted profiles with `export_botanical_lods` as usual. They automatically
+include source material contracts, actual encoded material/texture inventories
+and baked-map adoption witnesses, even when `material_mode` is left at its default.
+Explicit PARAMETERS mode still requires its current `expected_materials` guard.
+Standalone validation rechecks numeric wind fields/canonical selections and GLB
+UV correspondence, then binds the adopted layouts to the exported corner UVs.
+Source PNG hashes describe the adopted inputs; the glTF exporter may combine or
+reencode texture channels, so they do not claim byte identity with encoded images.
+These unsigned witnesses prove file correspondence, not authenticated provenance
+or rendered optical/runtime parity. Export-stage recovery uses the existing
+journal; native scene adoption itself does not replay after a crash.
 
 ## Blender to Godot
 

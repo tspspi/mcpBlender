@@ -29,6 +29,16 @@ def objects(p):
     return result,values[-1]['tree_sha256']
 
 
+def static_matrix(obj,depth=0):
+    # Hidden objects may have an unevaluated matrix_world immediately after load.
+    # Canonical bake sources use static object parenting; compose their channels.
+    if depth>64:raise ValueError('Bake source parent depth exceeds 64')
+    require_static(obj)
+    if not obj.parent:return obj.matrix_basis.copy()
+    if obj.parent_type!='OBJECT':raise ValueError('Static object parenting required for bake placement')
+    return static_matrix(obj.parent,depth+1) @ obj.matrix_parent_inverse @ obj.matrix_basis
+
+
 def sampling(obj):
     """Enumerate named and implicit UV consumers before the worker changes active UV."""
     original=next((l.name for l in obj.data.uv_layers if l.active_render),None)
@@ -67,7 +77,8 @@ def plan(p):
         missing=[r for r in consumers if r['missing']]
         if missing and p['missing_uv_policy']=='REFUSE':reasons.append(role+': source UVs missing; explicitly choose BAKE_LAYOUT to generate copy-only sampling coordinates')
         if missing:changes.append({'asset':role,'consumers':missing,'policy':p['missing_uv_policy'],'scope':'Missing source coordinates replaced by the new bake layout on copies only; appearance may change.'})
-        rows[role]={'source_object':obj.name,'mesh':textures.mesh_signature(obj,mesh),'attributes':[v for v in assemblies.attribute_records(mesh) if not v['name'].startswith('.')],'original_render_uv':original,'uv_consumers':consumers}
+        witness=textures.mesh_signature(obj,mesh);witness['matrix']=[list(row) for row in static_matrix(obj)]
+        rows[role]={'source_object':obj.name,'mesh':witness,'attributes':[v for v in assemblies.attribute_records(mesh) if not v['name'].startswith('.')],'original_render_uv':original,'uv_consumers':consumers}
     contract=vegetation_materials.contract(selected)
     options={k:p[k] for k in ('uv_map','margin','missing_uv_policy','max_corners')}
     result={'format':FORMAT,'source_guard':guard,'source_materials':contract,'assets':rows,'available_assets':list(available),'options':options,'corners':corners,
@@ -147,7 +158,7 @@ def create(p):
             mesh=own(obj.data.copy());target=own(bpy.data.objects.new(col.name+'_'+role,mesh));col.objects.link(target)
             # Parent inverse stores the full affine matrix without decomposing
             # shear into object transform channels; this anchor stays independent.
-            target.parent=anchor;target.matrix_parent_inverse=obj.matrix_world.copy();target.matrix_basis=Matrix.Identity(4)
+            target.parent=anchor;target.matrix_parent_inverse=static_matrix(obj);target.matrix_basis=Matrix.Identity(4)
             # Keep source maps/attributes/order; isolate every slot to pin its own
             # source mesh's render coordinates without changing shared originals.
             materials={}

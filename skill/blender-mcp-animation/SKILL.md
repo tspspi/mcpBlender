@@ -483,3 +483,10 @@ check actual encoded material/texture inventories; their base RGBA8 estimate
 excludes mipmaps and runtime allocations. No maps or physical thickness are created.
 Use the existing isolated FRONT_PBR bake workflow for portable maps; source
 parameters do not establish optical parity. See USER_MANUAL.md for the contract.
+
+For textured vegetation LOD rest delivery, prepare exact native LOD components,
+self-bake their initial snapshot, then inspect_vegetation_bake_adoption and
+adopt_vegetation_bakes with a matching plan and explicit FRONT_PBR loss acceptance.
+Private packed maps retain original UVs and numeric wind fields; default LOD
+export carries adoption/material/UV/loss witnesses. This does not certify animated
+LOD playback or an engine wind shader. See the design/render skill and manual.

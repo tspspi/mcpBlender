@@ -211,5 +211,11 @@ its inspect_texture_bake arguments to that inspector, then bake_textures with th
 fresh guard, directory, map/texture limits and the returned explicit FRONT_PBR
 mode for leaves. Keep its optical omissions. Prepared copies survive source
 removal and save/reopen; inspect/remove_vegetation_bake guard owned cleanup and
-preserve file bundles. Automatic PBR adoption into botanical LOD exports is still
-separate; read USER_MANUAL.md for ownership, UV and sampling limits.
+preserve file bundles. Read USER_MANUAL.md for ownership, UV and sampling limits. For native LOD
+adoption, prepare/bake the exact LOD roles and preserve the initial bake guard;
+inspect_vegetation_bake_adoption takes lod_collection, bake_collection and entries
+of asset/directory. Review optical loss and budgets; accept_front_pbr=true is
+required for leaf approximations. Adopt with its expected_plan. Packed owned maps
+and prepared UVs then survive preparation/file removal and save/reopen. Original
+wind fields/UVs remain intact. Adopted roles currently refuse replacement. LOD
+export automatically carries material/loss/UV witnesses; this is not optical parity.

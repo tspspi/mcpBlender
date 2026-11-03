@@ -40,3 +40,30 @@ COMMANDS={
  'inspect_vegetation_bake':(Read,(),'Inspect owned vegetation bake preparation content, source witness, per-component bake inputs and guarded cleanup blockers independently of the source.'),
  'remove_vegetation_bake':(Remove,('allow_scene_edit',),'Remove only guarded unambiguously owned vegetation bake copies and their private materials. Refuse foreign collection members and external references; baked file bundles are independent.'),
 }
+
+
+class BakeEntry(Model):
+    asset: Name
+    directory: str = Field(min_length=1)
+
+
+class Adoption(Read):
+    lod_collection: SafeName
+    entries: list[BakeEntry] = Field(min_length=1,max_length=16)
+    accept_front_pbr: bool = False
+    max_bytes: int = Field(default=256*1024**2,strict=True,ge=1024,le=2*1024**3)
+    max_texture_bytes: int = Field(default=64*1024**2,strict=True,ge=4096,le=512*1024**2)
+    @model_validator(mode='after')
+    def distinct(self):
+        if len({e.asset for e in self.entries})!=len(self.entries) or len({e.directory for e in self.entries})!=len(self.entries):raise ValueError('Choose distinct asset roles and bake directories')
+        return self
+
+
+class Adopt(Adoption):
+    expected_plan: Digest
+
+
+COMMANDS.update({
+ 'inspect_vegetation_bake_adoption':(Adoption,(),'Plan guarded adoption of successful source-bound texture-bake PNGs and prepared UVs into matching native LOD components. Verify files, source/material correspondence, optical-loss acceptance and base RGBA8 budget. No scene edits or native file import.'),
+ 'adopt_vegetation_bakes':(Adopt,('allow_scene_edit',),'Guardedly adopt a checked batch of baked PBR maps/UVs into unchanged owned LOD components. Preserve geometry, wind fields and original UVs; pack privately owned images and retain loss/source witnesses. Requires explicit acceptance for FRONT_PBR leaves. Existing adopted roles refuse replacement.'),
+})

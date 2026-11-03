@@ -1,5 +1,46 @@
 # Local validation: 0.2.0
 
+## Fitted leaf and mesh-cluster card targets — 2026-11-03
+
+`inspect_foliage_card` / `create_foliage_card` now fit a convex envelope or rectangle
+to evaluated local mesh sources in world TOP/FRONT/SIDE projections. The guard
+binds source geometry/transforms, supported shader inputs, options, current frame
+and scene scale. Targets retain editable convex geometry and CardUV, returning
+inspected parameters for the existing isolated texture worker. They preserve
+sources and selection. Instance-bearing sources refuse and require realization.
+Source triangle/outline-vertex/raster budgets are explicit; cooperative
+cancellation checks run during inspection/rasterization and before handoff.
+
+The final focused native/workflow/math/discovery/addon gate passed **9 tests in
+67.13 seconds**. Native checks cover metre/centimetre physical sizes and bake
+distances, stale source/material/options, exact native-ID cancellation rollback,
+preserved source matrices/selection/active object and refusal of mesh sources
+that also emit instances. Pure known-answer triangles check projected area,
+normal orientation in all three views, padding, coverage, budget/degeneracy
+refusal, cancellation and area stability under large translation. An earlier
+card/server/texture-policy gate passed **13 tests in 37.29 seconds**, with the
+existing Starlette/AnyIO deprecation warning. The bundled design skill validates.
+These are focused checks, not a fresh full-project regression.
+
+With arbitrary Python tools disabled, the structured fixture creates a native
+leaf, fits/bakes its card, repeats with a two-leaf mesh cluster, reopens and
+validates both texture bundles, exports the leaf card to GLB, independently reads
+physical file coordinates and renders a preview. It runs at scene scale 1 and
+.01. Both previews were opened and inspected. The default leaf's fitted envelope
+has 20 triangles and area approximately .005269m² versus two triangles/.007449m²
+for its rectangle. At 128², predicted target geometry coverage is 76.363%; the
+worker measures 76.370%, versus the rectangle's predicted 54.028%. The rectangular
+two-leaf cluster measures 45.833% geometry coverage at 96² under both unit scales.
+
+These are opaque geometry/sample and Blender delivery results, not measured
+runtime overdraw, optical equivalence, engine integration or generalized species
+proof. The fit flattens depth and cannot preserve internal holes; native thin-leaf
+conversion still requires explicit FRONT_PBR and retains its loss declaration.
+Atlas packing, texture-memory/mipmap budgets, wind and vegetation-aware LODs
+remain open. Local evidence is under `/tmp/mb-fitted-cards-20261103`, with separate
+metre/centimetre bundles and previews. No packages, installed skills, services or
+user Blender sessions were changed.
+
 ## GLB physical scene units — 2026-11-03
 
 The common exporter now applies scene scale through file-only uniform root

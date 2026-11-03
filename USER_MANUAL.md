@@ -1119,8 +1119,52 @@ and 128x128 maps at default scene units. It measures about 35.9% geometry hits a
 The native PBR card renders in Cycles, and its exported GLB has a nonopaque material
 and an embedded base-color texture containing transparent and opaque alpha values.
 This verifies the sampled files/Blender path, not Godot behavior or final atlas
-quality. Automatic fitting, branch-cluster atlas packing, overdraw/memory budgets,
-multi-view foliage representations and wind-aware delivery remain separate work.
+quality. Fitted targets are available through the workflow below; branch-cluster
+atlas packing, runtime overdraw/memory budgets, multi-view representations and
+wind-aware delivery remain separate work.
+
+### Fitted leaf and mesh-cluster cards
+
+Use `inspect_foliage_card` with `sources` (1–16 distinct local mesh objects), then
+`create_foliage_card` with a new `name`, matching options and the returned
+`expected_card=card_sha256`. Both use the evaluated current frame in the active
+view layer. Realize collection/Geometry Nodes instances first: sources containing
+instances refuse rather than silently omitting them. Managed thin-leaf materials
+require explicit `thin_foliage_mode="FRONT_PBR"`, retaining the baking adapter's
+loss declaration. Other source slots must satisfy the existing static PBR bake
+profile. Source geometry, shaders, transforms, options, frame and scene scale bind
+the guard. Source edits require another inspection.
+
+Choose world-axis `view="TOP"` (XY, normal +Z), `FRONT` (XZ, normal −Y) or `SIDE`
+(YZ, normal +X). The card sits behind the source along that normal by
+`standoff_m` (default .005 metres). `outline="CONVEX_HULL"` trims exterior empty
+area; `RECTANGLE` uses two triangles. `padding` (default .02) expands each side by
+that fraction of projected width/height. Convex fitting encloses the projected
+vertices, including petioles/stems. It preserves neither internal holes nor depth;
+source alpha/shading and wind are outside the geometry fit. The generated object
+has an editable convex face, `CardUV`, a two-sided PBR material and physical size
+converted to current scene units. It does not change or hide the sources.
+
+Inspection reports physical area/depth, triangle counts, metre-space vertices and
+UVs. Its bounded `resolution` (32–256, default 128) samples opaque triangle union
+against target pixels: `geometry_coverage_fraction`, `empty_fraction` and
+`area_amplification` estimate wasted card area. They do not measure render
+overdraw, source material opacity or engine performance. Thin/subpixel features
+may be missed; compare resolutions and inspect the baked masks. `max_triangles`
+(default 100,000, maximum 250,000) bounds source work; `max_vertices` (default 64,
+maximum 256) bounds the fitted outline. Over-budget outlines refuse; choose a
+rectangle or explicitly raise the budget. Edge-on/degenerate views refuse.
+
+Creation returns `bake_inspection` and `bake_parameters` containing source/target,
+guard, UV map, conversion mode, native-unit cage/ray distances and suggested
+BASE_COLOR/NORMAL/ROUGHNESS/ALPHA maps. Choose `directory`, texture resolution and
+`min_projection_coverage` explicitly before passing these to `bake_textures`.
+The separate `suggested_min_projection_coverage` is 80% of sampled geometry
+coverage, capped at .99; it is a starting estimate, not transfer validation.
+Review worker coverage/alpha maps, reopen `asset.blend`, run
+`validate_texture_bake`, and inspect/render the exported card. The shared baker
+continues to report free space, own its worker and support cancellation/recovery.
+This produces one view of a leaf or mesh cluster; atlas packing is a later step.
 
 ## Mesh element editing and cleanup
 
@@ -1364,8 +1408,9 @@ with the existing `inspect_texture_bake` /
 `bake_textures` pipeline: normal baking includes connected bump, and base-color/
 roughness maps can be delivered in the ordinary PBR bundle. Native thin-leaf
 shader lobes require the explicit FRONT_PBR conversion described above; the full
-optical shader is not preserved. Automatic fitting, atlases, thickness/transmission
-maps and runtime shader equivalence require separate qualification. The procedural native
+optical shader is not preserved. Fitted card targets use the workflow above;
+atlases, thickness/transmission maps and runtime shader equivalence require
+separate qualification. The procedural native
 graph itself is not a promise of equivalent GLB shading.
 
 ## Modular leaves and instanced botanical foliage

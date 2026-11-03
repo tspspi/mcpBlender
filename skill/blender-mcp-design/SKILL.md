@@ -393,5 +393,14 @@ both inspect_texture_bake and bake_textures; review material_adapters for omitte
 optics. Native source materials stay editable. A tested static leaf-to-card recipe
 uses separate UV plane geometry, projected normal/color/roughness/ALPHA maps,
 reviewed hit/alpha masks, reopened bundle validation and GLB alpha inspection.
-Automatic fit/atlas packing, vegetation representation/wind and target runtime
-validation remain open. Never present front-PBR transfer as native optical parity.
+Use inspect_foliage_card, then create_foliage_card with matching options and
+expected_card for automatic static leaf/mesh-cluster targets. Realize instances
+first. Choose world TOP/FRONT/SIDE and convex outline or two-triangle rectangle;
+compare physical area, triangle cost and sampled empty area before baking.
+Creation returns guarded bake_parameters with CardUV and native-unit cage/rays.
+Choose directory, resolution and min_projection_coverage explicitly; the suggested
+threshold is only a geometry estimate. Bake with the existing isolated worker,
+review coverage/alpha masks, reopen/validate asset.blend and inspect the exported
+card. Sources stay editable; the projection flattens depth and holes. Atlas packing,
+vegetation wind and target runtime validation remain open. Never present front-PBR
+transfer as native optical parity or geometry coverage as measured render overdraw.

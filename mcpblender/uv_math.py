@@ -5,6 +5,25 @@ def signed_area(points):
     return sum(a[0]*b[1]-b[0]*a[1] for a,b in zip(points,points[1:]+points[:1]))/2
 
 
+def inset_tile(values,width,height,pixels,scale):
+    """Uniformly fit or translate a layout into a float32-safe pixel border."""
+    import math
+    from array import array
+    if not pixels:return values
+    if not values or len(values)%2 or not all(math.isfinite(v) for v in values):raise ValueError('Finite nonempty UV coordinates required')
+    pad=[pixels/width,pixels/height];epsilon=2**-22
+    available=[1-2*(v+epsilon) for v in pad]
+    if min(available)<=0:raise ValueError('Tile padding leaves no representable texture interior')
+    bounds=[(min(values[axis::2]),max(values[axis::2])) for axis in (0,1)]
+    spans=[hi-lo for lo,hi in bounds]
+    if not scale and any(span>space for span,space in zip(spans,available)):raise ValueError('UV layout cannot fit tile padding without scaling; enable scale or lower density')
+    factor=min([1.]+[space/span for span,space in zip(spans,available) if span>0]) if scale else 1.
+    centers=[(lo+hi)/2 for lo,hi in bounds]
+    result=list(array('f',(.5+(v-centers[i%2])*factor for i,v in enumerate(values))))
+    if any(v<pad[i%2] or v>1-pad[i%2] for i,v in enumerate(result)):raise ValueError('Packed UV border failed float32 verification')
+    return result
+
+
 def triangle_overlap(a,b):
     """Convex clipping: touching edges/vertices have zero area."""
     if abs(signed_area(list(a)))<=1e-20 or abs(signed_area(list(b)))<=1e-20:

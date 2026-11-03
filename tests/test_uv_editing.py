@@ -19,6 +19,38 @@ async def edit(client,command,name,**kw):
     return await tool(client,command,name=name,expected_uv=current['uv_sha256'],**kw)
 
 
+def test_explicit_tile_border_and_quality_recheck(assets_live):
+    root,path=assets_live
+    async def run():
+        async with client_for(path) as client:
+            await tool(client,'create_primitive',name='BorderPlane',kind='PLANE')
+            before=await inspect(client,'BorderPlane')
+            await tool(client,'duplicate_object',name='BorderPlane',new_name='BorderSibling',linked_data=True,offset=[3,0,0])
+            with pytest.raises(ToolError,match='without scaling'):
+                await edit(client,'pack_uv_islands','BorderPlane',scale=False,tile_padding_pixels=4,texture_width=128,texture_height=128,make_single_user=True)
+            assert (await inspect(client,'BorderPlane'))['uv_sha256']==before['uv_sha256']
+            # Failed staging also retains sharing; no implicit single-user copy.
+            with pytest.raises(ToolError,match='shared'):
+                await edit(client,'pack_uv_islands','BorderPlane',tile_padding_pixels=4)
+            geometry=await tool(client,'inspect_mesh',name='BorderPlane',evaluated=False)
+            sibling=await inspect(client,'BorderSibling')
+            packed=await edit(client,'pack_uv_islands','BorderPlane',tile_padding_pixels=4,texture_width=128,texture_height=128,make_single_user=True)
+            assert all(v*128>=4 for v in packed['bounds']['min'])
+            assert all((1-v)*128>=4 for v in packed['bounds']['max'])
+            assert (await inspect(client,'BorderSibling'))['uv_sha256']==sibling['uv_sha256']
+            assert (await tool(client,'inspect_mesh',name='BorderPlane',evaluated=False))['geometry_sha256']==geometry['geometry_sha256']
+            report=(await client.call_tool('inspect_texture_quality',{'params':{'name':'BorderPlane','width':128,'height':128,'min_texels_per_meter':32,'padding_pixels':2,'mip_levels':1},'wait':True})).data
+            assert report['passed'],report
+            await client.call_tool('save_blend',{'path':'tile-border.blend'})
+            await client.call_tool('open_blend',{'path':'tile-border.blend'})
+            assert (await inspect(client,'BorderPlane'))['uv_sha256']==packed['uv_sha256']
+            # A small layout can be translated without changing its UV density.
+            normalized=await edit(client,'normalize_uv_density','BorderPlane',pixels_per_unit=16,texture_width=128,texture_height=128)
+            moved=await edit(client,'pack_uv_islands','BorderPlane',scale=False,tile_padding_pixels=8,texture_width=128,texture_height=128)
+            assert moved['islands'][0]['pixels_per_unit']==pytest.approx(normalized['islands'][0]['pixels_per_unit'],rel=1e-6)
+    asyncio.run(run())
+
+
 def test_seams_unwrap_density_pack_and_delivery(assets_live):
     root,path=assets_live
     async def run():

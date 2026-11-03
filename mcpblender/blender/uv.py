@@ -147,6 +147,9 @@ def dispatch(command,p):
                 finished(bpy.ops.object.mode_set(mode='OBJECT'))
         values=[value for item in temporary.uv_layers[p['uv_map']].data for value in item.uv]
         if not all(math.isfinite(v) for v in values):raise ValueError('Native UV edit produced non-finite coordinates')
+        if command=='pack_uv_islands' and p.get('tile_padding_pixels',0):
+            from mcpblender.uv_math import inset_tile
+            values=inset_tile(values,p['texture_width'],p['texture_height'],p['tile_padding_pixels'],p['scale'])
         if mesh.users>1:obj.data=mesh.copy();mesh=obj.data
         target=mesh.uv_layers.get(p['uv_map']) or mesh.uv_layers.new(name=p['uv_map'])
         target.data.foreach_set('uv',values);mesh.update()

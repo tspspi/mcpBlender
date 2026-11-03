@@ -46,14 +46,18 @@ from mcpblender.vegetation_bake_contracts import Source
 bridge.check_cancelled=lambda:None;bridge.report_progress=lambda v:None
 recipe=botany.recipe({});plan=trees.plan({'recipe':recipe})
 tree=trees.create({'collection':'Oak','recipe':recipe,'expected_model':plan['model_sha256'],'location':[0,0,0],'radial_sides':8,'bark_tile_length':1})
-p=Source(collection='Oak',assets=['wood'],max_corners=500000).model_dump();planned=prep.plan(p)[-1]
+p=Source(collection='Oak',assets=['wood'],max_corners=500000,tile_padding_pixels=4,texture_width=1024,texture_height=1024).model_dump();planned=prep.plan(p)[-1]
 assert tree['metrics']['height']==14 and planned['corners']>40000
 state=prep.create(p|{'expected_plan':planned['plan_sha256'],'bake_collection':'Bake'})
 assert state['valid'] and trees.inspect({'collection':'Oak'})['tree_sha256']==tree['tree_sha256']
 row=state['components']['wood'];obj=bpy.data.objects[row['name']]
 _,islands,triangles=uv.layout(obj.data,obj.data.uv_layers['BakeUV'],obj.matrix_world,1024,1024);overlap=uv.overlaps(triangles,200000)
 assert overlap['complete'] and not overlap['face_pairs'] and all(i['uv_area']>1e-20 for i in islands)
+values=[tuple(v.uv) for v in obj.data.uv_layers['BakeUV'].data]
+border=min(min(x,y,1-x,1-y)*1024 for x,y in values)
+assert border>=4 and state['source']['options']['tile_padding_pixels']==4
 proof={'branches':tree['metrics']['branches'],'height':14,'corners':planned['corners'],'repaired_faces':row['repaired_uv_faces'],'overlap':overlap,'source_unchanged':True}
+proof['tile_border_pixels']=border
 root=Path(OUTPUT);root.mkdir(parents=True,exist_ok=True);(root/'proof.json').write_text(json.dumps(proof,indent=2))
 bpy.ops.wm.save_as_mainfile(filepath=str(root/'prepared.blend'))
 print('DEFAULT_OAK_UV_OK')

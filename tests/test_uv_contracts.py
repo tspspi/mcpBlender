@@ -6,8 +6,8 @@ import pytest
 
 from mcpblender.config import Config
 from mcpblender.server import build_server
-from mcpblender.uv_contracts import UVLayout, UVUnwrap, UVSeams, UVDensity
-from mcpblender.uv_math import triangle_overlap
+from mcpblender.uv_contracts import UVLayout, UVUnwrap, UVSeams, UVDensity, UVPack
+from mcpblender.uv_math import triangle_overlap,inset_tile
 
 
 def test_overlap_positive_area_and_boundary_contacts():
@@ -37,3 +37,22 @@ def test_uv_guards_limits_and_readonly_discovery(tmp_path):
             assert not names & {'unwrap_uv_mesh','pack_uv_islands','set_uv_seams','normalize_uv_density','activate_uv_map'}
     asyncio.run(run())
     assert not (tmp_path/'private/socket').exists()
+
+
+def test_tile_border_uniform_fit_translation_and_refusal():
+    from mcpblender.vegetation_bake_contracts import Source
+    base={'name':'Box','expected_uv':'a'*64}
+    for extra in ({'tile_padding_pixels':-1},{'tile_padding_pixels':float('nan')},{'texture_width':16,'tile_padding_pixels':8}):
+        with pytest.raises(ValueError):UVPack(**base,**extra)
+    values=[0,0,1,0,1,1,0,1]
+    padded=inset_tile(values,128,64,8,True)
+    assert min(padded[0::2])*128>=8 and min(padded[1::2])*64>=8
+    assert (1-max(padded[0::2]))*128>=8 and (1-max(padded[1::2]))*64>=8
+    assert padded[2]-padded[0]==pytest.approx(padded[5]-padded[1])
+    assert values==[0,0,1,0,1,1,0,1]
+    with pytest.raises(ValueError,match='without scaling'):inset_tile(values,128,64,8,False)
+    translated=inset_tile([10,20,10.25,20,10.25,20.25],128,64,8,False)
+    assert translated[2]-translated[0]==.25 and translated[5]-translated[1]==.25
+    assert inset_tile(values,128,64,0,False)==values
+    with pytest.raises(ValueError,match='NEW'):Source(collection='Tree',uv_strategy='EXISTING',tile_padding_pixels=4)
+    with pytest.raises(ValueError,match='interior'):Source(collection='Tree',texture_width=32,tile_padding_pixels=16)

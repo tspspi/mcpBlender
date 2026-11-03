@@ -83,6 +83,7 @@ def plan(p):
         rows[role]={'source_object':obj.name,'mesh':witness,'attributes':[v for v in assemblies.attribute_records(mesh) if not v['name'].startswith('.')],'original_render_uv':original,'uv_consumers':consumers}
     contract=vegetation_materials.contract(selected)
     options={k:p[k] for k in ('uv_map','margin','missing_uv_policy','max_corners')};options['uv_strategy']=p.get('uv_strategy','NEW');options['max_uv_repairs']=p.get('max_uv_repairs',64)
+    if p.get('tile_padding_pixels',0):options.update({k:p[k] for k in ('tile_padding_pixels','texture_width','texture_height')})
     images={n.image for obj in selected.values() for mat in obj.data.materials for n in mat.node_tree.nodes if n.type=='TEX_IMAGE' and n.image and n.image.get(vegetation_lods.OWNER)}
     result={'format':FORMAT,'source_guard':guard,'source_materials':contract,'assets':rows,'available_assets':list(available),'options':options,'corners':corners,
             'private_images_copied':len(images),'estimated_copy_bytes':corners*128+sum(i.size[0]*i.size[1]*4+(i.packed_file.size if i.packed_file else 0) for i in images),'source_sampling_changes':changes,'can_prepare':not reasons,'unsupported_reasons':reasons,
@@ -221,6 +222,10 @@ def create(p):
             # Edit-mode operators rebuild CustomData; reacquire the RNA layer
             # instead of writing through a pre-edit UV wrapper.
             layer=mesh.uv_layers[p['uv_map']]
+            if p.get('tile_padding_pixels',0):
+                from mcpblender.uv_math import inset_tile
+                values=[v for item in layer.data for v in item.uv]
+                layer.data.foreach_set('uv',inset_tile(values,p['texture_width'],p['texture_height'],p['tile_padding_pixels'],True))
             mesh.uv_layers.active=layer;layer.active_render=True;mesh.update();bpy.context.view_layer.update()
             # BMesh omits all-false built-in sharp layers. Restore their dense
             # representation before comparing every original public attribute.

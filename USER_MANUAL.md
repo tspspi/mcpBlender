@@ -977,6 +977,26 @@ Use `set_uv_seams` with `edges: {"indices": [...]}` or a named EDGE selection
 the complete seam set. `unwrap_uv_mesh` unwraps all faces using `ANGLE_BASED`,
 `CONFORMAL` or installed `MINIMUM_STRETCH`, with `margin`. `pack_uv_islands`
 packs a map into the unit tile, with optional `rotate` and `scale` controls.
+Use `tile_padding_pixels` with explicit `texture_width`/`texture_height` to
+reserve a border around the whole packed layout. The default zero preserves
+ordinary native packing. With `scale=true`, a uniform post-pack shrink and
+translation fit the layout into that interior, preserving UV aspect ratios.
+With `scale=false`, only translation is allowed; a layout too large for the
+interior is refused before copying coordinates or isolating shared mesh data.
+A small float32 safety inset prevents roundoff from crossing the requested
+border. This option leaves space at tile edges; it does not guarantee spacing
+between charts. Shrinking also reduces internal gaps and density, so rerun
+`inspect_texture_quality` at the intended dimensions and mip levels afterward.
+For example, four border pixels at 128x128 retain two pixels at mip 1. These
+ordinary UV edits do not refresh managed vegetation preparation witnesses.
+For `inspect_vegetation_bake_source` / `prepare_vegetation_bake`, declare the same
+`tile_padding_pixels`, `texture_width` and `texture_height` at preparation time
+instead. Nonzero padding is bound into the source plan and applied to newly
+generated BakeUV after chart repair. It preserves original maps, geometry and
+sampling pins, and enters the frozen preparation witness. This option requires
+`uv_strategy="NEW"`; `EXISTING` keeps authored UV coordinates unchanged. Zero
+retains the ordinary preparation layout. It reserves edge space only; inspect
+the prepared component's quality before baking at the declared dimensions.
 `activate_uv_map` selects an existing map for editing and rendering/export.
 UV edits preserve vertex geometry, shape keys, skin weights, object selection
 and unrelated UV map coordinates. Native unwrap/packing operates on a temporary

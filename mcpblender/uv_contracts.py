@@ -1,7 +1,7 @@
 """Guarded UV editing and measurable layout inspection."""
 from typing import Literal
 
-from pydantic import Field, FiniteFloat
+from pydantic import Field, FiniteFloat, model_validator
 
 from .mesh_contracts import Named, Name, Digest, Elements
 
@@ -33,6 +33,12 @@ class UVPack(UVEdit):
     margin: FiniteFloat = Field(default=.02, ge=0, le=.25)
     rotate: bool = True
     scale: bool = True
+    tile_padding_pixels: FiniteFloat = Field(default=0,ge=0,le=4096)
+
+    @model_validator(mode='after')
+    def padding(self):
+        if 2*self.tile_padding_pixels>=min(self.texture_width,self.texture_height):raise ValueError('Tile padding must leave a positive texture interior')
+        return self
 
 
 class UVDensity(UVEdit):
@@ -45,6 +51,6 @@ COMMANDS = {
     "activate_uv_map": (UVEdit, EDIT, "Choose an existing named UV map for editing and rendering/export. Requires a current UV fingerprint and explicit isolation of shared meshes."),
     "set_uv_seams": (UVSeams, EDIT, "Set/add/remove seams on indexed or named edges, guarded by inspect_uv_layout's expected_uv. Does not move geometry or UV coordinates."),
     "unwrap_uv_mesh": (UVUnwrap, EDIT, "Unwrap all base-mesh faces using seams on an isolated temporary mesh, then copy only UV coordinates back. Creates the named map if absent."),
-    "pack_uv_islands": (UVPack, EDIT, "Pack existing UV islands in the unit tile. scale=false preserves their UV scale. Operates on a temporary copy; native packing is not interruptible."),
+    "pack_uv_islands": (UVPack, EDIT, "Pack existing UV islands in the unit tile. Optional tile_padding_pixels reserves a border at texture_width/height. scale=false preserves UV scale and refuses a layout that cannot fit that interior. Operates on a temporary copy; native packing is not interruptible. Reinspect inter-chart gaps/quality after packing."),
     "normalize_uv_density": (UVDensity, EDIT, "Scale each UV island around its center to pixels_per_unit at the supplied texture dimensions. Does not pack; inspect bounds and pack with scale=false afterward."),
 }

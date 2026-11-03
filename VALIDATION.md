@@ -3474,6 +3474,32 @@ distances, not measurements of Cycles dilation, generated mip image quality,
 self-padding within one chart, HDR/material optics, target-engine filtering or
 visual maturity. Existing prepared layouts are not automatically modified.
 
+## Explicit UV tile borders
+
+`pack_uv_islands` accepts an optional pixel border at declared texture dimensions.
+Analytic tests cover unequal texture axes, uniform aspect-preserving shrink,
+translation without density changes, float32 border verification, invalid
+interiors, zero-option compatibility and refusal when a fixed-scale layout
+cannot fit. A real structured MCP fixture starts with shared plane data: failed
+fixed-scale packing preserves both the original coordinates and sharing; an
+explicit single-user scaled pack reserves four pixels at 128x128, leaves the
+sibling untouched and preserves geometry. The result passes the geometric
+quality gate with two pixels of padding at mip 1, survives save/reopen and later
+supports fixed-scale packing of a smaller normalized layout without changing
+its density. Existing UV unwrap/density/GLB/render and overlap controls also run.
+
+This is tile-edge reservation only. Post-pack shrinking can reduce internal gaps
+and density, and does not certify those or actual filtering. Direct UV edits do
+not accept or refresh managed vegetation preparation witnesses.
+The same inset is available at NEW vegetation preparation time, bound into its
+plan and frozen mesh witness. EXISTING layouts refuse nonzero padding. The
+default 14-metre, 1,251-branch wood fixture exercises chart repair followed by a
+four-pixel border at 1024x1024, complete clear overlap inspection, original source
+preservation and native save. It is a UV qualification, not a mature textured
+canopy or filtering qualification. The UV contract/editing/quality gate passed
+12 tests in 164.25 seconds; the added padded preparation and contract gate passed
+five tests in 72.43 seconds. The bundled design skill remains schema-valid.
+
 ## Representative editing evidence
 
 Retained under `/tmp/mb-building-20261101-final/`:

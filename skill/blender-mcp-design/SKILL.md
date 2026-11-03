@@ -45,6 +45,17 @@ height; packing with `scale=false` preserves that density. Reinspect bounds and
 layout. Use `activate_uv_map` to select the named map for rendering/export.
 These UV-only tools preserve geometry, shape keys and skinning; shared meshes
 still need explicit isolation. Native unwrap/packing cannot cancel mid-call.
+For an explicit texture-edge border, pack with tile_padding_pixels and matching
+texture_width/texture_height. scale=true uniformly shrinks/translates the packed
+layout; scale=false only translates and refuses layouts too large for the inset.
+Reinspect density and inter-chart/mip gaps afterward; edge padding alone does
+not guarantee those. Four base pixels leave two at mip 1. Direct UV edits still
+invalidate managed vegetation preparation witnesses and cannot be refreshed as
+material-only edits.
+For vegetation, request tile_padding_pixels at declared texture_width/height
+when planning and creating a NEW bake preparation instead of editing its frozen
+UVs afterward. Original source maps stay intact. EXISTING forbids nonzero inset.
+Check each resulting component's full geometric quality policy before baking.
 
 For high-to-low textures, inspect `inspect_texture_bake` with the low `name`,
 high `sources`, target `uv_map` and optional topology-matched `cage`. Carry its

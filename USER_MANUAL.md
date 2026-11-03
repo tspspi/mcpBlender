@@ -3427,6 +3427,51 @@ most 100,000 rows. This is a numeric mesh foundation, not a runtime wind packing
 schema or proof of custom GLB attribute retention. Unsupported native types are
 listed and included in guards but have no value editing through these tools.
 
+## Verified numeric field export
+
+`inspect_attribute_export` takes a static base mesh `name` and up to 16 `fields`,
+for example `[{"attribute":"bend_weight","semantic":"wind.bend_weight"},
+{"attribute":"branch_anchor","semantic":"wind.branch_anchor"}]`. Use the returned
+`export_sha256` as `expected_export` on `export_attribute_bundle` with the same
+options and a new `directory`. The versioned `mcpblender-numeric-fields-v1` bundle
+contains `asset.glb` and `manifest.json`. Save your editable `.blend` separately.
+
+The manifest records source schemas, semantic labels, scalar lane mapping,
+unmapped custom fields, placement/scene units, source corner witnesses and the
+GLB hash/proof. Each source component occupies a named FLOAT32 scalar lane such
+as `_MCP_F00_C0`; a private `_MCP_CORNER` lane establishes correspondence through
+vertex reordering, material splits and UV seams. This uses no texture coordinates.
+Booleans become 0/1; integer fields require values within +/-2^24 for exact float32
+packing. Float/vector/linear RGBA components remain raw numeric data, including
+signed vectors and HDR colors. Custom anchor vectors remain in their declared
+native local axes/units; the consumer must apply the recorded source interpretation.
+The GLB positions follow ordinary +Y-up/metre-world export conventions.
+
+Before publication, an independent standard-library decoder checks every field
+row, local position, oriented triangle, UV channel (including UV2) and metre world
+placement against the source witness. `validate_attribute_bundle` repeats this
+without needing the original Blender mesh. This checks correspondence with the
+saved witness, not signed provenance or a downstream engine/shader's handling of
+custom attributes. Editing both witness and file is not an authenticated history.
+Unmapped fields are not qualified; PBR/shader fidelity needs its separate pipeline.
+
+This profile accepts POINT/FACE/CORNER custom numeric fields. EDGE values need an
+explicit projection. Unrealized instances, modifiers, shape keys, animation and
+constraints require a separate static delivery copy. Loose geometry and negative
+or singular placements refuse. Shared source meshes/materials stay untouched;
+only disposable delivery copies receive export lanes. Up to eight UV channels,
+one million corners (default 250,000), four million expanded scalar components,
+and 512 MiB output are supported. `max_bytes` defaults to 256 MiB. The initial
+space estimate covers witness/geometry and excludes unknown embedded image size;
+progress reports free storage and the final manifest check uses actual sizes.
+
+Existing output paths are refused. Cooperative failures remove only owned staging
+files and native copies. Final two-file publication is not crash-atomic; a hard
+crash can leave a staging/partial output directory requiring operator inspection.
+This generic format does not yet populate complete botanical branch hierarchy,
+leaf orientation/flutter or a wind runtime shader. Preserve the canonical wind
+semantic JSON alongside later vegetation deliveries.
+
 ## Blender to Godot
 
 Use Blender for modeling, materials, UVs, rigging and animation; export selected

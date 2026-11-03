@@ -1,5 +1,56 @@
 # Local validation: 0.2.0
 
+## Independently verified numeric field GLB bundles — 2026-11-03
+
+The generic numeric field foundation now exports explicit semantic bindings as
+raw float32 scalar lanes, with a separate corner-correspondence lane. A versioned
+manifest stores source schemas/mapping/witness, UV names, placement and units,
+unmapped-field notices, encoded-file hash and proof. Source meshes/materials stay
+editable; temporary delivery copies alone receive private export attributes.
+There is no UV-channel packing. A standard-library decoder checks all field rows,
+local positions, oriented corner triangles, UVs and metre world placement before
+publication and on later validate_attribute_bundle calls.
+
+The structured workflow/native/contract/capability/addon gate passed **8 tests in
+42.32 seconds**. Tamper/integer-policy and existing unit-normalization regression
+passed **7 tests in 17.76 seconds**. Final native changes (expanded-component bound,
+nonfinite witness rejection, existing-output refusal and corrupt-file rejection)
+passed **2 tests in 9.00 seconds**. A final regular-file/symlink validator gate passed **1 test in 6.96 seconds**. Explicit two-material split/correspondence verification passed **1 test in 4.44 seconds**. Skill and whitespace checks pass. These focused
+checks are not a fresh full-project suite.
+
+An actual GLB fixture covers custom scalar/vector fields, 24 corner witnesses,
+12 cube triangles split between two material primitives and two independently decoded UV maps. Deliberate field,
+position, UV2, winding, nonfinite-source and placement discrepancies refuse. A
+second native fixture packs all five numeric storage types across POINT/FACE/
+CORNER into ten scalar lanes. It uses translation, rotation, nonuniform positive
+scale and a .01 scene unit. Its decoded world placement and both UV channels match.
+INT 16,777,216 packs exactly; 16,777,217 refuses. Cancellation after verification
+preserves exact source guard/ID inventory (including a source fake-user mesh),
+removes only staged native copies/files, and leaves no output directory. A successful
+export likewise preserves IDs/guard; existing output is refused and a malformed
+GLB is rejected by subsequent validation; symlinked bundle files refuse before reading. Native scene-unit storage is float32,
+so the fixture compares .01 with tolerance rather than exact Python equality.
+
+The structured fixture, with arbitrary Python execution disabled, plans and
+exports bend_weight, then revalidates its saved bundle and checks the original
+attribute guard. It also retains the earlier instance-field realization, shader,
+render and .blend reopen checks. Ordinary homogeneous/mixed-scene unit export
+regressions passed with custom-attribute export disabled by default.
+
+This is a static mesh correspondence profile: no loose geometry, modifiers,
+constraints, animated/shape-key source or unrealized instance component. EDGE
+fields need explicit projection. At most 16 source fields, 64 scalar lanes, eight
+UV maps, one million corners and four million expanded scalar components are
+supported; a 512 MiB output ceiling applies. Initial free-space estimates exclude
+unknown embedded-image sizes, and progress/final checks report actual storage.
+Publication uses an exclusively created destination but two file moves are not
+hard-crash atomic; interrupted staging/partial directories need operator review.
+Saved witnesses are not signed provenance. PBR fidelity, downstream CUSTOM import,
+wind shader interpretation, complete botanical hierarchy/leaf packing, vegetation
+LODs and continuous wind are not qualified by this generic foundation. Evidence is retained locally at `/tmp/mb-attribute-export-20261103` and its copied
+GLB/manifest were independently revalidated. No packages,
+venvs, installed runtime/service changes or pushes occurred.
+
 ## Guarded numeric mesh attributes — 2026-11-03
 
 Structured create/update/ramp/remove commands now edit custom POINT/EDGE/FACE/

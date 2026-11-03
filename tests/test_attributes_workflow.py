@@ -50,6 +50,14 @@ def test_structured_attributes_shader_instances_and_reopen(assets_live):
             assert base['total_values']==8 and base['attributes_sha256']==ramp['attributes_sha256']
             # The original field can still drive a native shader after readback.
             await tool(client,'remove_modifier',name='FieldCube',modifier=attached['modifier'])
+            options={'name':'FieldCube','fields':[{'attribute':'bend_weight','semantic':'wind.bend_weight'}]}
+            plan=await tool(client,'inspect_attribute_export',**options)
+            bundle=await tool(client,'export_attribute_bundle',**options,expected_export=plan['export_sha256'],directory='attribute-bundle')
+            assert bundle['proof']['fields']==['_MCP_F00_C0'] and bundle['proof']['triangles']==12
+            verified=await tool(client,'validate_attribute_bundle',directory='attribute-bundle')
+            assert verified['proof']==bundle['proof']
+            assert (await tool(client,'inspect_mesh_attributes',name='FieldCube'))['attributes_sha256']==ramp['attributes_sha256']
+
             await tool(client,'setup_preview_stage',objects=['FieldCube'],prefix='FieldView')
             await tool(client,'configure_render',resolution_x=192,resolution_y=192,samples=8)
             queued=(await client.call_tool('submit_operation',{'command':'render_still','params':{'path':'attribute-preview.png','camera':'FieldView_Camera','engine':'CYCLES','width':192,'height':192}})).data

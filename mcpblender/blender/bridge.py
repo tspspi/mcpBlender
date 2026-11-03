@@ -236,6 +236,7 @@ def dispatch(command, params):
                                               use_selection=params.get("selected_only", True),
                                               use_active_scene=params.get("_active_scene_only", False),
                                               export_draco_mesh_compression_enable=False,
+                                              export_attributes=params.get('_export_attributes',False),
                                               export_yup=True, export_animations=params.get("animations", True),
                                               export_apply=params.get("apply_modifiers", False),
                                               export_animation_mode="ACTIONS", export_anim_single_armature=False,
@@ -379,7 +380,7 @@ class BridgeServer:
                 reads.update({"inspect_texture_atlas","build_texture_atlas"})
                 reads.update({"inspect_botanical_wind","sample_botanical_wind","export_botanical_wind"})
                 reads.update({"inspect_botanical_wind_preview_source","inspect_botanical_wind_preview"})
-                reads.add('inspect_mesh_attributes')
+                reads.update({'inspect_mesh_attributes','inspect_attribute_export','export_attribute_bundle','validate_attribute_bundle'})
                 reads.update({"shader_node_catalog", "inspect_shader_graph"})
                 reads.update({"geometry_node_catalog", "inspect_geometry_graph"})
                 reads.update({"inspect_physics", "validate_rigid_bake", "sample_rigid_bodies"})

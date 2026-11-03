@@ -22,11 +22,13 @@ def test_numeric_storage_limits_and_selection_contracts():
     with pytest.raises(ValueError):Create.model_validate(base|{'attribute':'.hidden','data_type':'FLOAT','value':0})
 
 def test_readonly_attribute_discovery(tmp_path):
-    config=Config();config.stdio.library_root=str(tmp_path);config.stdio.allow_scene_edit=False
+    config=Config();config.stdio.library_root=str(tmp_path);config.stdio.allow_scene_edit=False;config.stdio.allow_library_write=False
     server,_=build_server(config)
     async def run():
         async with Client(server) as client:
             names={t.name for t in await client.list_tools()}
+            assert {'inspect_mesh_attributes','inspect_attribute_export','validate_attribute_bundle'}<=names
+            assert 'export_attribute_bundle' not in names
             assert 'inspect_mesh_attributes' in names
             assert not {'create_mesh_attribute','set_mesh_attribute_values','ramp_mesh_attribute','remove_mesh_attribute'}&names
     asyncio.run(run())

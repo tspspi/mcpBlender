@@ -429,4 +429,10 @@ make_single_user, and shared shape-key isolation refuses. Ramps use local axes,
 not metres/world coordinates. GeometryNodeInputNamedAttribute supports the
 attribute shortcut; INSTANCE storage requires realization for evaluated mesh
 readback. Evaluated guards cannot edit base data. Check the native result and save
-the editable project; custom GLB retention and wind packing are separate checks.
+the editable project. For verified static field delivery, inspect_attribute_export
+with explicit attribute/semantic bindings, then export_attribute_bundle using its
+expected_export guard and a new directory. validate_attribute_bundle independently
+decodes fields/positions/triangles/UVs/metre placement. Scalar lanes preserve raw
+components; they do not auto-convert anchor vectors into GLB axes/metres. UV2 stays
+available for lightmaps. Integers outside +/-2^24 refuse. Save the .blend separately;
+complete botanical wind packing and downstream engine behavior remain separate.

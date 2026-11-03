@@ -64,3 +64,30 @@ COMMANDS={
  'ramp_mesh_attribute':(Ramp,('allow_scene_edit',),'Fill an existing custom FLOAT field from a local-coordinate axis ramp: vertices, edge midpoints, face centers or corner vertex positions. Explicit/automatic input range, output bounds and optional clamp; no world/unit conversion.'),
  'remove_mesh_attribute':(Edit,('allow_scene_edit',),'Guardedly remove one custom numeric field. Protect internal/UV/color storage outside the supported profile and preserve unrelated values; shared data needs explicit isolation.'),
 }
+
+class Binding(Model):
+    attribute: Name
+    semantic: Name
+
+class ExportPlan(Model):
+    name: Name
+    fields: list[Binding] = Field(min_length=1,max_length=16)
+    max_corners: int = Field(default=250000,strict=True,ge=1,le=1000000)
+    @model_validator(mode='after')
+    def unique_fields(self):
+        if len({f.attribute for f in self.fields})!=len(self.fields) or len({f.semantic for f in self.fields})!=len(self.fields):raise ValueError('Attribute sources and semantic names must be distinct')
+        return self
+
+class ExportBundle(ExportPlan):
+    expected_export: Digest
+    directory: str = Field(min_length=1)
+    max_bytes: int = Field(default=256*1024**2,strict=True,ge=1024,le=512*1024**2)
+
+class ValidateBundle(Model):
+    directory: str = Field(min_length=1)
+
+COMMANDS.update({
+ 'inspect_attribute_export':(ExportPlan,(),'Plan static base-mesh numeric field export with explicit semantic mapping, raw float32 scalar lanes and corner witnesses that preserve UV channels. Return a source/unit/placement-bound guard. EDGE fields and unrealized instances need explicit conversion.'),
+ 'export_attribute_bundle':(ExportBundle,('allow_library_write',),'Export a guarded static numeric-field GLB and versioned mapping/witness manifest into a new directory. Independently decode custom fields, local positions, oriented triangles and all UV channels before publication; preserve editable source. No engine shader qualification.'),
+ 'validate_attribute_bundle':(ValidateBundle,(),'Revalidate the encoded numeric-field GLB against its saved source witness and file hash. Checks file correspondence, not trusted provenance or engine behavior.'),
+})

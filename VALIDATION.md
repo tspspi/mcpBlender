@@ -1,5 +1,17 @@
 # Local validation: 0.2.0
 
+## Exact botanical placement through regeneration — 2026-11-03
+
+Regeneration copies the root's rotation mode, ordinary/delta transform channels
+and parent inverse directly. Matrix assignment previously decomposed these values
+through float32 and could fail the placement check for rotated centimetre scenes
+at large native scale. The native regression exercises XYZ, quaternion and
+axis-angle modes, translation, scale and delta transforms at .01 scene units;
+after foliage regeneration every channel and the complete world matrix match
+exactly. The focused placement and botanical export regression passed **2 tests
+in 19.29 seconds**. This does not add support for controlled/animated roots or
+qualify arbitrary parent deformations. No installed runtime or packages changed.
+
 ## Independently verified numeric field GLB bundles — 2026-11-03
 
 The generic numeric field foundation now exports explicit semantic bindings as

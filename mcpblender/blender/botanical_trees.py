@@ -233,7 +233,11 @@ def regenerate(p):
         new_col,new_root,new_objects,new_text,_,_,_,_=inventory({'collection':private});new_roles=role_map(new_col,new_root,new_objects,new_text,json.loads(new_col[META]));staged_roles=list(new_roles.values())
         if p['preserve_placement']:
             new_root.parent=root.parent;new_root.parent_type=root.parent_type;new_root.parent_bone=root.parent_bone;new_root.parent_vertices=tuple(root.parent_vertices)
-            new_root.matrix_parent_inverse=root.matrix_parent_inverse.copy();new_root.matrix_basis=root.matrix_basis.copy()
+            new_root.matrix_parent_inverse=root.matrix_parent_inverse.copy();new_root.rotation_mode=root.rotation_mode
+            # Matrix assignment decomposes through float32 and loses delta/mode
+            # information. Identical channels retain the actual authored placement.
+            for channel in ('location','rotation_euler','rotation_quaternion','rotation_axis_angle','scale','delta_location','delta_rotation_euler','delta_rotation_quaternion','delta_scale'):
+                setattr(new_root,channel,getattr(root,channel)[:])
         if inspect({'collection':col.name})['tree_sha256']!=p['expected_tree']:raise ValueError('Original botanical tree changed during staging')
         check_cancelled()
         for i,item in enumerate(roles):item.name='BotanicalOld_'+uuid.uuid4().hex[:16]+str(i)

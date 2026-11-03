@@ -1596,7 +1596,8 @@ Use `inspect_botanical_wind` with a valid managed tree `collection` and optional
 `wind` settings, then `sample_botanical_wind` with the same settings and `seconds`.
 These tools leave the native scene, frame and geometry unchanged. They prepare
 and qualify an engine-independent motion model; native deformation/animation and
-GLB attribute packing remain separate implementation steps.
+GLB attribute packing remains separate. The native preview workflow below uses
+this same motion model on an independently owned copy.
 
 The field is a steady world-space `steady_mps` vector plus 1–8 seeded sinusoidal
 waves. `gust_mps`, `wavelength_m` and `frequency_hz` control their amplitudes,
@@ -1644,7 +1645,69 @@ Branch IDs and leaf parent indices refer to its canonical model. Its default
 an owned temporary file. Existing files require `overwrite=true`; cooperative
 cancellation before publication preserves the original. Reinspect after source,
 placement or settings changes. The JSON carries semantic data for later adapters;
-native preview, GPU packing and target-engine validation remain open.
+GPU packing and target-engine validation remain open.
+
+### Sampled native wind previews
+
+Use `inspect_botanical_wind_preview_source` with the source tree, `wind` settings
+and an increasing `frame_start`/`frame_end` range. Pass the returned `plan_sha256`
+as `expected_plan` to `create_botanical_wind_preview`, with matching options and
+a fresh `preview_collection` name. Creation defaults to asynchronous execution;
+poll the same operation for progress/cancellation. Planning leaves the scene
+unchanged. Generation preserves the procedural master, current frame/subframe,
+selection and active object, and stages its own data before the final handoff.
+
+The copy contains animated wood, bud points and optional shoots, plus shared leaf
+prototypes. Three animated helper points reconstruct each rigid leaf's orientation
+through Geometry Nodes. Only one prototype mesh per variant is copied; leaves
+remain instances. Ordinary relative shape keys and linear native action curves
+store pose samples, so playback survives save/reopen with no Python handlers.
+The original shader materials stay shared. Numeric branch/leaf semantics and the
+wind/model JSON are retained on owned native data; GLB retention is a later step.
+The generated soil ring stays fixed in local coordinates.
+
+Time is `frame / captured_fps`. `frame_step` defaults to 1, the range defaults to
+1–49, and the final frame is always included. At most 121 sampled frames over a
+2,400-frame span are supported. Motion needs at least eight samples per fastest
+field/response/flutter cycle; lower frequencies/step or raise scene FPS when
+planning refuses. Native interpolation is linear between samples and freezes at
+the endpoints. Use the baked range for rendering. This is a bounded authoring
+preview, with explicit cache cost; scalable runtime wind remains separate.
+
+`display_offset_m` moves the preview copy for comparison. The field continues to
+use the original frozen source placement, so this display offset is not a new
+physical planting location. Use the returned `objects` for `setup_preview_stage`
+and rendering; framing includes evaluated mesh instances without realizing them.
+`roles`, `root` and `prototype_objects` expose the named native components.
+
+The plan reports raw `coordinate_bytes` and estimated `work` for pose construction
+and key/midpoint checks. Defaults allow 30,000 leaf instances, 256 MiB of sampled
+coordinates and 30,000,000 work units. Their explicit maxima are 100,000, 2 GiB
+and 100,000,000 respectively. Coordinate bytes exclude general Blender overhead;
+these limits are not a measured memory/performance guarantee. Progress includes
+free storage and a checkpoint-size estimate; checkpoint admission retains its
+existing filesystem checks. Native construction uses the connected instance's
+main thread and provides cooperative cancellation boundaries.
+
+Before success, native readback checks every sampled frame and every interval
+midpoint against the exact solver. Defaults bound key position error to .0001m,
+midpoint error to .01m, leaf orientation error to 1 degree and mesh-edge relative
+strain to .2. Leaf matrices also retain uniform scale/orthogonality within 1e-5.
+All leaf instances are matched to their variant/pose; every nonzero wood/shoot
+mesh edge is measured. Review the returned `verification` values and actual
+renders. These checks do not establish continuous-time extrema, surface volume,
+collision avoidance or biomechanical accuracy.
+
+Use `inspect_botanical_wind_preview` for current content/ownership, timing and
+`preview_sha256`. Playback leaves this content guard stable; native edits and
+changed scene FPS invalidate its qualification. The preview remains usable after
+its source is removed. To delete it, inspect again and pass that guard to
+`remove_botanical_wind_preview`. Removal preserves materials, refuses foreign
+collection members/external references, and accepts manually edited owned data
+only with a fresh guard. Completed creation records UUID ownership markers on
+all its native IDs; cooperative failures remove the staged data. Hard-crash
+rollback before completion is unqualified; normal application checkpoints and
+explicit project saves remain the recovery boundary.
 
 ## Structured Geometry Nodes
 

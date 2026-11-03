@@ -127,10 +127,15 @@ def solve(model,settings,seconds,where=None,*,cancelled=lambda:None,progress=lam
 def transform_point(branch,pose,point):return b.add(pose['start_local_m'],mv(pose['rotation_local'],b.sub(point,branch['start'])))
 
 
-def leaf_pose(leaf,branch,pose,settings,seconds,where=None):
-    p=recipe(settings);where=placement(where)
+def leaf_local_pose(leaf,branch,pose,p,seconds):
+    """Local pose with an already canonical recipe, for bounded native batches."""
     angle=math.radians(p['flutter_degrees'])*leaf['flutter']*min(1.,b.length(p['steady_mps'])+p['gust_mps'])*math.sin(2*math.pi*p['flutter_hz']*seconds+leaf['phase']+p['phase_offset'])
     r=mm(mm(pose['rotation_local'],euler_rotation(leaf['rotation'])),axis_rotation((1,0,0),angle))
     position=transform_point(branch,pose,leaf['position'])
-    return {'id':leaf['id'],'parent_branch_id':branch['id'],'position_local_m':list(position),'position_world_m':list(world(where,position)),
+    return {'id':leaf['id'],'parent_branch_id':branch['id'],'position_local_m':list(position),
             'rotation_local':[list(row) for row in r],'scale':leaf['scale'],'variant':leaf['variant'],'flutter_angle_degrees':math.degrees(angle)}
+
+
+def leaf_pose(leaf,branch,pose,settings,seconds,where=None):
+    result=leaf_local_pose(leaf,branch,pose,recipe(settings),seconds)
+    return result|{'position_world_m':list(world(placement(where),result['position_local_m']))}

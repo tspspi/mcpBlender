@@ -313,6 +313,32 @@ def edit_object(command, p):
     return object_info(obj, True)
 
 
+def evaluated_mesh_bounds(obj,graph=None):
+    """Bound a mesh and its visible mesh instances without realizing prototypes."""
+    graph=graph or bpy.context.evaluated_depsgraph_get();low=[float('inf')]*3;high=[-float('inf')]*3;seen=set();count=0
+    def include(evaluated,matrix):
+        nonlocal count
+        mesh=evaluated.data
+        if not len(mesh.vertices):return
+        if len(mesh.vertices)>2000000:raise ValueError('Preview mesh exceeds two million vertices')
+        pointer=mesh.as_pointer()
+        if pointer not in seen:
+            if any(not math.isfinite(x) for v in mesh.vertices for x in v.co):raise ValueError('Preview requires finite mesh vertices')
+            seen.add(pointer)
+        for corner in evaluated.bound_box:
+            point=matrix@Vector(corner)
+            if any(not math.isfinite(x) for x in point):raise ValueError('Preview requires finite instance bounds')
+            for a in range(3):low[a]=min(low[a],point[a]);high[a]=max(high[a],point[a])
+        count+=1
+    evaluated=obj.evaluated_get(graph);include(evaluated,evaluated.matrix_world)
+    for index,item in enumerate(graph.object_instances):
+        if index>=1000000:raise ValueError('Preview instance inspection budget exceeded')
+        if item.is_instance and item.parent and item.parent.original==obj and item.show_self:
+            if item.object.type!='MESH':raise ValueError('Preview instance output must contain meshes')
+            include(item.object,item.matrix_world)
+    return {'min':low,'max':high} if count else None
+
+
 def frame_objects(p):
     from bpy_extras.object_utils import world_to_camera_view
     from .bridge import object_info
@@ -339,10 +365,10 @@ def frame_objects(p):
         obj = mesh_object(name)
         if bpy.context.view_layer.objects.get(name) is not obj:
             raise ValueError(f"Object is outside the current view layer: {name}")
-        evaluated = obj.evaluated_get(graph)
-        if not evaluated.data.vertices:
+        bounds=evaluated_mesh_bounds(obj,graph)
+        if not bounds:
             raise ValueError(f"Cannot frame an empty mesh: {name}")
-        points.extend(evaluated.matrix_world @ Vector(corner) for corner in evaluated.bound_box)
+        points.extend(Vector((x,y,z)) for x in (bounds['min'][0],bounds['max'][0]) for y in (bounds['min'][1],bounds['max'][1]) for z in (bounds['min'][2],bounds['max'][2]))
     if not all(math.isfinite(v) for point in points for v in point):
         raise ValueError("Cannot frame non-finite geometry")
     low = Vector([min(point[i] for point in points) for i in range(3)])

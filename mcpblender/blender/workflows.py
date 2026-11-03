@@ -182,10 +182,10 @@ def setup_preview_stage(p):
         obj = assets.mesh_object(name)
         if bpy.context.view_layer.objects.get(name) is not obj:
             raise ValueError(f"Object is outside the current view layer: {name}")
-        report = assets.inspect_mesh({"name": name, "sample_limit": 0})
-        if not report["world_bounds"]:
+        value=assets.evaluated_mesh_bounds(obj)
+        if not value:
             raise ValueError(f"Preview requires finite, nonempty meshes: {name}")
-        bounds.append(report["world_bounds"])
+        bounds.append(value)
     low = Vector([min(b["min"][i] for b in bounds) for i in range(3)])
     high = Vector([max(b["max"][i] for b in bounds) for i in range(3)])
     center, extent = (low + high) / 2, max((high - low).length, .001)

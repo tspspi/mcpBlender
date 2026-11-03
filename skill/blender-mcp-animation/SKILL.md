@@ -441,7 +441,18 @@ For managed vegetation motion preparation, inspect_botanical_wind defines a
 seeded common world-metre field and source/settings guard. sample_botanical_wind
 pages anchored hierarchical branch and rigid leaf/flutter poses at chosen seconds.
 Inspect displacement, root/junction/length errors and the all-time rotation bound;
-sampling leaves the native timeline/geometry unchanged. Native wind preview and
-attribute packing are subsequent work. export_botanical_wind preserves explicit
+sampling leaves the native timeline/geometry unchanged. export_botanical_wind preserves explicit
 waves, canonical hierarchy, placement and foliage attachments as guarded semantic
 JSON. Keep it with the editable source; it does not create animated mesh output.
+
+For native motion, inspect_botanical_wind_preview_source, then create with matching
+options, expected_plan and a fresh preview_collection. Use returned objects for
+setup_preview_stage; display_offset_m separates the copy while retaining the
+original field placement. Poll the original operation. The bounded sampled shape
+cache and shared instanced leaves survive .blend save/reopen without handlers.
+Review key/midpoint pose errors, edge strain and actual frames; render inside its
+baked range. Sampling frequency, instance, coordinate and work budgets can refuse
+expensive/undersampled requests. Source/frame/selection stay preserved. Inspect
+the preview for a fresh removal guard; foreign/shared dependencies block deletion.
+Runtime wind attributes/GLB packing remain separate. See USER_MANUAL.md for timing,
+native-main-thread cancellation, interpolation and recovery limits.

@@ -1,5 +1,67 @@
 # Local validation: 0.2.0
 
+## Owned sampled native wind previews — 2026-11-03
+
+Native preview planning/creation/inspection/removal now use the portable solver
+on an independent copy. Relative shape keys cache wood, bud/shoot and three-point
+leaf-frame samples; Geometry Nodes reconstruct rigid orientations and retain one
+prototype per variant. Playback uses native actions/nodes. The soil ring is pinned,
+source materials stay shared, and an actual collection-to-Text ID reference keeps
+the nonexecutable semantic JSON alive across save/reopen. UUID markers, a closed
+native-ID inventory and content/user guards protect removal and staged rollback.
+
+The final native lifecycle/render gate passed **3 tests in 38.29 seconds** for bare
+and foliated centimetre trees and the structured rendered fixture. It checks
+source guard/ID/frame/selection preservation, cooperative rollback during baking
+and before handoff, key and midpoint readback, pinned native soil vertices and
+identical endpoint geometry after the baked range. Content guards remain stable
+through playback; save/reopen remains valid. A preview survives removal of its
+source. External mesh sharing and foreign collection members refuse deletion;
+added constraints invalidate qualification. Fresh guarded cleanup preserves the
+source/materials. Equivalent returned plan options round-trip without stale guards.
+
+The 5m, 37-branch fixture has 140 leaves sharing three copied prototypes. It bakes
+frames 1–13 and independently checks all 25 keys/midpoints, every leaf instance's
+variant/position/orientation/uniform scale/orthogonality, all target mesh positions
+and every nonzero mesh edge. Its observed maximum errors are approximately
+0.000001m at keys, 0.000401m at midpoints, .1371 degrees in leaf orientation,
+3.46e-7 in relative leaf scale and 1.64e-7 in normalized axis dot product. Maximum
+edge strain is .00950 (about .95%). The 180,432-byte coordinate estimate covers
+raw sample coordinates, not total native memory. Three 320×256 Cycles frames were
+rendered, opened and inspected; the native project reopens and supports cleanup.
+
+The default 14m source has 1,251 branches and 20,940 leaves. A two-key native
+population check passed with all 20,940 instances and only three prototype meshes;
+new mesh count equals the four animated components plus the three prototypes.
+Keys and their midpoint passed pose/rigidity/edge checks, with maximum midpoint
+error about .000115m and edge strain about .00164. Planning the default 49-sample
+range fits its default budgets: 55,632,600 raw coordinate bytes and 23,775,808 work
+units. This checks that plan, not a completed 49-sample large-population bake or
+1000-tree performance. One initial large native probe passed in **209.91 seconds**;
+host load and test composition varied, so no throughput/speedup claim is made.
+
+The remaining structured workflow/math/policy/capability/addon gate passed **9
+tests in 52.18 seconds**. A combined run had already passed its three native tests
+but then hit a temporary broker-startup timeout; its late owned child was removed,
+a fresh isolated broker was ready in .163 seconds, and remaining checks were rerun.
+Static textured-asset camera framing and managed building-instance preview
+regression passed **2 tests in 100.26 seconds**. Server/preview-policy checks passed
+**9 tests in 45.67 seconds**, with the existing Starlette/AnyIO deprecation warning.
+Camera fitting now bounds evaluated mesh instances without realizing them, and
+numeric pose-frame arrays no longer enter image-artifact enrichment. Both bundled
+design/animation skills validate; whitespace checks pass. These are focused gates,
+not a fresh full-project suite.
+
+The cache has at most 121 samples, eight samples per fastest motion cycle and
+explicit instance/coordinate/work budgets. Interpolation is linear and frozen
+outside the range; checks cover keys and midpoints rather than continuous extrema.
+Creation uses the connected main thread with cooperative progress/cancellation;
+raw coordinate/checkpoint estimates do not establish total RAM or save size.
+Hard-crash rollback during staging, collision/volume/biomechanics, continuous
+scalable wind, runtime wind-attribute retention and engine parity remain open.
+Evidence is local under `/tmp/mb-wind-preview-20261103`. No packages, installed
+runtime/services or user Blender sessions changed.
+
 ## Portable hierarchical wind preparation — 2026-11-03
 
 `inspect_botanical_wind`, `sample_botanical_wind` and `export_botanical_wind`

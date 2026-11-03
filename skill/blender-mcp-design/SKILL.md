@@ -413,6 +413,10 @@ representations deliberately. Existing texture-job tools handle recovery/cleanup
 Portable wind field/anchored pose preparation uses inspect_botanical_wind and
 sample_botanical_wind. Review all-time bounds plus sampled root/junction/length
 errors, then export_botanical_wind with its guard for semantic JSON. Sampling
-preserves native geometry; native animated preview and attribute-retention proof
-remain open alongside target runtime validation. Never present front-PBR
+preserves native geometry. Native preview uses inspect_botanical_wind_preview_source
+then create_botanical_wind_preview with matching options/expected_plan and a fresh
+collection. Its sampled cache/shared leaf instances preserve the source; inspect
+pose/strain metrics and render its bounded baked range. Use returned objects for
+preview staging and a fresh preview guard for owned cleanup. Attribute-retention
+proof and target runtime validation remain open. Never present front-PBR
 transfer as native optical parity or geometry coverage as measured render overdraw.

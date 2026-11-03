@@ -1,5 +1,29 @@
 # Local validation: 0.2.0
 
+## Strength-aware emission maps — 2026-11-04
+
+Full-profile render review exposed unwanted white glow. Packed BASE_COLOR images
+contained the expected bark/leaf colors, but EMISSION maps were white: the worker
+baked Emission Color without Emission Strength and then delivered strength 1.
+The worker now applies both constant and linked source strength to the temporary
+emission shader. Its PNG8/sRGB output is tagged COLOR_TIMES_STRENGTH_PNG8; delivered
+PBR strength 1 therefore reproduces that baked LDR emission rather than enabling
+a disabled source. No HDR emission fidelity is claimed.
+
+Two real-MCP tests passed in 60.05s: a new zero/constant/linked-strength case and
+the existing seven-map high-to-low/GLB/render regression. The new fixture's
+zero-strength map was black; bounded nonzero cases matched expected sRGB values.
+A subsequent 28.74s emission test also verified that vegetation input adoption
+rejects a missing convention without creating native IDs and restores its
+negative-test manifest. New adoption records carry the encoding marker. Existing
+records without it remain readable but are not newly adopted as qualified
+emission maps. The initial bad full-profile previews were retained as before-fix
+evidence; the whole profile is being regenerated and reviewed separately.
+
+This corrects baking behavior; it does not modify source materials or repair old
+saved pixels automatically. PNG8 clips/quantizes emission outside its LDR range.
+No packages, venvs, installed runtime/service changes or pushes occurred.
+
 ## Scalable overlap inspection and bounded bake-chart repair — 2026-11-04
 
 Seven local checks passed in 72.62s: exact broad-phase comparison with independent

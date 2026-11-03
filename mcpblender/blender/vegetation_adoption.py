@@ -29,6 +29,7 @@ def bundle(directory,component,limits):
         payload=(root/relative).read_bytes();info=image_info(payload,'image/png')
         if (info['width'],info['height'])!=(m['width'],m['height']) or (m['width'],m['height'])!=(job['width'],job['height']):raise ValueError('Baked map dimensions differ from job')
         maps.append({k:m[k] for k in ('map','width','height','color_space')}|{'sha256':by_path[relative]['sha256'],'bytes':len(payload)})
+    if any(m['map']=='EMISSION' for m in maps) and saved.get('emission_encoding')!=texture_files.EMISSION_ENCODING:raise ValueError('Rebake emission maps with the current strength-aware worker')
     if {m['map'] for m in maps}!=set(job['maps']):raise ValueError('Baked map inventory differs from job')
     if saved.get('material_adapters',[])!=record.get('material_adapters',[]):raise ValueError('Bake job optical adapter binding changed')
     return saved,maps,size
@@ -86,7 +87,7 @@ def plan(p):
               'inherited_material_adapters':inherited,'inherited_sampling_changes':unique(previous.get('inherited_sampling_changes',[])+previous.get('source_sampling_changes',[])) if previous else [],
               'geometry_sha256':w['mesh']['geometry'],'uv_map':pm['components'][role]['inspect_texture_bake']['uv_map'],'uv_witness':uvs,'maps':maps,
               'material_adapters':saved.get('material_adapters',[]),'front_pbr_accepted':p['accept_front_pbr'],'source_sampling_changes':[v for v in ps['source_sampling_changes'] if v['asset']==role],
-              'rgba8_base_bytes':sum(m['width']*m['height']*4 for m in maps),'portable_optical_equivalence':False}
+              'emission_encoding':saved.get('emission_encoding'),'rgba8_base_bytes':sum(m['width']*m['height']*4 for m in maps),'portable_optical_equivalence':False}
         item['adoption_sha256']=botany.digest(item);schema.validate(item);total+=item['rgba8_base_bytes'];encoded+=sum(m['bytes'] for m in maps);entries[role]=item
     total+=sum(schema.validate(r) for role,r in meta.get('baked_materials',{}).items() if role not in entries)
     if total>p['max_texture_bytes']:raise ValueError('Adoption exceeds the profile base RGBA8 texture budget')

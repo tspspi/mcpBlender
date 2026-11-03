@@ -3,6 +3,7 @@ import hashlib
 import re
 import struct
 from . import botany
+from .texture_files import EMISSION_ENCODING
 FORMAT='mcpblender-vegetation-baked-maps-v1'
 MAPS={'NORMAL','AO','BASE_COLOR','ROUGHNESS','METALLIC','EMISSION','ALPHA'}
 
@@ -18,6 +19,7 @@ def validate(record):
     for key in ('preparation_sha256','bake_sha256','bundle_manifest_sha256','geometry_sha256'):
         if not re.fullmatch('[a-f0-9]{64}',str(record.get(key,''))):raise ValueError('Invalid baked vegetation source binding')
     if not 1<=len(record['maps'])<=7 or len({m['map'] for m in record['maps']})!=len(record['maps']):raise ValueError('Invalid baked vegetation map inventory')
+    if record.get('emission_encoding') not in (None,EMISSION_ENCODING):raise ValueError('Unsupported vegetation emission map encoding')
     total=0
     for m in record['maps']:
         if m['map'] not in MAPS or not re.fullmatch('[a-f0-9]{64}',str(m['sha256'])) or type(m['bytes'])!=int or m['bytes']<=0 or any(type(m[k])!=int or not 32<=m[k]<=4096 for k in ('width','height')) or m['width']*m['height']>4*1024**2:raise ValueError('Invalid baked vegetation map witness')

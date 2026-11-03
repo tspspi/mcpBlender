@@ -12,7 +12,7 @@ import bpy
 from mathutils import Matrix
 from mcpblender.blender import textures
 from mcpblender.blender.assets import finished
-from mcpblender.texture_files import write_json,read_json,manifest
+from mcpblender.texture_files import write_json,read_json,manifest,EMISSION_ENCODING
 
 PROPERTIES={'BASE_COLOR':'Base Color','ROUGHNESS':'Roughness','METALLIC':'Metallic','EMISSION':'Emission Color','ALPHA':'Alpha'}
 
@@ -127,7 +127,9 @@ def main():
                 else:
                     value=port.default_value
                     emission.inputs['Color'].default_value=list(value) if port.type=='RGBA' else (value,value,value,1)
-                emission.inputs['Strength'].default_value=1
+                strength=source.inputs['Emission Strength'] if kind=='EMISSION' else None
+                if strength is not None and strength.is_linked:mat.node_tree.links.new(strength.links[0].from_socket,emission.inputs['Strength'])
+                else:emission.inputs['Strength'].default_value=strength.default_value if strength is not None else 1
                 mat.node_tree.links.new(emission.outputs[0],output.inputs['Surface'])
             else:mat.node_tree.links.new(source.outputs['BSDF'],output.inputs['Surface'])
         image=bpy.data.images.new('Baked_'+kind,width=job['width'],height=job['height'],alpha=True,float_buffer=False)
@@ -162,7 +164,7 @@ def main():
         if obj!=low and obj!=anchor:bpy.data.objects.remove(obj,do_unlink=True)
     low[textures.BINDING]=job['job_id']
     finished(bpy.ops.wm.save_as_mainfile(filepath=str(root/'asset.blend'),check_existing=False,relative_remap=False))
-    saved={'version':1,'job_id':job['job_id'],'source':job['expected_bake'],'name':low.name,'material':mat.name,'maps':maps,'projection':projection,'blender_version':bpy.app.version_string,'asset_sha256':textures.output_signature(low.name),'material_adapters':source_info.get('material_adapters',[])}
+    saved={'version':1,'job_id':job['job_id'],'source':job['expected_bake'],'name':low.name,'material':mat.name,'maps':maps,'projection':projection,'blender_version':bpy.app.version_string,'asset_sha256':textures.output_signature(low.name),'material_adapters':source_info.get('material_adapters',[]),'emission_encoding':EMISSION_ENCODING if 'EMISSION' in images else None}
     saved['files']=manifest(root);write_json(root/'manifest.json',saved)
     write_json(root/'result.json',{'job_id':job['job_id'],'state':'succeeded','phase':'complete','completed_maps':len(maps)})
 

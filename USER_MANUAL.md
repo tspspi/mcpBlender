@@ -1082,6 +1082,20 @@ successful deliverables, current-project/image references, symlinks and unknown
 files are protected. These explicit output bundles are not temporary retention
 artifacts. Keep wanted source projects/maps before removing partial work.
 
+### Emission map convention
+
+EMISSION maps store emission color multiplied by the source Principled Emission
+Strength, including a linked strength input. A zero-strength source produces a
+black map even when its emission color is white. The delivered PBR material uses
+strength 1 because the strength has already been baked into the image. This is a
+PNG8, sRGB LDR workflow; HDR emission radiance is not preserved by these maps.
+
+New bake manifests declare `emission_encoding="COLOR_TIMES_STRENGTH_PNG8"`.
+Vegetation adoption refuses an EMISSION input without that convention and asks
+for a fresh bake. Older files remain readable for correspondence checks; an
+unknown convention must not be taken as physical emission fidelity. Native/source materials are
+not changed by this correction or by read-only inspection.
+
 ## Thin-leaf front-PBR conversion
 
 Texture baking defaults to `thin_foliage_mode="REFUSE"`. Mixed native thin-leaf

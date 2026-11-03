@@ -7,6 +7,7 @@ from pathlib import Path
 from .fluid_files import write_json, read_json, file_hash
 
 MARKER='.mcpblender-texture-job.json'
+EMISSION_ENCODING='COLOR_TIMES_STRENGTH_PNG8'
 ROOT_FILES={MARKER,'source.blend','asset.blend','job.json','worker.log','result.json','manifest.json','source.blend@','asset.blend@'}
 MAPS={'normal','ao','base_color','roughness','metallic','emission','alpha','coverage','uv_mask'}
 

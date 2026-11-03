@@ -25,3 +25,31 @@ def triangle_overlap(a,b):
             if dc>=0:polygon.append(current)
             previous,dp=current,dc
     return abs(signed_area(polygon)) if len(polygon)>=3 else 0
+
+
+def overlaps(triangles,budget):
+    """Exact overlap tests after an X sweep and conservative Y-bin broad phase."""
+    import heapq
+    import math
+    rows=sorted(triangles,key=lambda t:t[0]);pairs=set();comparisons=0;complete=True
+    size=min(256,max(1,math.ceil(math.sqrt(len(rows)))))
+    low=min((t[2] for t in rows),default=0);high=max((t[3] for t in rows),default=0)
+    def cell(y):return max(0,min(size-1,int((y-low)/(high-low)*size))) if high>low else 0
+    bins=[set() for _ in range(size)];expiry=[]
+    for index,tri in enumerate(rows):
+        while expiry and expiry[0][0]<=tri[0]:
+            _,old,a,b=heapq.heappop(expiry)
+            for slot in range(a,b+1):bins[slot].discard(old)
+        first,last=cell(tri[2]),cell(tri[3]);seen=set()
+        for slot in range(first,last+1):
+            for other_index in sorted(bins[slot]):
+                if other_index in seen:continue
+                if comparisons>=budget:complete=False;break
+                seen.add(other_index);comparisons+=1;other=rows[other_index]
+                if other[3]<=tri[2] or tri[3]<=other[2]:continue
+                if triangle_overlap(tri[5],other[5])>1e-12:pairs.add(tuple(sorted((tri[4],other[4]))))
+            if not complete:break
+        if not complete:break
+        for slot in range(first,last+1):bins[slot].add(index)
+        heapq.heappush(expiry,(tri[1],index,first,last))
+    return {'complete':complete,'comparisons':comparisons,'face_pair_count':len(pairs),'face_pairs':[list(v) for v in sorted(pairs)[:128]],'pairs_truncated':len(pairs)>128}

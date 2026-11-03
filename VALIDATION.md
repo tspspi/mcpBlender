@@ -1,5 +1,36 @@
 # Local validation: 0.2.0
 
+## Scalable overlap inspection and bounded bake-chart repair — 2026-11-04
+
+Seven local checks passed in 72.62s: exact broad-phase comparison with independent
+all-pairs clipping, separated-row/long-triangle/touching/budget cases, existing UV
+contracts, a deliberately folded native target and default-oak native preparation.
+An earlier six-test focused gate passed in 8.35s before adding the default-size
+regression. Grid bins and an X expiry sweep only reject provably separated
+candidates; exact triangle intersection retains the same positive-area threshold.
+Comparison-budget exhaustion still reports an incomplete result.
+
+The default 14 m oak scaffold produced 1251 branches and 45616 wood corners. Its
+old X-only sweep exhausted 200000 comparisons and also detected actual overlaps.
+The spatial scan exposed 60 affected faces. Bounded new-chart isolation/repacking
+produced a complete clear result in 72041 candidate comparisons, with nondegenerate
+UV islands and the original tree guard/geometry/normals/attributes/authored UVs
+unchanged. Native texture-bake inspection accepted the prepared target. Evidence
+under `/tmp/mb-default-oak-uv-20261104` contains prepared.blend and proof.json.
+This is a wood-UV/input qualification; it does not qualify a fully textured,
+realistic mature oak, full foliage, motion, or receiving-engine rendering.
+
+Development showed why repair must retain chart scale: fixed large charts plus
+fractional margins could collapse the remaining layout. The final repair derives
+regular chart area from each affected face's prior UV triangles and uses scaled
+packing margins. Failed/intermediate layouts were refused. A native folded-quad
+fixture verifies disabled-repair refusal, successful bounded repair and untouched
+geometry/authored map. New charts allow at most two repair passes and 64 faces by
+default, configurable up to 256; reused existing maps are never changed. Native
+packing has a coarse cancellation boundary. Texel density, padding/filtering and
+visual quality remain separate. No packages, venvs, runtime/service changes or
+pushes were performed.
+
 ## Guarded vegetation texture replacement and source lineage — 2026-11-03
 
 The final local FreeBSD/Blender 5.0.1 gate passed six tests in 72.96s: structured

@@ -238,3 +238,9 @@ simple PBR rebake. Revisions preserve previous/source/optical lineage and retire
 only unused private resources; external references refuse. Keep old source/bake
 bundles if restoration is needed; replacement does not archive old pixels. Save
 and revalidate export. Repeated PBR rebakes can accumulate filtering loss.
+
+New vegetation bake layouts may isolate/repack a bounded number of folded or
+overlapping face charts. Review repaired_uv_faces; max_uv_repairs=0 refuses repair,
+default 64, maximum 256. Existing source UVs and explicit EXISTING layouts are
+preserved. A clear exact overlap check is not a texel-density, padding/filtering
+or visual-quality guarantee. Native packing still has coarse cancellation limits.

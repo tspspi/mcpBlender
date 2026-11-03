@@ -3772,6 +3772,27 @@ Use the guarded adoption workflow below to transfer verified maps and prepared
 UVs into native LOD profiles. Keep the prepared .blend and baked assets when
 additional revisions are needed.
 
+### Bounded repair of new bake UV charts
+
+For NEW layouts, preparation checks the generated target map before baking.
+`max_uv_repairs` defaults to 64 faces (0 disables repair; maximum 256). If exact
+validation finds a folded/overlapping chart, only the implicated faces receive
+separate regular-polygon target charts sized from their prior triangle UV area.
+The whole target layout is repacked with scaled margins, then checked again.
+At most two repair passes are allowed; incomplete overlap inspection, truncated
+pair reports, excess repairs or any remaining overlap refuse and roll back the
+preparation. The result records each component's `repaired_uv_faces`.
+
+Authored source maps, geometry, normals and numeric attributes remain unchanged.
+EXISTING layouts are never repaired or repacked by this path. The spatial overlap
+broad phase removes provably separate candidates; final candidate pairs still use
+exact positive-area triangle clipping and the same bounded comparison contract.
+This permits larger native bake targets without simply increasing the inspection
+budget. Repair is a valid target-layout operation, not texture-quality proof:
+small chart texel density, padding, filtering and visible bark fidelity still
+require review at the intended texture resolution. Native UV packing remains a
+coarse cancellation boundary.
+
 ### Revise prepared shader sources
 
 New preparations store a frozen mesh/attribute/UV/placement witness for every

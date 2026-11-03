@@ -74,18 +74,8 @@ def layout(mesh,layer,matrix,width,height):
 
 
 def overlaps(triangles,budget):
-    active=[];pairs=set();comparisons=0;complete=True
-    for tri in sorted(triangles,key=lambda t:t[0]):
-        active=[q for q in active if q[1]>tri[0]]
-        for other in active:
-            if comparisons>=budget:
-                complete=False;break
-            comparisons+=1
-            if other[3]<=tri[2] or tri[3]<=other[2]:continue
-            if triangle_overlap(tri[5],other[5])>1e-12:pairs.add(tuple(sorted((tri[4],other[4]))))
-        if not complete:break
-        active.append(tri)
-    return {'complete':complete,'comparisons':comparisons,'face_pair_count':len(pairs),'face_pairs':[list(v) for v in sorted(pairs)[:128]],'pairs_truncated':len(pairs)>128}
+    from mcpblender.uv_math import overlaps as checked_overlaps
+    return checked_overlaps(triangles,budget)
 
 
 def inspect(p):

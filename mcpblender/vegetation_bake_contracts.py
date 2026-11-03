@@ -12,6 +12,7 @@ class Source(Model):
     assets: list[Name] | None = Field(default=None,min_length=1,max_length=16)
     uv_map: Name = 'BakeUV'
     uv_strategy: Literal['NEW','EXISTING'] = 'NEW'
+    max_uv_repairs: int = Field(default=64,strict=True,ge=0,le=256)
     margin: FiniteFloat = Field(default=.02,ge=.001,le=.1)
     missing_uv_policy: Literal['REFUSE','BAKE_LAYOUT'] = 'REFUSE'
     max_corners: int = Field(default=100000,strict=True,ge=1,le=500000)

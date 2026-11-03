@@ -82,7 +82,7 @@ def plan(p):
         witness=textures.mesh_signature(obj,mesh);witness['matrix']=[list(row) for row in static_matrix(obj)]
         rows[role]={'source_object':obj.name,'mesh':witness,'attributes':[v for v in assemblies.attribute_records(mesh) if not v['name'].startswith('.')],'original_render_uv':original,'uv_consumers':consumers}
     contract=vegetation_materials.contract(selected)
-    options={k:p[k] for k in ('uv_map','margin','missing_uv_policy','max_corners')};options['uv_strategy']=p.get('uv_strategy','NEW')
+    options={k:p[k] for k in ('uv_map','margin','missing_uv_policy','max_corners')};options['uv_strategy']=p.get('uv_strategy','NEW');options['max_uv_repairs']=p.get('max_uv_repairs',64)
     images={n.image for obj in selected.values() for mat in obj.data.materials for n in mat.node_tree.nodes if n.type=='TEX_IMAGE' and n.image and n.image.get(vegetation_lods.OWNER)}
     result={'format':FORMAT,'source_guard':guard,'source_materials':contract,'assets':rows,'available_assets':list(available),'options':options,'corners':corners,
             'private_images_copied':len(images),'estimated_copy_bytes':corners*128+sum(i.size[0]*i.size[1]*4+(i.packed_file.size if i.packed_file else 0) for i in images),'source_sampling_changes':changes,'can_prepare':not reasons,'unsupported_reasons':reasons,
@@ -114,6 +114,37 @@ def pin(material,original,target,missing_policy,mesh):
     # original settings remain in the source witness, while the thin-leaf adapter
     # marker stays intact for explicit FRONT_PBR conversion.
     if changed and material.get('mcpblender_botanical_surface'):del material['mcpblender_botanical_surface']
+
+
+def repair_charts(obj,uv_map,margin,budget):
+    from .bridge import check_cancelled,report_progress
+    repaired=set()
+    for attempt in range(3):
+        layer=obj.data.uv_layers[uv_map]
+        _,_,triangles=uv.layout(obj.data,layer,obj.matrix_world,1024,1024)
+        result=uv.overlaps(triangles,200000)
+        if not result['complete']:raise ValueError('Bake UV overlap validation exceeded its comparison budget')
+        if not result['face_pair_count']:return sorted(repaired)
+        faces={face for pair in result['face_pairs'] for face in pair}
+        if result['pairs_truncated'] or len(repaired|faces)>budget or attempt==2:raise ValueError('Bake UV chart repair budget exceeded; no overlapping layout accepted')
+        check_cancelled();report_progress({'phase':'repairing generated bake UV charts','faces':len(faces),'attempt':attempt+1})
+        areas=dict.fromkeys(faces,0.)
+        for triangle in triangles:
+            if triangle[4] in areas:areas[triangle[4]]+=abs(uv.signed_area(triangle[5]))
+        for index,face in enumerate(sorted(faces)):
+            loops=list(obj.data.polygons[face].loop_indices)
+            radius=max(1e-5,math.sqrt(areas[face]/(len(loops)*.5*math.sin(2*math.pi/len(loops)))))
+            for corner,loop in enumerate(loops):
+                angle=2*math.pi*corner/len(loops)
+                layer.data[loop].uv=(1.25+index/1024+radius*math.cos(angle),.5+index/65536+radius*math.sin(angle))
+        # Separate charts sit outside the original tile until packing, so they
+        # cannot accidentally join an existing island through matching UV edges.
+        obj.data.uv_layers.active=layer
+        with active_object(obj):
+            finished(bpy.ops.object.mode_set(mode='EDIT'));finished(bpy.ops.mesh.select_all(action='SELECT'));finished(bpy.ops.uv.select_all(action='SELECT'))
+            finished(bpy.ops.uv.pack_islands(rotate=True,scale=True,margin=margin,margin_method='SCALED'))
+            finished(bpy.ops.object.mode_set(mode='OBJECT'))
+        repaired.update(faces)
 
 
 def content(owned):
@@ -186,6 +217,7 @@ def create(p):
                     finished(bpy.ops.object.mode_set(mode='EDIT'));finished(bpy.ops.mesh.select_all(action='SELECT'))
                     finished(bpy.ops.uv.smart_project(angle_limit=math.radians(66),island_margin=p['margin'],correct_aspect=False,scale_to_bounds=True))
                     finished(bpy.ops.object.mode_set(mode='OBJECT'))
+            repairs=repair_charts(target,p['uv_map'],p['margin'],p.get('max_uv_repairs',64)) if p.get('uv_strategy','NEW')=='NEW' else []
             # Edit-mode operators rebuild CustomData; reacquire the RNA layer
             # instead of writing through a pre-edit UV wrapper.
             layer=mesh.uv_layers[p['uv_map']]
@@ -207,7 +239,7 @@ def create(p):
             info=textures.inspect(inputs)
             if not info['complete']:raise ValueError('Prepared bake UVs did not qualify: '+'; '.join(info['unsupported_reasons']))
             target.hide_render=True
-            components[role]={'name':target.name,'source_object':obj.name,'inspect_texture_bake':inputs,'initial_bake_sha256':info['bake_sha256'],'material_adapters':info['material_adapters'],'prepared_mesh':copied,'prepared_attributes':[v for v in attributes.values() if not v['name'].startswith('.')]}
+            components[role]={'name':target.name,'source_object':obj.name,'inspect_texture_bake':inputs,'initial_bake_sha256':info['bake_sha256'],'material_adapters':info['material_adapters'],'repaired_uv_faces':repairs,'prepared_mesh':copied,'prepared_attributes':[v for v in attributes.values() if not v['name'].startswith('.')]}
         check_cancelled()
         if plan(p)[-1]['plan_sha256']!=p['expected_plan']:raise ValueError('Source changed during bake preparation')
         meta={'format':FORMAT,'revision':0,'owner':owner,'source':source,'components':components,'owned':[{'type':v.bl_rna.identifier,'name':v.name} for v in sorted(owned,key=lambda v:(v.bl_rna.identifier,v.name))]}

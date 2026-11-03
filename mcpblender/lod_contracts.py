@@ -1,5 +1,5 @@
 """Asset LOD generation, managed selection and validated static/skin/morph bundles."""
-from typing import Literal
+from typing import Annotated,Literal
 from pydantic import Field,FiniteFloat,model_validator
 from .config import Model
 from .mesh_contracts import Digest
@@ -41,6 +41,49 @@ class Generate(Source):
 
 class Chain(Model):
     chain: SafeName
+
+
+class AdoptionInput(Model):
+    name: SafeName
+    material_slots: list[Annotated[int,Field(strict=True,ge=0,le=255)]] | None = Field(default=None,max_length=256)
+    uv_maps: dict[SafeName,SafeName] = Field(default_factory=dict,max_length=8)
+    @model_validator(mode='after')
+    def unique_uvs(self):
+        if len(set(self.uv_maps.values()))!=len(self.uv_maps):raise ValueError('UV destinations must be distinct')
+        return self
+
+
+class AdoptionPlan(Source):
+    inputs: list[AdoptionInput] = Field(min_length=1,max_length=7)
+    input_geometry: Literal['EVALUATED_STATIC','RAW_BASIS'] = 'EVALUATED_STATIC'
+    preserve_material_regions: bool = True
+    preserve_attribute_schema: bool = True
+    max_relative_error: FiniteFloat = Field(default=.1,ge=0,le=1)
+    error_samples: int = Field(default=512,ge=16,le=4096)
+    skin_max_influences: int = Field(default=4,ge=1,le=4)
+    pose_frames: list[FiniteFloat] | None = Field(default=None,min_length=1,max_length=16)
+    max_pose_error: FiniteFloat = Field(default=.1,ge=0,le=1)
+    @model_validator(mode='after')
+    def distinct(self):
+        names=[i.name for i in self.inputs]
+        if len(set(names))!=len(names) or self.name in names:raise ValueError('Adoption inputs must be distinct and exclude the canonical source')
+        if self.pose_frames is not None and (len(set(self.pose_frames))!=len(self.pose_frames) or any(abs(f)>1048574 for f in self.pose_frames)):raise ValueError('Pose frames must be distinct and within native limits')
+        return self
+
+
+class Adopt(AdoptionPlan):
+    chain: SafeName
+    expected_source: Digest
+    @model_validator(mode='after')
+    def chain_name(self):
+        if len(self.chain.encode('utf-8'))>40:raise ValueError('Chain name supports at most 40 UTF-8 bytes')
+        return self
+
+
+class Readopt(Adopt):
+    expected_management: Digest
+    preserve_placement: bool = True
+    preserve_visibility: bool = True
 
 
 class TimelineClip(Model):
@@ -142,3 +185,9 @@ COMMANDS.update({
 })
 
 COMMANDS['configure_lod_source_visibility']=(SourceVisibility,('allow_scene_edit',),'Guardedly show/hide the original local LOD source in viewport/render, preserving its geometry. Global object flags affect all scenes using that source. Refuses keyed/driven targeted flags and rolls back ordinary cancellation. Show the source before fresh generation/rebuild/package planning.')
+
+COMMANDS.update({
+ 'inspect_lod_adoption':(AdoptionPlan,(),'Inspect canonical source and ordered external/manual reduced levels, normalize geometry into source space, check materials/UVs/attributes and sampled rest error; return a combined freshness guard. Requires visible inputs; no source edits.'),
+ 'adopt_lod_chain':(Adopt,('allow_scene_edit',),'Copy inspected external/manual levels into an owned managed LOD chain with an exact source LOD0. Explicit material-slot and UV-name mapping supported. Canonical source supplies skin weights and relative morph/controllers with sampled deformation validation; originals remain intact.'),
+ 'readopt_lod_chain':(Readopt,('allow_scene_edit',),'Stage and verify fresh copies of external/manual inputs before replacing a guarded owned chain. Preserve placement and visibility by default, with the same rollback and ownership rules as rebuild. Inputs must remain outside the replaced chain.'),
+})

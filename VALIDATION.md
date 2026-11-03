@@ -1,5 +1,59 @@
 # Local validation: 0.2.0
 
+
+## External/manual LOD adoption — 2026-11-03
+
+The extracted add-on also imported successfully with frontend dependencies
+blocked (**1 test in 5.61 seconds**). The focused native/contracts/policy/package
+regression passed **20 tests in
+36.05 seconds**, with the existing Starlette/AnyIO deprecation warning. It covers
+adoption, existing LOD contracts and lifecycle contracts, capability reporting,
+server/authentication/archive boundaries, storage and native package ownership.
+An additional real-Blender workflow regression passed **12 tests in 138.93
+seconds**, including new adoption workflows, existing static LODs, lifecycle
+replacement/removal, asset packages and assembly realization.
+
+```sh
+MCPBLENDER_TEST_BLENDER=1 python3 -m pytest -q tests/test_lod_adoption_native.py tests/test_lod_contracts.py tests/test_lod_management_contracts.py tests/test_capabilities.py tests/test_server.py tests/test_storage.py tests/test_package_native.py --tb=short --maxfail=1
+MCPBLENDER_TEST_BLENDER=1 MCPBLENDER_ADOPTION_EVIDENCE_DIR=/tmp/mb-adoption-20261103 python3 -m pytest -q tests/test_lod_adoption.py tests/test_lods.py tests/test_lod_management.py tests/test_lod_management_native.py tests/test_asset_packages.py tests/test_assembly_realization_native.py --tb=short --maxfail=1
+```
+
+The structured MCP fixture disables arbitrary Python execution. It creates
+manual reduced meshes, explicitly remaps an importer material, refuses stale
+combined guards, adopts two levels plus canonical LOD0, preserves input geometry,
+re-adopts through staged replacement with relocated root placement, exports and
+validates a static GLB bundle, saves/reopens the project and removes the managed
+chain without removing its inputs. Separate source-authoritative skeletal and
+morph cases validate three timeline poses, preserve original control fingerprints
+and export animated bundles through the existing independent GLB validation.
+
+The native fixture additionally imports a real GLB, remaps its UV layer/material
+on owned copies, normalizes mirrored/sheared placement with outward winding,
+checks default material-region/attribute loss refusals and explicit opt-outs,
+and refuses hidden inputs, zero error limits and stale input edits. Re-adoption
+refuses inputs inside the replaced chain. Cancellation during creation and at
+the final pre-deletion handoff preserves exact native ID inventories and the
+original management fingerprint. A combined skeletal/relative-morph fixture
+ignores bogus incoming groups and morphs, transfers canonical skin weights and
+relative keys, validates three poses, preserves source fingerprints and returns
+to its exact initial native ID set after removal. Cancellation after key transfer
+also leaves no copied Key datablocks.
+
+This covers installed FreeBSD Blender 5.0.1, sampled rest/key/pose comparisons
+and process-local cooperative rollback. It does not qualify anatomical surface
+matching, exhaustive silhouette error, every frame, arbitrary rigs, automatic
+LOD switching, Godot or other Blender versions. Inputs must be visible and UV
+layout/render-map compatible; raw mode explicitly ignores incoming deformation.
+Current evaluated placement still affects raw geometry alignment. Materials stay
+shared canonical IDs. Ordinary rebuild automatically reduces at adopted budgets;
+re-adoption is required to retain revised authored topology. Source controller
+detachment and scene-replacement process-crash rollback remain separate.
+
+Evidence `/tmp/mb-adoption-20261103` contains an editable adopted `.blend`, static
+GLB bundle and planning/replacement/export proof JSON. No new render or visual
+quality claim is made. Both bundled skill validators and `git diff --check`
+passed. No packages, venvs, installed service or installed skills were changed.
+
 ## Interrupted staged export recovery — 2026-11-03
 
 Focused durable files, broker-only MCP, contracts and real native crash tests:

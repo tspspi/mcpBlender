@@ -100,7 +100,7 @@ def inventory(p):
             'can_rebuild':not blockers and not rebuild_blockers and suggested is not None,'rebuild_blockers':rebuild_blockers,'blockers':sorted(set(blockers)),'content_issues':content_issues,
             'source':meta['source'],'source_visibility':source_visibility,'source_error':source_error,'source_sha256':source['source_sha256'] if source else None,
             'source_stale_or_unavailable':source is None or source['source_sha256']!=meta['source_sha256'],
-            'preserved_shared_meshes':sorted(preserved),'suggested_rebuild':suggested,
+            'preserved_shared_meshes':sorted(preserved),'suggested_rebuild':suggested,'adoption':meta.get('adoption'),
             'note':'Native ID references and membership are checked. Shared/fake-user meshes remain; materials, source meshes, rigs and clips are not purged. String-name references in scripts/recipes cannot be inferred. Legacy recipes without recorded generation settings use explicit defaults.'}
     return collection,root,levels,meta,deletable,links,report
 
@@ -157,11 +157,12 @@ def remap(value,names):
     return value
 
 
-def rebuild(p):
+def rebuild(p,generator=None):
     from .bridge import check_cancelled,report_progress
     collection,root,levels,meta,data,links,report=guarded(p)
     if report['rebuild_blockers']:raise ValueError('; '.join(report['rebuild_blockers']))
     if p['name'] in {root.name,*(o.name for o in levels)}:raise ValueError('Rebuild source cannot be a replaced LOD object')
+    if any(i['name'] in {root.name,*(o.name for o in levels)} for i in p.get('inputs',[])):raise ValueError('Adoption inputs cannot belong to the replaced LOD chain')
     before=set(bpy.data.user_map());old_names=[(collection,collection.name),(root,root.name),*((o,o.name) for o in levels)]
     old_flags=[flags(o) for o in [root,*levels]];old_hidden=[o.hide_get() if bpy.context.view_layer.objects.get(o.name)==o else None for o in [root,*levels]]
     selected=list(bpy.context.selected_objects);active=bpy.context.view_layer.objects.active
@@ -169,7 +170,7 @@ def rebuild(p):
     try:
         stage_name='mcp_LOD_rebuild_'+uuid.uuid4().hex[:16]
         if stage_name in bpy.data.collections:raise ValueError('Private rebuild collection name collision')
-        generated=lods.generate(p|{'chain':stage_name})
+        generated=(generator or lods.generate)(p|{'chain':stage_name})
         stage=bpy.data.collections[generated['chain']];new_root=bpy.data.objects[generated['root']];new_levels=[bpy.data.objects[r['object']] for r in generated['levels']]
         new_meta=json.loads(stage[lods.META]);new_names=[(stage,stage.name),(new_root,new_root.name),*((o,o.name) for o in new_levels)]
         if p.get('preserve_placement',True):

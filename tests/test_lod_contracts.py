@@ -53,3 +53,22 @@ def test_morph_timeline_clip_contracts():
     assert Export.model_validate(base|{'expected_chain':'a'*64,'directory':'bundle'}).timeline_clips
     for clips in ([{'name':'Walk','frame_start':1,'frame_end':1}],[{'name':'Walk','frame_start':1.5,'frame_end':9}],base['timeline_clips']*2,[{'name':'Walk','frame_start':0,'frame_end':10001}]):
         with pytest.raises(ValueError):ExportPlan.model_validate(base|{'timeline_clips':clips})
+
+
+def test_adoption_contracts_and_permissions(tmp_path):
+    from mcpblender.lod_contracts import AdoptionPlan,Adopt,Readopt
+    base={'name':'Source','inputs':[{'name':'Manual'}]}
+    assert AdoptionPlan.model_validate(base).input_geometry=='EVALUATED_STATIC'
+    assert Adopt.model_validate(base|{'chain':'Asset','expected_source':'a'*64})
+    assert Readopt.model_validate(base|{'chain':'Asset','expected_source':'a'*64,'expected_management':'b'*64}).preserve_placement
+    for patch in ({'inputs':[]},{'inputs':[{'name':'Source'}]},{'inputs':[{'name':'Manual'}]*2},{'inputs':[{'name':'Manual','material_slots':[-1]}]}, {'inputs':[{'name':'Manual','material_slots':[256]}]}, {'pose_frames':[1,1]}, {'input_geometry':'LIVE'}, {'inputs':[{'name':'Manual','material_slots':[True]}]}, {'inputs':[{'name':'Manual','uv_maps':{'A':'UV','B':'UV'}}]}, {'max_relative_error':float('nan')}):
+        with pytest.raises(ValueError):AdoptionPlan.model_validate(base|patch)
+    with pytest.raises(ValueError):Adopt.model_validate(base|{'chain':'ä'*21,'expected_source':'a'*64})
+    config=Config();config.stdio.library_root=str(tmp_path/'library');config.stdio.allow_scene_edit=False
+    server,_=build_server(config)
+    async def run():
+        async with Client(server) as client:
+            names={t.name for t in await client.list_tools()}
+            assert 'inspect_lod_adoption' in names
+            assert not {'adopt_lod_chain','readopt_lod_chain'}&names
+    asyncio.run(run())

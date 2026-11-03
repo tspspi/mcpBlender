@@ -1881,10 +1881,100 @@ source meshes, rigs and clips are never generically purged. This does not infer
 string-name references in scripts or recipes. Rebuild similarly refuses external
 native references rather than redirecting their targets silently.
 
-These operations manage existing marked chains. Adopting arbitrary external LOD
-meshes, automatic controller migration and interrupted-process reconciliation are
-separate workflows. An immutable exported package remains a snapshot; rebuilding
-its live source chain requires planning and exporting a fresh package revision.
+These operations manage existing marked chains. External/manual geometry can be
+adopted using the following workflow. Automatic controller detachment/migration
+and interrupted-process scene replacement reconciliation remain separate. An
+immutable exported package remains a snapshot; replacing its live source chain
+requires planning and exporting a fresh package revision.
+
+## External and manually authored LOD adoption
+
+Use `inspect_lod_adoption` with canonical source `name`, `deformation`
+(`STATIC`, `SKINNED` or `MORPH`) and ordered `inputs`. Each input has a `name`,
+optional `material_slots`, and optional `uv_maps`. The canonical source supplies
+LOD0; provide only the reduced levels, from near to far. There must be 1..7
+inputs, each with at least four triangles and strictly fewer triangles than the
+previous level/source. All inputs and the source must be visible local meshes
+in the current view layer. The inspector reports normalized geometry, sampled
+rest-surface errors, `canonical_source_sha256` and a combined `source_sha256`.
+Inspection creates only temporary copies, which it removes before returning.
+
+```json
+{
+  "name": "PropSource",
+  "deformation": "STATIC",
+  "inputs": [
+    {"name": "HandEditedNear", "material_slots": [0],
+     "uv_maps": {"ImporterUV": "UVMap"}},
+    {"name": "HandEditedFar", "material_slots": [0]}
+  ],
+  "input_geometry": "EVALUATED_STATIC",
+  "max_relative_error": 0.1,
+  "error_samples": 512
+}
+```
+
+The combined guard covers source content/binding, input geometry and effective
+placement, remapping and quality settings. Pass it as `expected_source` to
+`adopt_lod_chain`, together with the same planning fields and a fresh `chain`
+name (at most 40 UTF-8 bytes). It is **not** the guard from `inspect_lod_source`.
+Creation is a queued operation by default. Failed validation, stale guards or
+cooperative cancellation remove owned copies without editing the originals.
+
+`EVALUATED_STATIC` snapshots current viewport geometry, applying input modifiers;
+it refuses input armatures, shape keys and object animation/constraints.
+`RAW_BASIS` explicitly reads raw reference-key/basis geometry, ignoring incoming
+modifiers, skin, morph values and their animation. Current evaluated object
+placement still determines alignment. Mesh-data animation is refused in raw
+mode. Neither mode imports incoming animation controls. Owned copies are baked
+into the canonical source's local coordinates, including affine shear and mirror
+winding/custom-normal correction. Input weights are discarded. Originals retain
+their geometry, transforms, materials, groups, modifiers and controls.
+
+Without remapping, material slot names/order and UV names/order/render map must
+match the canonical source. `material_slots` maps every input slot index to a
+canonical slot index; one virtual index represents a mesh without materials.
+`uv_maps` maps existing input layer names to existing canonical layer names;
+collisions refuse. Both change only owned copies. The canonical render-UV
+choice and layer ordering must still match. Materials remain shared canonical
+datablocks; texture/shader contents are not baked by adoption.
+
+`preserve_material_regions=true` requires every used canonical material region
+to remain represented. `preserve_attribute_schema=true` requires canonical named
+attribute schemas to remain present. Either may be explicitly disabled for an
+authored reduction that intentionally drops regions/attributes; UV/material slot
+layout still has to match. `max_relative_error` and `error_samples` constrain
+sampled bidirectional rest-surface error. Input normals are retained through
+coordinate normalization rather than replaced by source normals.
+
+For `SKINNED`, weights are interpolated barycentrically from nearest triangles
+on the canonical rest surface, then normalized/pruned to `skin_max_influences`
+(default four). The canonical rig and linear binding remain authoritative.
+For morph-bearing sources, relative deltas and masks are transferred using the
+existing morph LOD profile; output values/mutes follow source Key controls.
+`pose_frames` and `max_pose_error` govern sampled current-timeline deformation
+checks, with isolated-key checks for morphs. Anatomically close surfaces can
+produce undesirable nearest-surface transfers: inspect representative poses.
+The planner validates rest geometry; creation can still refuse deformation that
+fails its pose/key checks. This is not exhaustive silhouette or all-frame proof.
+
+`inspect_lod_chain` and `inspect_lod_management` include `adoption` provenance,
+including the original input configuration. Managed geometry is a snapshot:
+editing an original input does not change its already adopted levels. Inspect
+adoption again with revised inputs/settings, obtain fresh `expected_source`
+and `expected_management`, and call `readopt_lod_chain`. It accepts the adoption
+fields plus `preserve_placement`/`preserve_visibility`, both true by default.
+Re-adoption uses the same staged verification, public-name handoff, reference
+refusals and cancellation rollback as rebuilding. Inputs cannot be members of
+the chain being replaced. Re-adoption may also replace a generated chain with
+manual levels. The final native deletion remains noninterruptible; scene
+replacement crash rollback is not established.
+
+Ordinary `rebuild_lod_chain` instead regenerates levels with automatic reduction
+at the adopted triangle budgets; it does not reproduce authored topology. Its
+suggested generation recipe makes that distinction explicit. Use re-adoption to
+retain revised hand-authored geometry. Existing export, package validation and
+owned removal work with adopted chains, preserving the original inputs.
 
 ## Skeletal LODs and sampled deformation validation
 

@@ -169,7 +169,7 @@ def inspect_chain(p):
     try:source=inspect_source({'name':meta['source'],'deformation':'SKINNED' if meta.get('skin') else 'MORPH' if meta.get('morph') else 'STATIC'});stale=source['source_sha256']!=meta['source_sha256']
     except (ValueError,RuntimeError):stale=True
     return {'chain':collection.name,'root':root.name,'chain_sha256':signature,'valid':not issues,'issues':sorted(set(issues)),
-            'source':meta['source'],'source_stale_or_unavailable':stale,'source_sha256':meta['source_sha256'],'levels':records,
+            'source':meta['source'],'source_stale_or_unavailable':stale,'source_sha256':meta['source_sha256'],'levels':records,'adoption':meta.get('adoption'),
             'deformation':'SKINNED' if meta.get('skin') else 'MORPH' if meta.get('morph') else 'STATIC','skin':meta.get('skin'),'morph':meta.get('morph'),'pose_validation':meta.get('pose_validation'),'skin_profile':meta.get('skin_profile'),
             'pose_validation_inputs_changed':bool((meta.get('skin') or meta.get('morph')) and (source is None or stale or (meta.get('skin') and source['skin']['animation_sha256']!=meta['skin']['animation_sha256']) or (meta.get('morph') and source['morph']['controller_snapshot_sha256']!=meta['morph']['controller_snapshot_sha256']))),
             'note':'Independent mesh data; skin mode follows the original rig and morph mode follows the source Key controller. Source morph geometry/masks must remain intact. Visibility selects representations, not automatic distance switching. Materials remain shared.'}
@@ -208,7 +208,7 @@ def reduce(obj,base,recipe):
     return reduced
 
 
-def generate(p):
+def generate(p,adoption=None):
     from .bridge import check_cancelled,report_progress
     source,base,base_report,signature=source_snapshot(p);collection=None;root=None;created=[];meshes=[base];success=False
     try:
@@ -224,12 +224,15 @@ def generate(p):
             skin_lods.setup_root(root,source)
         records=[];previous=base_report['triangles']+1
         for i,name in enumerate(names):
-            check_cancelled();mesh=base if i==0 else base.copy()
+            check_cancelled();mesh=base if i==0 else adoption['meshes'][i-1] if adoption else base.copy()
             if i:meshes.append(mesh)
             obj=bpy.data.objects.new(name,mesh);created.append(obj);collection.objects.link(obj);obj.parent=root;obj.matrix_parent_inverse=Matrix.Identity(4);obj.matrix_basis=Matrix.Identity(4)
             if obj.name!=name:raise ValueError('Native LOD object name changed unexpectedly')
+            if i and adoption:
+                from .lod_adoption import transfer_groups
+                transfer_groups(obj,source,base,base_report)
             if base_report.get('skin'):skin_lods.setup_groups(obj,source)
-            if i:
+            if i and not adoption:
                 recipe=dict(p['levels'][i-1]);protection=None
                 if base_report.get('skin') and recipe['method']=='COLLAPSE':
                     protection=skin_lods.protect_joints(obj,source,p)
@@ -244,13 +247,13 @@ def generate(p):
             if report['triangles']>=previous:raise ValueError('Reduced LODs must actually decrease triangle count')
             previous=report['triangles']
             if report['materials']!=base_report['materials'] or report['uv_maps']!=base_report['uv_maps'] or report['render_uv_map']!=base_report['render_uv_map']:raise ValueError('LOD lost material slots or UV maps')
-            if report['used_material_indices']!=base_report['used_material_indices']:raise ValueError('LOD lost used material regions')
-            if any(a not in report['attributes'] for a in base_report['attributes']):raise ValueError('LOD lost named attribute schema')
+            if (not adoption or adoption['config']['preserve_material_regions']) and report['used_material_indices']!=base_report['used_material_indices']:raise ValueError('LOD lost used material regions')
+            if (not adoption or adoption['config']['preserve_attribute_schema']) and any(a not in report['attributes'] for a in base_report['attributes']):raise ValueError('LOD lost named attribute schema')
             measurement=quality(base,obj.data,p['error_samples']) if i else {'sample_count':0,'max_relative_error':0}
             if measurement['max_relative_error']>p['max_relative_error']:raise ValueError('LOD sampled surface error exceeds max_relative_error')
             if base_report.get('skin'):report['skin_weights']=skin_lods.attach(obj,source,base_report,p,reduced=i!=0)
             records.append(report|{'object':obj.name,'level':i,'triangle_budget':p['levels'][i-1]['triangle_budget'] if i else base_report['triangles'],
-                                   'recipe':p['levels'][i-1] if i else {'method':'SNAPSHOT'},'quality':measurement})
+                                   'recipe':({'method':'ADOPT','input':adoption['config']['inputs'][i-1]['name']} if adoption else p['levels'][i-1]) if i else {'method':'SNAPSHOT'},'quality':measurement})
             report_progress({'phase':'verified LOD level','level':i,'levels':len(names),'triangles':report['triangles'],'fraction':(i+1)/len(names)})
         if base_report.get('morph'):
             from . import morph_lods
@@ -266,9 +269,13 @@ def generate(p):
             poses=measure(source,created[1:],p.get('pose_frames') or morph_lods.frames_for(source),p['error_samples'],p['max_pose_error'])
         fresh=inspect_source({'name':source.name,'deformation':p.get('deformation','STATIC')})
         if fresh['source_sha256']!=signature:raise ValueError('Source changed during LOD generation')
+        if adoption:adoption['verify']()
         for i,obj in enumerate(created[1:]):obj.hide_viewport=i!=0;obj.hide_render=i!=0
         collection[META]=json.dumps({'format':skin_lods.MARKER if base_report.get('skin') else morph_lods.MARKER if base_report.get('morph') else MARKER,'morph':base_report.get('morph'),'skin':base_report.get('skin'),'pose_validation':poses,'skin_profile':{'max_influences':p['skin_max_influences'],'joint_importance':p['skin_joint_importance']} if base_report.get('skin') else None,'id':uuid.uuid4().hex,'source':source.name,'source_sha256':signature,'root':root.name,
                                     'blender_version':bpy.app.version_string,'generation_recipe':{k:v for k,v in p.items() if k not in {'expected_management','preserve_placement','preserve_visibility'}},'levels':records},sort_keys=True,allow_nan=False)
+        if adoption:
+            metadata=json.loads(collection[META]);metadata['adoption']={'config':adoption['config'],'source_sha256':adoption['signature'],'inputs':adoption['records']}
+            collection[META]=json.dumps(metadata,sort_keys=True,allow_nan=False)
         bpy.context.view_layer.update();check_cancelled();result=inspect_chain({'chain':p['chain']})
         if not result['valid']:raise ValueError('Created LOD chain did not pass ownership validation')
         success=True;return result

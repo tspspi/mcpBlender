@@ -416,3 +416,15 @@ Published output stays protected; discarding ready files needs discard_ready=tru
 A live lock, foreign owner, unknown file or changed inode is a refusal, not a reason
 to force cleanup. Recover again after cancelled partial cleanup. Journals remain
 outside delivered bundles. See USER_MANUAL.md for boundary and reference limits.
+
+For imported or hand-authored reduced geometry, use `inspect_lod_adoption` with
+ordered `inputs` (canonical source becomes LOD0). Use its combined `source_sha256`
+as `expected_source` for `adopt_lod_chain`; a source-only guard is insufficient.
+Explicit `material_slots`/`uv_maps` remap importer names on owned copies. Inputs
+must be visible; `RAW_BASIS` ignores incoming skin/morph/modifier deformation,
+whereas `EVALUATED_STATIC` requires static inputs. Canonical source supplies skin
+weights, relative morphs and controls, with sampled rest/key/pose checks.
+Originals remain independent. To refresh authored levels, inspect both adoption
+and management again and use `readopt_lod_chain` with both guards. Ordinary
+`rebuild_lod_chain` automatically reduces to comparable budgets and does not
+recreate hand-authored topology. Inputs cannot belong to the replaced chain.

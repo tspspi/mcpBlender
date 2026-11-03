@@ -75,7 +75,7 @@ records at 2,048 and mesh vertices at two million. Guards cover the documented
 current native state; image pixel buffers, external file contents and arbitrary
 Python dependencies are not frozen. Native write/append calls are not interruptible;
 cooperative cancellation and ordinary failure clean owned transfer data. External
-linked-library loading, animated realization/export, collision generation and independent
+linked-library loading, animated realization/export and independent
 instance simulation are not covered by these prototype tools. Static mesh
 realization is described below.
 
@@ -116,6 +116,93 @@ ordinary errors and cooperative cancellation clean owned objects, collections an
 meshes, including cancellation after linking the collection into the scene.
 Source placements are never removed. Storage feedback accompanies queued progress;
 this operation itself creates scene data rather than a new file.
+
+## Collision and shadow proxies
+
+For structured render visibility, inspect `inspect_render_visibility` by object
+`name` and carry `visibility_sha256` as `expected_visibility` to
+`configure_render_visibility`. Patch `hide_render` or individual Cycles ray flags:
+`visible_camera`, `visible_diffuse`, `visible_glossy`, `visible_transmission`,
+`visible_volume_scatter`, `visible_shadow`. Unspecified fields retain their values.
+Stale guards and keyed/driven targeted fields refuse changes; cooperative
+cancellation restores the patched fields. `hide_render` excludes the object from
+rendering, while ray visibility flags are Cycles-specific. Configure the source's
+`visible_shadow=false` before inspecting/generating its replacement proxy so the
+proxy's source guard reflects that intentional configuration. Review actual
+renders, including any instancing/material interactions.
+
+Use `inspect_asset_proxy_source` with `objects` naming visible local mesh objects
+or managed assembly placements. Inputs are evaluated at the current viewport
+frame; source deformation and transforms are frozen in independent world-space
+proxy meshes. Managed placements include nested and Geometry Nodes mesh leaves.
+A direct mesh source needs a nonempty evaluated surface; use a managed placement
+to include its un-realized procedural instances.
+
+Choose `purpose` and `method` explicitly:
+
+- `COLLISION` supports `BOX` or `CONVEX_HULL`. Boxes use world-axis-aligned bounds
+  and optional nonnegative `padding`. Hulls use the native convex hull of input
+  points; they do not perform convex decomposition. Both methods fill gaps and
+  holes within each output group. Flat input can use a padded box; a hull requires
+  a closed nondegenerate volume. Outputs have no source material dependencies,
+  display as wire meshes and are hidden from renders.
+- `SHADOW` requires `DECIMATE`, `grouping=PER_LEAF`, and a per-leaf
+  `triangle_budget`. UVs, evaluated attributes and shared materials follow the
+  source mesh. The output is a static, budgeted mesh configured for Cycles shadow
+  rays only: camera, diffuse, glossy, transmission and volume-scatter visibility
+  are disabled. Sources retain their visibility and shadow settings. Use `configure_render_visibility` to disable
+  source shadow casting before generating a replacement proxy. Eevee and game
+  engines require their own visibility/shadow integration; GLB does not encode
+  these Cycles flags.
+
+`grouping` defaults to `PER_LEAF`. `PER_SOURCE` combines the leaves of each named
+input; `COMBINED` produces one collider for all inputs. A combined convex hull can
+block an opening or fill the space between disconnected parts. For trees, select
+appropriate trunk/branch components rather than enclosing all foliage and calling
+that a trunk collider. These generic tools do not infer botanical structure.
+
+Check `can_generate` and `blockers`, then carry `source_sha256` as
+`expected_source` into `generate_asset_proxies`, with the same settings and a fresh
+`collection` name. Generation is queued by default and reports progress/storage.
+It verifies source freshness before publishing and cleans owned data on ordinary
+errors or cooperative cancellation, including cancellation after scene linking.
+Native hull/decimation calls cannot be interrupted mid-call.
+
+Each output reports counts, world bounds and sampled bidirectional source/proxy
+surface distances. `max_relative_error` is an optional rejection threshold,
+normalized by the source group's bounding diagonal. Samples include each leaf;
+this is not an exhaustive Hausdorff, silhouette, alpha-coverage or collision
+quality bound. Collision outputs additionally require closed manifold geometry
+and positive volume. `max_sampled_outside_distance` is meaningful for outward
+convex proxies; it is not a signed-distance guarantee for concave shadow meshes.
+
+`inspect_asset_proxies` reports the current `proxy_sha256`, paged members
+(`offset`/`limit`), stored quality evidence, current geometry/placement/visibility
+issues and separate `source_matches` freshness. A source change can leave the
+static proxy internally valid while making it stale. Geometry checks do not
+certify a simulation or target engine. Collision members include a
+`suggested_collision_shape`; attach a passive rigid body explicitly using the
+physics tools when appropriate. No physics world or body is created automatically.
+The structured fixture qualifies passive building colliders; arbitrary active
+body inertia and collision behavior need separate review.
+
+Use normal scene saving and explicit mesh export for delivery. Shadow materials
+remain shared, shader coordinates/images are not baked, and portable shading
+requires appropriate supported materials or texture baking. These tools do not
+automatically associate exported colliders or shadow meshes with engine assets.
+
+`remove_asset_proxies` takes `expected_proxy` from a fresh inspection. It removes
+the owned collection and objects, retains sources/materials and preserves mesh
+data still used elsewhere. It refuses changed membership, external references,
+foreign object collection links, and attached rigid bodies. Detach physics first
+so cache policy remains explicit. Changed source freshness does not prevent
+removing an obsolete owned proxy.
+
+Limits: 64 named inputs, 2,048 evaluated leaves, two million total vertices,
+eight million corners, at most 256 outputs, and 200,000 input vertices per convex
+hull group. Shadow budgets range from 4 to 500,000 triangles per leaf. Sample
+counts range from 32 to 2,048 per target/group, with at least eight source samples
+per constituent leaf. Point/curve/volume geometry requires conversion first.
 
 ## Blender startup and attachment
 

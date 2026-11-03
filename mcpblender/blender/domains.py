@@ -23,6 +23,7 @@ from . import drivers
 from . import nla
 from . import lods
 from . import assembly_realization
+from . import proxies
 from . import assemblies
 from . import rest_edit
 from . import skin_weights
@@ -55,6 +56,7 @@ COMMANDS.update(skin_weights.COMMANDS)
 COMMANDS.update(rest_edit.COMMANDS)
 COMMANDS.update(lods.COMMANDS)
 COMMANDS.update(assemblies.COMMANDS)
+COMMANDS.update(proxies.COMMANDS)
 COMMANDS.update(assembly_realization.COMMANDS)
 
 
@@ -80,6 +82,8 @@ def curves(action, slot):
 
 
 def dispatch(command, p):
+    if command in proxies.COMMANDS:
+        return proxies.dispatch(command,p)
     if command in assembly_realization.COMMANDS:
         return assembly_realization.dispatch(command,p)
     if command in assemblies.COMMANDS:

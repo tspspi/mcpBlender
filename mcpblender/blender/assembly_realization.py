@@ -31,6 +31,49 @@ def mesh_record(mesh):
             'material_indices_sha256':lods.packed(mesh.polygons,'material_index',len(mesh.polygons),'i')}
 
 
+
+def copy_evaluated_mesh(evaluated,transform):
+    mesh=None
+    try:
+        # A Geometry Nodes instance may use the host object's identity but a
+        # different evaluated mesh. new_from_object would re-evaluate the
+        # host and lose the leaf geometry; copy the actual evaluated data.
+        existing_keys=set(bpy.data.shape_keys)
+        mesh=evaluated.data.copy()
+        mesh.animation_data_clear()
+        if mesh.shape_keys and mesh.shape_keys==evaluated.data.shape_keys:
+            raise ValueError('Native copy retained unowned shape data')
+        # Copying an evaluated mesh can create orphan Keys even when the
+        # returned mesh.shape_keys is None. Delete exactly the Keys created
+        # by this copy, preserving all existing source animation data.
+        new_keys=set(bpy.data.shape_keys)-existing_keys
+        if new_keys:bpy.data.batch_remove(ids=tuple(new_keys))
+        for i,slot in enumerate(evaluated.material_slots):
+            if slot.link=='OBJECT' and i<len(mesh.materials):mesh.materials[i]=slot.material
+        # Bake affine placement, including shear, into an independent mesh.
+        # Winding must follow a mirrored transform to retain outward faces.
+        normal_matrix=transform.to_3x3().inverted().transposed()
+        normals=[(normal_matrix@n.vector).normalized() for n in mesh.corner_normals]
+        loop_vertices=[l.vertex_index for l in mesh.loops]
+        mesh.transform(transform)
+        if transform.determinant()<0:
+            mesh.flip_normals()
+            # flip_normals reverses corner order and native custom-normal
+            # encoding is tied to the old tangent spaces. Reassign normals
+            # explicitly after transforming geometry and fixing winding.
+            reordered=[None]*len(normals)
+            for polygon in mesh.polygons:
+                lookup={loop_vertices[i]:normals[i] for i in polygon.loop_indices}
+                if len(lookup)!=polygon.loop_total:raise ValueError('Mirrored realization requires faces without repeated vertices')
+                for i in polygon.loop_indices:reordered[i]=lookup[mesh.loops[i].vertex_index]
+            normals=reordered
+        mesh.normals_split_custom_set(normals)
+        mesh.update()
+        return mesh
+    except BaseException:
+        if mesh:bpy.data.meshes.remove(mesh)
+        raise
+
 def snapshot(p,check_cancelled=lambda:None):
     """Return owned meshes; caller must remove or retain every mesh on success."""
     if bpy.context.mode!='OBJECT':raise ValueError('Object mode required for realization')
@@ -54,41 +97,8 @@ def snapshot(p,check_cancelled=lambda:None):
             if any(not math.isfinite(v) for row in transform for v in row) or abs(transform.determinant())<1e-12:
                 raise ValueError('Realization requires finite invertible leaf transforms')
             check_cancelled()
-            # A Geometry Nodes instance may use the host object's identity but a
-            # different evaluated mesh. new_from_object would re-evaluate the
-            # host and lose the leaf geometry; copy the actual evaluated data.
-            existing_keys=set(bpy.data.shape_keys)
-            mesh=item.object.data.copy()
+            mesh=copy_evaluated_mesh(item.object,transform)
             meshes.append(mesh)
-            mesh.animation_data_clear()
-            if mesh.shape_keys and mesh.shape_keys==item.object.data.shape_keys:
-                raise ValueError('Native copy retained unowned shape data')
-            # Copying an evaluated mesh can create orphan Keys even when the
-            # returned mesh.shape_keys is None. Delete exactly the Keys created
-            # by this copy, preserving all existing source animation data.
-            new_keys=set(bpy.data.shape_keys)-existing_keys
-            if new_keys:bpy.data.batch_remove(ids=tuple(new_keys))
-            for i,slot in enumerate(item.object.material_slots):
-                if slot.link=='OBJECT' and i<len(mesh.materials):mesh.materials[i]=slot.material
-            # Bake affine placement, including shear, into an independent mesh.
-            # Winding must follow a mirrored transform to retain outward faces.
-            normal_matrix=transform.to_3x3().inverted().transposed()
-            normals=[(normal_matrix@n.vector).normalized() for n in mesh.corner_normals]
-            loop_vertices=[l.vertex_index for l in mesh.loops]
-            mesh.transform(transform)
-            if transform.determinant()<0:
-                mesh.flip_normals()
-                # flip_normals reverses corner order and native custom-normal
-                # encoding is tied to the old tangent spaces. Reassign normals
-                # explicitly after transforming geometry and fixing winding.
-                reordered=[None]*len(normals)
-                for polygon in mesh.polygons:
-                    lookup={loop_vertices[i]:normals[i] for i in polygon.loop_indices}
-                    if len(lookup)!=polygon.loop_total:raise ValueError('Mirrored realization requires faces without repeated vertices')
-                    for i in polygon.loop_indices:reordered[i]=lookup[mesh.loops[i].vertex_index]
-                normals=reordered
-            mesh.normals_split_custom_set(normals)
-            mesh.update()
             records.append({'instance':item.parent.original.name,'source_object':item.object.original.name,
                             'persistent_id':[i for i in item.persistent_id if i!=2147483647],
                             'source_matrix_world':lods.matrix(transform),'mesh':mesh_record(mesh)})

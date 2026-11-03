@@ -270,3 +270,17 @@ editable. This freezes the current pose and modifiers; materials remain shared.
 Shader coordinates, external files and arbitrary attributes are not automatically
 baked into portable GLB equivalents. Compare exported/re-imported geometry and
 review materials; use texture baking when necessary.
+
+For collision/shadow meshes, inspect `inspect_asset_proxy_source` with named local
+meshes or managed placements. COLLISION uses BOX or CONVEX_HULL: choose PER_LEAF,
+PER_SOURCE or COMBINED grouping deliberately because envelopes fill gaps. Resolve
+blockers, then carry the guard and identical settings into `generate_asset_proxies`
+with a fresh collection; wait for completion. Review volume and sampled surface
+errors, then attach physics explicitly if needed. SHADOW requires DECIMATE,
+PER_LEAF and a per-leaf triangle budget; outputs are Cycles shadow-only meshes.
+Before generating a replacement, use `inspect_render_visibility` and guarded
+`configure_render_visibility` to set the source visible_shadow=false. GLB/other
+renderers do not inherit these Cycles flags. Materials stay shared. Inspect source freshness before delivery; remove
+obsolete proxies using a fresh proxy guard after detaching physics/dependencies.
+These generic proxies do not infer trunk/branch collision or validate foliage
+silhouette/alpha coverage.

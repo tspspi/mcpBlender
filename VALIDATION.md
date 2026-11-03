@@ -1,5 +1,74 @@
 # Local validation: 0.2.0
 
+## Collision/shadow proxies and guarded render visibility — 2026-11-03
+
+Final focused gate:
+
+```sh
+MCPBLENDER_TEST_BLENDER=1 MCPBLENDER_PROXY_EVIDENCE_DIR=/tmp/mb-proxy-20261103 python3 -m pytest -q tests/test_proxies.py tests/test_proxies_native.py tests/test_proxy_contracts.py --tb=short --maxfail=1
+```
+
+Result: **5 passed in 31.39s** on FreeBSD Blender 5.0.1. The Python-disabled MCP
+fixture creates a two-story procedural building, a reusable placed prototype and
+its 28-triangle convex collider. A passive native rigid body uses that collider;
+a falling cube's center heights are 10.0, 7.2199998 and 7.2199998 at frames
+1/24/60, consistent with the 6.2-high roof plus the cube's half-height and collision
+margin. The source instance guard remains unchanged. Guarded removal refuses an
+attached rigid body; physics detachment is explicit.
+
+The same fixture configures source shadow visibility through typed guarded tools,
+refuses a stale visibility guard, and generates a textured 150-triangle shadow
+mesh. Its sampled maximum relative surface error is 0.0102831 (fixture evidence,
+not a general bound). Existing GLB delivery retains the 150 triangles and one
+embedded image; save/reopen retains valid native ownership and geometry. Moving
+the source makes source_matches false while leaving the frozen proxy valid, and
+the old source guard refuses generation.
+
+Native checks cover padded combined boxes, convex envelopes of separated parts,
+per-source grouping, closed manifold positive-volume output, sampled outside
+checks, error-threshold refusal, degenerate hull refusal, partial output name
+collision, source inspection ID cleanup, and cooperative rollback during generation
+and after scene linking. Shadow decimation discards all work objects/meshes;
+shared materials survive guarded removal. Referencing a proxy from an external
+object blocks deletion. Visibility cancellation restores the original flags and
+keyed targeted visibility edits refuse.
+
+An isolated Cycles render scene contains the shadow proxy without its original
+sphere. The 128×128 paired shadow-on/off images have **847 darkened pixels** and
+an unchanged camera-center patch. Visual inspection confirms the displaced shadow
+and no visible sphere. These images, native/structured scenes, a textured GLB and
+JSON proofs are retained under the command's evidence directory. This proves the
+fixture's Cycles shadow-only behavior, not Eevee, alpha foliage or engine support.
+
+Before adding the visibility-control extension, the combined proxy, realization,
+server, storage and capability regression passed **17 tests in 70.02s**, including
+the shared evaluated-mesh-copy refactor:
+
+```sh
+MCPBLENDER_TEST_BLENDER=1 MCPBLENDER_PROXY_EVIDENCE_DIR=/tmp/mb-proxy-20261103 python3 -m pytest -q tests/test_proxies.py tests/test_proxies_native.py tests/test_proxy_contracts.py tests/test_assembly_realization.py tests/test_assembly_realization_native.py tests/test_capabilities.py tests/test_server.py tests/test_storage.py --tb=short --maxfail=1
+```
+
+After the visibility extension, pure contract/server/storage/capability checks
+passed **13 tests in 15.03s**, with one opt-in Blender capability check skipped
+and the existing Starlette/AnyIO warning:
+
+```sh
+python3 -m pytest -q tests/test_proxy_contracts.py tests/test_capabilities.py tests/test_server.py tests/test_storage.py --tb=short --maxfail=1
+```
+
+Both bundled design/render skills pass their structural validator.
+
+Scope: static world-space approximations and current-viewport source guards.
+Hull/box grouping can close doors and fill disconnected gaps. There is no automatic
+convex decomposition, trunk/branch selection, active-body inertia qualification,
+engine association or physics attachment. Surface checks are sampled and do not
+prove exhaustive containment, silhouette or alpha coverage. Shadow ray flags are
+Cycles-specific and do not transfer through GLB; materials remain shared and
+external shader/image state is not baked. See USER_MANUAL.md for limits and
+source freshness/removal semantics. Broader botany, collision decomposition and
+batch dependency packaging remain separate.
+
+
 ## Static assembly realization and mesh delivery — 2026-11-03
 
 Combined structured/native and existing assembly/server/storage/capability gate:

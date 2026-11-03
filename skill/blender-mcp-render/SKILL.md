@@ -108,3 +108,13 @@ use as a material/VSE input pins the output group; pin before external/custom
 Python use because those dependencies cannot be inferred. Preview cleanup with
 preview_retention_cleanup before applying a plan. details_pruned=true means old
 history expired; recover current state instead of replaying its mutation.
+
+For a simpler Cycles shadow caster, inspect `inspect_asset_proxy_source` with
+purpose SHADOW, method DECIMATE, PER_LEAF grouping and a triangle budget. Generate
+with its source guard and identical settings; review approximation error and
+rendered shadows. The output is invisible to camera/diffuse/glossy/transmission/
+volume-scatter rays but visible to shadow rays. Source shadow casting remains
+unchanged: before proxy generation, inspect `inspect_render_visibility` and use
+its guard with `configure_render_visibility` to disable source visible_shadow. These flags do not
+transfer through GLB or provide Eevee/engine shadow integration. Alpha foliage
+coverage needs visual qualification; a triangle budget alone does not prove it.

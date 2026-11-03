@@ -314,9 +314,10 @@ def export(p):
     estimate+=len(objects)*sum(max(1024,image.size[0]*image.size[1]*8) for image in images)
     policy=_bridge.active.get('storage',{}) if _bridge and _bridge.active else {}
     require_space(directory,estimate,reserve_bytes=policy.get('reserve_bytes',256*1024**2),estimate_kind='mesh_and_texture_pixel_heuristic')
-    stage=directory.parent/('.mcpblender-lod-'+uuid.uuid4().hex);saved=[(o,o.hide_viewport,o.hide_render,o.hide_get(),o.hide_select) for o in objects];published=False;stage_created=False
+    stage=(p['_export_job'].stage if p.get('_export_job') else directory.parent/('.mcpblender-lod-'+uuid.uuid4().hex));saved=[(o,o.hide_viewport,o.hide_render,o.hide_get(),o.hide_select) for o in objects];published=False;stage_created=False
     try:
         check_cancelled();stage.mkdir(mode=0o700);stage_created=True
+        if p.get('_export_job'):p['_export_job'].created()
         levels=[]
         for i,(obj,record) in enumerate(zip(objects,records)):
             check_cancelled();obj.hide_viewport=False;obj.hide_render=False;obj.hide_select=False;obj.hide_set(False);bpy.context.view_layer.update()
@@ -336,6 +337,7 @@ def export(p):
         (stage/'manifest.json').write_text(json.dumps(doc,indent=2,allow_nan=False)+'\n')
         verified=validate(stage);check_cancelled()
         if directory.exists():raise FileExistsError(directory)
+        if p.get('_export_job'):p['_export_job'].verify();check_cancelled()
         stage.rename(directory);published=True
         return verified|{'directory':str(directory),'path':str(directory/'manifest.json'),'estimated_bytes':estimate,'files':[str(directory/l['file']) for l in levels]}
     finally:

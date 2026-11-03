@@ -11,7 +11,6 @@ import bpy
 
 from . import assemblies,lods,proxies,assembly_realization as realization
 from .workflows import export_objects_glb
-from mcpblender.proxy_contracts import Source as ProxySource
 from mcpblender.storage import require_space
 from mcpblender.package_files import MARKER,triangle_hash,surface_digest,inspect_static_glb,validate
 from mcpblender.lod_files import file_hash
@@ -78,7 +77,7 @@ def collect(p,check_cancelled=lambda:None):
             check_cancelled();identifier=asset['id'];asset_parts=[]
             # Reuse the qualified evaluated-source snapshot path. Its collision
             # volume blockers do not apply to primary triangle surfaces.
-            raw=ProxySource(objects=asset['objects'],method='BOX',grouping='COMBINED').model_dump()
+            raw={'objects':asset['objects'],'purpose':'COLLISION','method':'BOX','grouping':'COMBINED','padding':0.,'sample_count':256,'triangle_budget':None,'max_relative_error':None}
             meshes,_,snapshot=proxies.source(raw,check_cancelled=check_cancelled);owned.extend(meshes)
             asset_parts.append({'role':'PRIMARY','meshes':meshes,'source_sha256':snapshot['source_sha256']})
             for purpose,key in (('COLLISION','collision_proxies'),('SHADOW','shadow_proxies')):
@@ -141,7 +140,8 @@ def export(p):
         policy=_bridge.active.get('storage',{}) if _bridge and _bridge.active else {}
         require_space(directory,planned['estimated_bytes'],reserve_bytes=policy.get('reserve_bytes',256*1024**2),estimate_kind='native_mesh_and_loaded_image_pixel_heuristic')
         if _bridge and _bridge.active:_bridge.active['storage']['estimated_bytes']=planned['estimated_bytes']
-        check_cancelled();stage=directory.parent/('.mcpblender-package-'+uuid.uuid4().hex);stage.mkdir(mode=0o700);stage_created=True
+        check_cancelled();stage=(p['_export_job'].stage if p.get('_export_job') else directory.parent/('.mcpblender-package-'+uuid.uuid4().hex));stage.mkdir(mode=0o700);stage_created=True
+        if p.get('_export_job'):p['_export_job'].created()
         scene=bpy.data.scenes.new('MCP_PackageExport');manifest_assets=[]
         for asset in planned['assets']:
             (stage/asset['id']).mkdir(mode=0o700);members=[];lod_entries=[]
@@ -189,6 +189,7 @@ def export(p):
         (stage/'manifest.json').write_text(json.dumps(document,indent=2,allow_nan=False)+'\n')
         verified=validate(stage,check_cancelled);report_progress({'phase':'verified asset package inventory','assets':len(manifest_assets),'files':len(verified['files'])});check_cancelled()
         if directory.exists() or directory.is_symlink():raise FileExistsError('Asset package output directory already exists')
+        if p.get('_export_job'):p['_export_job'].verify();check_cancelled()
         stage.rename(directory);published=True
         return verified|{'directory':str(directory),'path':str(directory/'manifest.json'),'estimated_bytes':planned['estimated_bytes']}
     finally:

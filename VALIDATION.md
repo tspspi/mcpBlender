@@ -1,5 +1,65 @@
 # Local validation: 0.2.0
 
+## Interrupted staged export recovery — 2026-11-03
+
+Focused durable files, broker-only MCP, contracts and real native crash tests:
+
+```sh
+MCPBLENDER_TEST_BLENDER=1 python3 -m pytest -q tests/test_export_jobs.py tests/test_export_job_mcp.py tests/test_export_job_contracts.py tests/test_export_job_native.py --tb=short --maxfail=1
+```
+
+Result: **14 passed in 27.97s**. Real test-owned Blender processes are killed with
+SIGKILL after the first static LOD file and after durable export validation. The
+live lock blocks recovery while each process runs; after death, partial output
+reconciles as interrupted and cleans, while validated staging publishes without
+replaying Blender. A separate native cancellation arriving after journal
+validation still prevents publication and cleans owned staging. This qualifies
+process death at these boundaries, not arbitrary hardware/power-loss behavior.
+
+Pure filesystem checks cover live subprocess writers, actual lock release after
+kill, owner isolation, pre-/post-rename reconciliation, ready-output protection,
+missing manifests, foreign output preservation, unknown/symlink/replaced-inode
+refusal, fresh guards, dry runs, reference protection, cancelled partial cleanup
+and bounded owner-only discovery/filtering/pagination. Deletion is anchored to
+registered directory descriptors and refuses inventory drift. Broker queue tests
+protect structured stage readers and refuse late submissions into cleanup paths.
+
+The MCP fixture uses automatic Blender startup disabled and a disk reserve larger
+than available space. Discovery, inspect, reconcile and publication still succeed
+without a Blender worker; free-space/progress and unmet reserve are reported.
+Published data refuses cleanup. Filesystem metadata jobs need no export-size
+admission but still need enough space for small journal writes.
+
+The final discovery-summary, malformed-record and storage-policy checks passed
+**11 tests in 26.00s** after the focused run.
+
+Broker/startup/retention/server/storage regression plus file-only checks:
+
+```sh
+python3 -m pytest -q tests/test_export_jobs.py tests/test_export_job_mcp.py tests/test_export_job_contracts.py tests/test_operations.py tests/test_broker_startup.py tests/test_retention.py tests/test_server.py tests/test_storage.py --tb=short --maxfail=1
+```
+
+Result: **39 passed in 45.89s**, with the existing Starlette/AnyIO deprecation
+warning. Earlier existing static/skin/morph/package exports with journaling enabled
+passed **17 tests in 118.83s**. After removing native-side frontend contract
+imports, native recovery/add-on/lifecycle/package checks passed **9 tests in
+78.37s**. The add-on archive is extracted and imported in Blender with Pydantic
+and FastMCP imports explicitly blocked. It includes the dependency-free recovery,
+validation and shared recipe-default helpers and excludes frontend/server code.
+Native recipe defaults are checked against the frontend contract defaults.
+
+Scope: registered top-level LOD/package exports. Nested LOD staging belongs to its
+outer package. Broker job recovery works independently of app startup and records
+its own result; it does not rewrite the interrupted original operation's status.
+Small journals/locks remain, and unknown legacy staging is preserved. Lost/edited
+records, ownership-registration gaps, changed inodes, unknown files and untracked
+external/Python references cannot be guessed away. Independent LOD validation has
+coarse cancellation boundaries; final publication is checked again afterward.
+Automated age-based journal pruning/staging sweeps, general single-file export
+recovery and other bake/render lifecycle work remain separate. Both bundled
+skills validate; see USER_MANUAL.md for operational safeguards and limits.
+
+
 ## LOD ownership, replacement and source visibility — 2026-11-03
 
 Focused native/structured/contract gate:

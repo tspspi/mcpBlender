@@ -4,6 +4,7 @@ from pydantic import Field,FiniteFloat,model_validator
 from .config import Model
 from .mesh_contracts import Digest
 from .nla_contracts import SafeName
+from .lod_recipe import DEFAULTS,LEVEL_DEFAULTS
 
 
 class Source(Model):
@@ -13,22 +14,22 @@ class Source(Model):
 
 class Level(Model):
     triangle_budget: int = Field(ge=4,le=500000)
-    method: Literal['COLLAPSE','PLANAR','UNSUBDIVIDE'] = 'COLLAPSE'
-    angle_degrees: FiniteFloat = Field(default=5,ge=0,le=180)
-    iterations: int = Field(default=1,ge=1,le=6)
+    method: Literal['COLLAPSE','PLANAR','UNSUBDIVIDE'] = LEVEL_DEFAULTS['method']
+    angle_degrees: FiniteFloat = Field(default=LEVEL_DEFAULTS['angle_degrees'],ge=0,le=180)
+    iterations: int = Field(default=LEVEL_DEFAULTS['iterations'],ge=1,le=6)
 
 
 class Generate(Source):
     chain: SafeName
     expected_source: Digest
     levels: list[Level] = Field(min_length=1,max_length=7)
-    transfer_normals: bool = True
-    max_relative_error: FiniteFloat = Field(default=.1,ge=0,le=1)
-    error_samples: int = Field(default=512,ge=16,le=4096)
-    skin_max_influences: int = Field(default=4,ge=1,le=4)
-    skin_joint_importance: FiniteFloat = Field(default=10,ge=0,le=1000)
-    pose_frames: list[FiniteFloat] | None = Field(default=None,min_length=1,max_length=16)
-    max_pose_error: FiniteFloat = Field(default=.1,ge=0,le=1)
+    transfer_normals: bool = DEFAULTS['transfer_normals']
+    max_relative_error: FiniteFloat = Field(default=DEFAULTS['max_relative_error'],ge=0,le=1)
+    error_samples: int = Field(default=DEFAULTS['error_samples'],ge=16,le=4096)
+    skin_max_influences: int = Field(default=DEFAULTS['skin_max_influences'],ge=1,le=4)
+    skin_joint_importance: FiniteFloat = Field(default=DEFAULTS['skin_joint_importance'],ge=0,le=1000)
+    pose_frames: list[FiniteFloat] | None = Field(default=DEFAULTS['pose_frames'],min_length=1,max_length=16)
+    max_pose_error: FiniteFloat = Field(default=DEFAULTS['max_pose_error'],ge=0,le=1)
     @model_validator(mode='after')
     def recipe(self):
         if len(self.chain.encode('utf-8'))>40:raise ValueError('Chain name supports at most 40 UTF-8 bytes')

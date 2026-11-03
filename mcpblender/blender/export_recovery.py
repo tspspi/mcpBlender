@@ -1,0 +1,17 @@
+"""Bind native exporters to durable filesystem journals without nesting jobs."""
+from mcpblender.export_jobs import ExportJob
+
+
+def run(command,p):
+    from .bridge import _bridge,report_progress,check_cancelled
+    from . import lods,asset_packages
+    active=_bridge.active if _bridge and _bridge.active else {}
+    if active and 'owner' not in active:raise RuntimeError('Export journaling requires broker owner metadata; update/restart the broker before exporting')
+    owner=active.get('owner','stdio')
+    if command=='export_asset_package':
+        kind='PACKAGE';binding={'source_sha256':p['expected_source']};assets=[a['id'] for a in p['assets']];function=asset_packages.export
+    else:
+        kind='LOD';binding={'chain_sha256':p['expected_chain'],'animation_sha256':p.get('expected_animation')};assets=[];function=lods.export
+    with ExportJob(p['directory'],owner,kind,binding,operation_id=active.get('operation_id'),asset_ids=assets) as job:
+        report_progress({'phase':'registered recoverable export','directory':p['directory'],'job_directory':str(job.root),'export_job_id':job.record['id']})
+        check_cancelled();return function(p|{'_export_job':job})

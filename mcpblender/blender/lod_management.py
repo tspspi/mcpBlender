@@ -6,7 +6,7 @@ import uuid
 import bpy
 
 from . import lods,assemblies
-from mcpblender.lod_contracts import Generate
+from mcpblender.lod_recipe import suggested_recipe
 
 COMMANDS={'configure_lod_source_visibility','inspect_lod_management','remove_lod_chain','rebuild_lod_chain'}
 
@@ -76,7 +76,7 @@ def inventory(p):
             profile=meta.get('skin_profile') or {}
             if 'max_influences' in profile:recipe['skin_max_influences']=profile['max_influences']
             if 'joint_importance' in profile:recipe['skin_joint_importance']=profile['joint_importance']
-        suggested=Generate.model_validate(recipe|{'name':meta['source'],'chain':collection.name,'deformation':deformation,'expected_source':source['source_sha256']}).model_dump(exclude_none=True)
+        suggested=suggested_recipe(recipe|{'name':meta['source'],'chain':collection.name,'deformation':deformation,'expected_source':source['source_sha256']})
     except (ValueError,RuntimeError,ReferenceError,KeyError,TypeError) as exc:source_error=str(exc)
     records=[]
     for obj in objects:

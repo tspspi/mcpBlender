@@ -2536,6 +2536,79 @@ It disables Draco availability for the operation and restores the original probe
 afterward. Fixed Blender versions are left alone. Installed Blender files are
 unchanged, and Draco-compressed assets are not supported by this workaround.
 
+## Interrupted LOD/package export recovery
+
+Top-level `export_lod_chain` and `export_asset_package` now register a durable,
+owner-scoped export job before writing staging. This covers static, skin and morph
+LOD bundles and batch packages. A hidden sibling job directory contains a small
+journal, a stable OS writer lock and a registered stage. The delivered output
+contains only its normal manifest/files; recovery metadata remains outside it.
+Nested LOD exports inside a package belong to the outer package job.
+
+Use `list_export_jobs` to discover journals belonging to the current owner under
+`directory="."` (the library root by default). The read-only scan has bounded
+`depth` (0..4, default 2), `limit` (1..100), `offset` and `include_finished` options.
+It skips symlinks/foreign/unsafe records and reports truncation/next offset; narrow
+the parent/depth if its 128-directory/8,192-entry budget is reached. It does not
+adopt or clean anything. Finished published/cleaned jobs are omitted by default.
+
+Use the original output `directory` with `inspect_export_job`, even if that output
+directory was never published. It reports `job_sha256`, recorded operation ID,
+writer lock status, stage inode/inventory/bytes, output identity and free storage.
+The OS lock is authoritative for a live writer; PID reuse does not authorize or
+prevent recovery. Operations are scoped to the current MCP owner/key as well as
+`library_root`; another key's journal is refused. Directories/files are checked for
+ownership and symlinks. A mismatched stage inode or unknown file is not adopted.
+
+All four job tools run in the broker and work with Blender closed or busy:
+
+1. Inspect the job and obtain a fresh `job_sha256`.
+2. Call `recover_export_job` with `expected_job`. It never replays Blender work.
+   Valid complete staging becomes `ready`; incomplete output becomes
+   `interrupted`. A successful rename whose final journal update was interrupted
+   is recognized by the output inode and revalidated as `published`.
+3. To publish a ready snapshot, call recovery again with its fresh guard and
+   `publish=true`. The recorded source/animation binding and manifests are
+   validated; an existing unrelated output is never overwritten. This publishes
+   the completed historical snapshot, not the current scene revision.
+4. To discard incomplete staging, call `cleanup_export_job` with a fresh guard.
+   It defaults to `dry_run=true`. Review the listed files/bytes, then repeat with
+   `dry_run=false`. Valid `ready` output additionally requires explicit
+   `discard_ready=true`. Published output is always protected.
+
+Recovery and cleanup default to queued operations, with progress/storage and
+cooperative cancellation; use `wait_operation`/`get_operation`. Inspect normally
+waits for its short broker operation; discovery defaults to a queued scan. Filesystem metadata jobs bypass the export
+space-admission reserve so they remain usable when the reserve is unmet. They
+still need filesystem space for small journal updates; a completely full or
+read-only filesystem can prevent those updates. Independent LOD validation has
+coarse cancellation boundaries; publication is checked again before rename.
+
+Cleanup deletes only registered staging with recognized package/LOD layouts and
+matching identities/inventory. It anchors deletion through directory descriptors
+and refuses symlinks, replaced data, unknown files, active writers and structured
+queued/running file references. New structured operations cannot enter that stage
+while cleanup reserves it. Current recorded project paths are also protected;
+untracked Python/external references cannot be inferred. Cancellation partway
+through deletion leaves `cleaning`; recover it before planning further cleanup.
+Ready files that survive reconciliation regain their ready-output protection.
+
+Small journals/locks remain for diagnosis and reuse; this is explicit cleanup of
+large abandoned staging, not an automatic library sweep or journal-history purge.
+Unknown legacy prefix-only staging without a journal is preserved. A crash in the
+small directory-creation/ownership-registration gap can leave an unproven stage;
+the tools refuse to guess ownership. Lost/edited journals, unknown files and inode
+changes require review outside this automated path. Broker operation history is
+not rewritten to claim the interrupted Blender operation completed: recovery has
+its own operation result and reports `replayed=false`.
+
+Native export journaling requires owner metadata from the matching updated broker;
+a stale broker must be updated/restarted before exporting. The add-on archive
+includes the dependency-free recovery/validation helpers, while frontend
+FastMCP/Pydantic code stays outside Blender. Recovery here does not restore
+in-memory scene edits or resume native render/bake work; application checkpoints
+and the dedicated bake job workflows retain their separate responsibilities.
+
 ## Long operations and recovery
 
 `submit_operation(command, params, request_id)` returns immediately for any

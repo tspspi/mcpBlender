@@ -23,6 +23,7 @@ from pathlib import Path
 
 from .wire import MAX_MESSAGE, call, check_peer, encode, listen_private, private_directory
 from .network import COMMANDS as NETWORK_COMMANDS, private_summary, transfer
+from .export_jobs import COMMANDS as EXPORT_JOB_COMMANDS, execute as export_job_operation
 from .storage import snapshot, require_space
 from .retention import Retention
 
@@ -45,6 +46,18 @@ def process_alive(pid):
     _PROCESS_CACHE[pid] = time.monotonic(), alive
     return alive
 
+
+
+def operation_paths(value):
+    paths=[]
+    if isinstance(value,dict):
+        for key,item in value.items():
+            if key in {'path','directory','image_path','save_path','base_color_texture','roughness_texture','metallic_texture','normal_texture'} and isinstance(item,str):paths.append(item)
+            elif key=='paths' and isinstance(item,list):paths.extend(p for p in item if isinstance(p,str))
+            else:paths.extend(operation_paths(item))
+    elif isinstance(value,list):
+        for item in value:paths.extend(operation_paths(item))
+    return paths
 
 class Journal:
     def __init__(self, path):
@@ -111,9 +124,12 @@ class Broker:
         self.stop_event = threading.Event()
         self.supervisor = None
         self.children = []
+        self.export_cleanup_paths = {}
         self.journal.db.execute("UPDATE operations SET state='interrupted', finished_at=?, error=? "
                                "WHERE session_id='network' AND state IN ('queued','running')",
                                (time.time(), "Broker restarted during an external API operation; remote outcome may be unknown"))
+        self.journal.db.execute("UPDATE operations SET error=? WHERE session_id='network' AND state='interrupted' AND command IN ('inspect_export_job','recover_export_job','cleanup_export_job')",
+                               ("Broker restarted during filesystem recovery; inspect the export job before retrying; work was not replayed",))
         self.journal.db.commit()
 
     def persist_lifecycle(self):
@@ -186,13 +202,27 @@ class Broker:
 
         result, error, state = None, None, "succeeded"
         try:
-            result = transfer(command, params, progress, cancelled)
+            if command=='cleanup_export_job':
+                from .export_jobs import inspect as inspect_export
+                info=inspect_export(params['directory'],params['_job_owner']);stage=Path(info['job_directory'])/info['record']['stage']
+                with self.journal.lock:
+                    refs=[self.worker.get('filepath')] if self.worker else []
+                    for row in self.journal.db.execute("SELECT id,params,storage FROM operations WHERE state IN ('queued','running')").fetchall():
+                        if row['id']==identifier:continue
+                        refs.extend(operation_paths(json.loads(row['params'])))
+                        if row['storage']:refs.append(json.loads(row['storage']).get('path'))
+                    if any(Path(ref).is_relative_to(stage) for ref in refs if ref):raise ValueError('Queued/running operation or current project references export staging')
+                    self.export_cleanup_paths[identifier]=stage
+                    params=params|{'_references':refs}
+
+            result = export_job_operation(command,params,progress,cancelled) if command in EXPORT_JOB_COMMANDS else transfer(command, params, progress, cancelled)
         except InterruptedError as exc:
             error, state = str(exc), "cancelled"
         except Exception as exc:
             # urllib errors may include signed URLs: record only the exception type.
-            error, state = f"{type(exc).__name__}: external transfer failed", "failed"
+            error, state = (f"{type(exc).__name__}: {exc}" if command in EXPORT_JOB_COMMANDS else f"{type(exc).__name__}: external transfer failed"), "failed"
         with self.journal.lock:
+            self.export_cleanup_paths.pop(identifier,None)
             self.journal.db.execute("UPDATE operations SET state=?, result=?, error=?, finished_at=? WHERE id=?",
                                     (state, json.dumps(result), error, time.time(), identifier))
             self.journal.db.commit()
@@ -269,6 +299,9 @@ class Broker:
             if command == "submit":
                 owner = params["owner"]
                 request_id = params.get("request_id") or uuid.uuid4().hex
+                submitted_paths=operation_paths(params.get('params',{}))+params.get('input_paths',[])
+                if params.get('storage'):submitted_paths.append(params['storage'].get('path'))
+                if any(Path(path).is_relative_to(stage) for path in submitted_paths if path for stage in self.export_cleanup_paths.values()):raise ValueError('Export staging cleanup is in progress; retry after it completes')
                 body = {"command": params["command"], "params": params.get("params", {})}
                 encoded = json.dumps(body, sort_keys=True, allow_nan=False)
                 digest = hashlib.sha256(encoded.encode()).hexdigest()
@@ -277,13 +310,14 @@ class Broker:
                     if previous["digest"] != digest:
                         raise ValueError("request_id was already used with different arguments")
                     return Journal.public(dict(previous))
-                network = body["command"] in NETWORK_COMMANDS
+                # Filesystem recovery shares the durable background queue; it does not use HTTP.
+                network = body["command"] in NETWORK_COMMANDS | EXPORT_JOB_COMMANDS
                 if not self.worker and not network:
                     raise RuntimeError("No Blender worker attached; start Blender explicitly")
                 if db.execute("SELECT count(*) FROM operations WHERE state IN ('queued','running')").fetchone()[0] >= 128:
                     raise RuntimeError("Operation queue is full")
                 identifier = uuid.uuid4().hex
-                if params.get("storage"):
+                if params.get("storage") and body["command"] not in EXPORT_JOB_COMMANDS:
                     require_space(**params["storage"])
                 db.execute("SAVEPOINT submit_operation")
                 try:
@@ -306,7 +340,7 @@ class Broker:
                 db.execute("RELEASE submit_operation")
                 db.commit()
                 if network:
-                    runtime = body["params"] | {"_storage_policy": params.get("storage", {})}
+                    runtime = body["params"] | {"_storage_policy": params.get("storage", {}), "_job_owner":owner}
                     threading.Thread(target=self.network_operation, args=(identifier, body["command"], runtime), daemon=True).start()
                 return Journal.public(self.journal.row(identifier))
             if command in ("get_operation", "cancel_operation"):
@@ -336,7 +370,7 @@ class Broker:
                     busy = db.execute("SELECT * FROM operations WHERE state='running' AND session_id!='network'").fetchone()
                     if busy:
                         if params.get("claim_id") and busy["claim_id"] == params["claim_id"]:
-                            return {"operation": {"operation_id": busy["id"], "command": busy["command"], "params": json.loads(busy["params"]),
+                            return {"operation": {"operation_id": busy["id"], "owner":busy["owner"], "command": busy["command"], "params": json.loads(busy["params"]),
                                                   "storage": json.loads(busy["storage"]) if busy["storage"] else {}}}
                         return {"operation": None}
                     row = db.execute("SELECT * FROM operations WHERE state='queued' AND session_id!='network' ORDER BY submitted_at,id LIMIT 1").fetchone()
@@ -351,7 +385,7 @@ class Broker:
                             db.execute("UPDATE operations SET state='failed', error=?, finished_at=? WHERE id=?", (str(exc), time.time(), row["id"]))
                             db.commit()
                             return {"operation": None}
-                    return {"operation": {"operation_id": row["id"], "command": row["command"], "params": json.loads(row["params"]),
+                    return {"operation": {"operation_id": row["id"], "owner":row["owner"], "command": row["command"], "params": json.loads(row["params"]),
                                           "storage": json.loads(row["storage"]) if row["storage"] else {}}}
                 row = self.journal.row(params["operation_id"])
                 if command == "complete" and row["session_id"] == self.worker["session_id"] and row["state"] in TERMINAL:

@@ -93,15 +93,15 @@ class State:
         if not self.allowed(name):
             raise PermissionError(f"Active policy does not allow {name}")
 
-    def library_path(self, path: str, *, write=False, directory=False) -> Path:
+    def library_path(self, path: str, *, write=False, directory=False, must_exist=True, allow_root=False) -> Path:
         root = Path(self.policy().library_root).expanduser().resolve()
         candidate = Path(path).expanduser()
         candidate = (candidate if candidate.is_absolute() else root / candidate).resolve()
-        if not candidate.is_relative_to(root) or candidate == root:
+        if not candidate.is_relative_to(root) or candidate == root and not allow_root:
             raise ValueError("File path must be inside the active library_root")
         if write:
             candidate.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
-        elif not (candidate.is_dir() if directory else candidate.is_file()):
+        elif must_exist and not (candidate.is_dir() if directory else candidate.is_file()):
             raise FileNotFoundError(candidate)
         return candidate
 
@@ -151,7 +151,7 @@ class State:
             paths.append(params["path"])
         if command == "vse_add_strip":
             paths.extend(params["paths"])
-        if command in {"validate_lod_export", "validate_asset_package"}:
+        if command in {"validate_lod_export", "validate_asset_package", "inspect_export_job", "recover_export_job", "cleanup_export_job"}:
             paths.append(params["directory"])
         if command == "configure_material" and params.get("image_path"):
             paths.append(params["image_path"])
@@ -202,6 +202,10 @@ class State:
             params["directory"] = str(self.library_path(params["directory"], write=command == "bake_textures", directory=True))
         if command in {"export_lod_chain", "validate_lod_export", "export_asset_package", "validate_asset_package"}:
             params["directory"] = str(self.library_path(params["directory"],write=command in {"export_lod_chain","export_asset_package"},directory=True))
+        if command=='list_export_jobs':
+            params['directory']=str(self.library_path(params['directory'],directory=True,allow_root=True))
+        if command in {"inspect_export_job","recover_export_job","cleanup_export_job"}:
+            params['directory']=str(self.library_path(params['directory'],directory=True,must_exist=False))
         if command == "configure_material" and params.get("image_path"):
             params["image_path"] = str(self.library_path(params["image_path"]))
         if command in {"configure_shader_graph", "configure_shader_node"}:
@@ -420,7 +424,7 @@ def build_server(config: Config):
 
     def domain_tool(command):
         model, _, description = COMMANDS[command]
-        default_wait = command not in ("render_animation", "render_video", "render_animation_preview", "download_asset", "upload_asset", "request_asset_api", "sample_rigid_bodies", "bake_rigid_bodies", "sample_simulation", "bake_simulation", "bake_fluid", "bake_textures", "sample_constraint_animation", "bake_constraint_animation", "configure_nla_strip", "remove_nla_strip", "move_nla_track", "configure_nla_playback", "retarget_animation", "set_skin_weights", "repair_skin_weights", "smooth_skin_weights", "mirror_skin_weights", "edit_armature_rest", "generate_lod_chain", "export_lod_chain", "sample_lod_chain", "inspect_glb_deformation", "create_asset_assembly", "realize_asset_instances", "generate_asset_proxies", "export_asset_package", "rebuild_lod_chain")
+        default_wait = command not in ("render_animation", "render_video", "render_animation_preview", "download_asset", "upload_asset", "request_asset_api", "sample_rigid_bodies", "bake_rigid_bodies", "sample_simulation", "bake_simulation", "bake_fluid", "bake_textures", "sample_constraint_animation", "bake_constraint_animation", "configure_nla_strip", "remove_nla_strip", "move_nla_track", "configure_nla_playback", "retarget_animation", "set_skin_weights", "repair_skin_weights", "smooth_skin_weights", "mirror_skin_weights", "edit_armature_rest", "generate_lod_chain", "export_lod_chain", "sample_lod_chain", "inspect_glb_deformation", "create_asset_assembly", "realize_asset_instances", "generate_asset_proxies", "export_asset_package", "rebuild_lod_chain", "recover_export_job", "cleanup_export_job", "list_export_jobs")
 
         async def operation(params=None, wait: bool = default_wait, request_id: str | None = None) -> dict:
             values = params.model_dump(exclude_none=True) if params is not None else {}
@@ -689,7 +693,7 @@ def build_http_app(server, state):
 def addon_zip(destination: Path):
     source = Path(__file__).parent
     with zipfile.ZipFile(destination, "x", zipfile.ZIP_DEFLATED) as archive:
-        for path in [source / "__init__.py", source / "wire.py", source / "broker.py", source / "retention.py", source / "network.py", source / "storage.py", *sorted((source / "blender").glob("*.py"))]:
+        for path in [*(source / name for name in ("__init__.py","wire.py","broker.py","retention.py","network.py","storage.py","fluid_files.py","texture_files.py","skin_math.py","uv_math.py","animation_graph.py","driver_graph.py","rest_math.py","lod_files.py","skin_glb.py","package_files.py","export_jobs.py","lod_recipe.py")), *sorted((source / "blender").glob("*.py"))]:
             archive.write(path, str(Path("mcpblender") / path.relative_to(source)))
 
 

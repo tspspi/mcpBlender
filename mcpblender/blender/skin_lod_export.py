@@ -197,10 +197,11 @@ def export(p):
     estimate+=len(objects)*sum(max(1024,i.size[0]*i.size[1]*8) for i in images)
     policy=_bridge.active.get('storage',{}) if _bridge and _bridge.active else {};require_space(directory,estimate,reserve_bytes=policy.get('reserve_bytes',256*1024**2),estimate_kind='skeletal_geometry_keys_texture_heuristic')
     saved=rigging.animation_snapshot(rig);visibility=[(o,o.hide_viewport,o.hide_render,o.hide_select,o.hide_get()) for o in [rig,*objects]]
-    stage=directory.parent/('.mcpblender-lod-'+uuid.uuid4().hex);created=False;published=False;tags=[];levels=[]
+    stage=(p['_export_job'].stage if p.get('_export_job') else directory.parent/('.mcpblender-lod-'+uuid.uuid4().hex));created=False;published=False;tags=[];levels=[]
     try:
         if abs(rig.matrix_world.determinant())<1e-12:raise ValueError('Choose a reference frame with an invertible rig transform')
         check_cancelled();stage.mkdir(mode=0o700);created=True
+        if p.get('_export_job'):p['_export_job'].created()
         rig.hide_viewport=False;rig.hide_render=False;rig.hide_select=False;rig.hide_set(False);bpy.context.view_layer.update()
         for action,slot,_ in choices.values():
             tags.append((action,'mcpblender_object_motion' in action,action.get('mcpblender_object_motion')))
@@ -240,6 +241,7 @@ def export(p):
              'levels':levels,'switching':'Separate skeletal representations. Clip seconds start at zero; metadata maps to native frame endpoints.'}
         (stage/'manifest.json').write_text(json.dumps(doc,indent=2,allow_nan=False)+'\n');verified=validate(stage);check_cancelled()
         if directory.exists() or directory.is_symlink():raise FileExistsError(directory)
+        if p.get('_export_job'):p['_export_job'].verify();check_cancelled()
         stage.rename(directory);published=True
         return verified|{'directory':str(directory),'path':str(directory/'manifest.json'),'files':[str(directory/l['file']) for l in levels],'estimated_bytes':estimate}
     finally:

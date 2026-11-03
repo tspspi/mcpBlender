@@ -302,9 +302,10 @@ def export(p):
     scene=bpy.context.scene;saved=(scene.frame_current,scene.frame_subframe);reference=clips[0]['frame_start'] if clips else saved[0]+saved[1]
     visibility=[(o,o.hide_viewport,o.hide_render,o.hide_select,o.hide_get()) for o in [*objects,*([rig] if rig else [])]]
     selected=list(bpy.context.selected_objects);active=bpy.context.view_layer.objects.active
-    stage=directory.parent/('.mcpblender-lod-'+uuid.uuid4().hex);created=False;published=False;levels=[]
+    stage=(p['_export_job'].stage if p.get('_export_job') else directory.parent/('.mcpblender-lod-'+uuid.uuid4().hex));created=False;published=False;levels=[]
     try:
         check_cancelled();stage.mkdir(mode=0o700);created=True
+        if p.get('_export_job'):p['_export_job'].created()
         if rig:rig.hide_viewport=False;rig.hide_render=False;rig.hide_select=False;rig.hide_set(False)
         for level,(obj,record) in enumerate(zip(objects,records)):
             check_cancelled();obj.hide_viewport=False;obj.hide_render=False;obj.hide_select=False;obj.hide_set(False)
@@ -344,6 +345,7 @@ def export(p):
              'animation_source':'Baked evaluated current timeline, integer frames, linear interpolation; clip seconds start at zero.'}
         (stage/'manifest.json').write_text(json.dumps(doc,indent=2,allow_nan=False)+'\n');verified=validate(stage);check_cancelled()
         if directory.exists() or directory.is_symlink():raise FileExistsError(directory)
+        if p.get('_export_job'):p['_export_job'].verify();check_cancelled()
         stage.rename(directory);published=True
         return verified|{'directory':str(directory),'path':str(directory/'manifest.json'),'files':[str(directory/l['file']) for l in levels],'estimated_bytes':estimate}
     finally:

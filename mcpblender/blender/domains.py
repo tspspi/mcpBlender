@@ -86,6 +86,9 @@ def curves(action, slot):
 
 
 def dispatch(command, p):
+    if command in {"export_lod_chain","export_asset_package"}:
+        from .export_recovery import run
+        return run(command,p)
     if command in lod_management.COMMANDS:
         return lod_management.dispatch(command,p)
     if command in asset_packages.COMMANDS:

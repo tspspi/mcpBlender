@@ -177,5 +177,14 @@ independently editable. Inspect detail_valid before rebuilding/removing and
 preserve manual shader edits. Bark uses growth-aligned named UVs for
 fissures/grain; leaves use blade UVs for paired vein color/bump. Bump is shader
 relief, not geometry. Bark can use the ordinary PBR bake pipeline; thin-leaf lobes
-still need a separately qualified explicit front-PBR adapter. Do not claim an
+require explicit thin_foliage_mode=FRONT_PBR on inspection and baking. Review
+material_adapters: native back color/translucency/backface shading are omitted. Do not claim an
 atlas, physical vascular model or runtime-equivalent shading from these recipes.
+
+For front-PBR leaf/card delivery, inspect/bake with the same explicit mode and
+fresh expected_bake; the default refuses native mixed thin-leaf shaders. Original
+optics remain in the editable source. A card needs its own clear unit-tile UVs,
+ALPHA map and deliberate silhouette/projection review; empty pixels are not a
+projection failure only when explicitly intended. Review converted maps and a
+render, validate the reopened asset, and verify exported alpha. Current proof is
+sampled Blender/GLB delivery, not Godot or complete foliage atlas qualification.

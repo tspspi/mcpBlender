@@ -14,6 +14,7 @@ class TextureSources(Model):
     sources: list[Name] = Field(default_factory=list,max_length=16)
     uv_map: Name = 'UVMap'
     cage: Name | None = None
+    thin_foliage_mode: Literal['REFUSE','FRONT_PBR'] = 'REFUSE'
 
     @model_validator(mode='after')
     def distinct(self):
@@ -56,9 +57,9 @@ class CleanupTexture(TextureBundle):
 
 WRITE=('allow_library_write',)
 COMMANDS={
-    'inspect_texture_bake':(TextureSources,(), 'Inspect evaluated target/high sources/cage, UV validity and supported static Principled materials. Returns a source fingerprint for guarded baking.'),
-    'bake_textures':(BakeTextures,('allow_scene_edit',)+WRITE,'Bake normal/AO/PBR maps in an isolated owned worker. Creates a new manifest-bound PNG/editable-asset bundle, preserving live scene; reports space/progress and supports worker cancellation.'),
-    'validate_texture_bake':(TextureBundle,(),'Verify bundle file hashes and the opened baked asset geometry/UV/material/image binding. Open its asset.blend first.'),
+    'inspect_texture_bake':(TextureSources,(), 'Inspect evaluated target/high sources/cage, UV validity and supported static Principled materials. Managed thin leaves require explicit FRONT_PBR; reports omitted optics and a mode-bound source fingerprint for guarded baking.'),
+    'bake_textures':(BakeTextures,('allow_scene_edit',)+WRITE,'Bake normal/AO/PBR maps in an isolated owned worker. Creates a new manifest-bound PNG/editable-asset bundle, preserving live scene; reports space/progress and supports worker cancellation. Explicit FRONT_PBR records managed thin-leaf approximation metadata; default mode refuses it.'),
+    'validate_texture_bake':(TextureBundle,(),'Verify bundle file hashes, conversion metadata and the opened baked asset geometry/UV/material/image binding. Open its asset.blend first.'),
     'inspect_texture_job':(TextureBundle,(),'Inspect an owned texture-bake job, recorded process liveness and output bytes.'),
     'recover_texture_job':(TextureBundle,WRITE,'Reconcile a departed texture-bake job without replay; adopt a complete verified result or mark partial output interrupted.'),
     'cleanup_texture_job':(CleanupTexture,WRITE,'Preview/remove only owned failed/cancelled partial bundles; interrupted jobs require explicit inclusion. Refuses success, references, unknown entries and symlinks.'),

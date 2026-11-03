@@ -30,19 +30,46 @@ def packed_array(values,property,count,kind='f'):
     return hashlib.sha256(data.tobytes()).hexdigest()
 
 
-def material_signature(mat,*,source=True):
+THIN_NODES={'Surface Side':'ShaderNodeNewGeometry','Leaf Sides':'ShaderNodeMixRGB','Leaf Surface':'ShaderNodeBsdfPrincipled',
+            'Thin Backlighting':'ShaderNodeBsdfTranslucent','Optical Mix':'ShaderNodeMixShader','Culled Backface':'ShaderNodeBsdfTransparent',
+            'Backface Enabled':'ShaderNodeMath','Backface Cull':'ShaderNodeMixShader','Output':'ShaderNodeOutputMaterial'}
+
+
+def bake_surface_node(mat,thin_foliage_mode='REFUSE'):
+    tree=mat.node_tree;outputs=[n for n in tree.nodes if n.type=='OUTPUT_MATERIAL' and n.is_active_output]
+    if len(outputs)!=1 or outputs[0].inputs['Volume'].is_linked:raise ValueError('One surface-only material output required')
+    surface=outputs[0].inputs['Surface']
+    if not surface.is_linked:raise ValueError('Material surface must connect directly to Principled BSDF')
+    if surface.links[0].from_node.type=='BSDF_PRINCIPLED':return surface.links[0].from_node,None
+    if thin_foliage_mode!='FRONT_PBR':raise ValueError('Material surface must connect directly to Principled BSDF; managed thin leaves require explicit thin_foliage_mode=FRONT_PBR')
+    try:marker=json.loads(mat.get('mcpblender_thin_foliage','null'))
+    except (ValueError,TypeError):marker=None
+    if not isinstance(marker,dict) or marker.get('version')!=1 or marker.get('alpha_mode')!='OPAQUE_GEOMETRY':raise ValueError('FRONT_PBR requires a managed opaque-geometry thin-leaf material')
+    for name,kind in THIN_NODES.items():
+        node=tree.nodes.get(name)
+        if not node or node.bl_idname!=kind:raise ValueError('Unsupported managed leaf shader node: '+name)
+    if outputs[0]!=tree.nodes['Output'] or tree.nodes['Leaf Sides'].blend_type!='MIX' or tree.nodes['Backface Enabled'].operation!='MULTIPLY':raise ValueError('Unsupported managed leaf shader topology')
+    required=[('Output','Surface','Backface Cull',0),('Backface Cull',0,'Backface Enabled',0),('Backface Cull',1,'Optical Mix',0),
+              ('Backface Cull',2,'Culled Backface',0),('Backface Enabled',0,'Surface Side','Backfacing'),
+              ('Leaf Sides',0,'Surface Side','Backfacing'),('Optical Mix',1,'Leaf Surface',0),('Optical Mix',2,'Thin Backlighting',0)]
+    for target,socket,source,output in required:
+        port=tree.nodes[target].inputs[socket];expected=tree.nodes[source].outputs[output]
+        if len(port.links)!=1 or port.links[0].from_socket!=expected:raise ValueError('Unsupported managed leaf shader link: '+target)
+    return tree.nodes['Leaf Surface'],{'kind':'MANAGED_THIN_LEAF_FRONT_PBR_V1','material':mat.name,
+       'omitted_features':['native back color','translucent lobe and transmission color','native backface transparency/double-sided shader'],
+       'scope':'Bake selected Principled front inputs with Leaf Sides forced to front in the isolated child. This is a lossy PBR approximation, not native thin-surface optical equivalence.'}
+
+
+def material_signature(mat,*,source=True,thin_foliage_mode='REFUSE'):
     if not mat or mat.library or mat.override_library or not mat.use_nodes or mat.animation_data or mat.node_tree.animation_data:
         raise ValueError('Local static node materials required')
     tree=mat.node_tree
     if len(tree.nodes)>128 or len(tree.links)>512:raise ValueError('Material graph budget exceeded')
-    outputs=[n for n in tree.nodes if n.type=='OUTPUT_MATERIAL' and n.is_active_output]
-    if len(outputs)!=1 or outputs[0].inputs['Volume'].is_linked:raise ValueError('One surface-only material output required')
-    surface=outputs[0].inputs['Surface']
-    if not surface.is_linked or surface.links[0].from_node.type!='BSDF_PRINCIPLED':raise ValueError('Material surface must connect directly to Principled BSDF')
+    selected,adapter=bake_surface_node(mat,thin_foliage_mode if source else 'REFUSE')
     records=[]
     for node in tree.nodes:
         if node.bl_idname not in shaders.NODE_TYPES or node.type in {'ATTRIBUTE','VOLUME_INFO','PRINCIPLED_VOLUME'}:
-            if not (not source and node.type=='GROUP' and node.node_tree and node.node_tree.get('mcpblender_baked_ao')):
+            if not (adapter and THIN_NODES.get(node.name)==node.bl_idname or not source and node.type=='GROUP' and node.node_tree and node.node_tree.get('mcpblender_baked_ao')):
                 raise ValueError(f'Unsupported bake material node: {node.bl_idname}')
         if node.type=='TEX_COORD' and node.object:raise ValueError('External texture-coordinate objects are unsupported')
         record={'name':node.name,'type':node.bl_idname,'properties':{k:v for k,v in props(node).items() if k not in NODE_UI},
@@ -59,7 +86,7 @@ def material_signature(mat,*,source=True):
             record['image']={'name':image.name,'size':list(image.size),'color_space':image.colorspace_settings.name,'alpha_mode':image.alpha_mode,'content':content}
         records.append(record)
     return {'nodes':records,'links':[(l.from_node.name,l.from_socket.identifier,l.to_node.name,l.to_socket.identifier) for l in tree.links],
-            'material':mat.name,'properties':props(mat)}
+            'material':mat.name,'properties':props(mat)}|({'bake_adapter':adapter} if adapter else {})
 
 
 def mesh_signature(obj,mesh):
@@ -97,15 +124,17 @@ def inspect(p):
             elif role=='cage' and topology_digest(mesh)!=target_topology:raise ValueError('Cage topology/order must match the evaluated target')
             if role=='source' or role=='target' and not p.get('sources'):
                 if not mesh.materials or any(m is None for m in mesh.materials):raise ValueError('Every source slot needs a material')
-                record['shaders']=[material_signature(m) for m in mesh.materials]
+                record['shaders']=[material_signature(m,thin_foliage_mode=p.get('thin_foliage_mode','REFUSE')) for m in mesh.materials]
             records.append(record)
         except (ValueError,RuntimeError) as exc:reasons.append(f'{name}: {exc}')
         finally:
             if evaluated:evaluated.to_mesh_clear()
     if total>500000:reasons.append('Total evaluated source vertex budget exceeded')
     content={'objects':records,'uv_map':p['uv_map'],'frame':bpy.context.scene.frame_current,'subframe':bpy.context.scene.frame_subframe}
+    if p.get('thin_foliage_mode','REFUSE')!='REFUSE':content['thin_foliage_mode']=p['thin_foliage_mode']
+    adapters={s['material']:s['bake_adapter'] for r in records for s in r.get('shaders',[]) if s.get('bake_adapter')}
     digest=hashlib.sha256(json.dumps(content,sort_keys=True,allow_nan=False).encode()).hexdigest() if not reasons else None
-    return content|{'complete':not reasons,'bake_sha256':digest,'unsupported_reasons':reasons}
+    return content|{'material_adapters':[adapters[k] for k in sorted(adapters)],'complete':not reasons,'bake_sha256':digest,'unsupported_reasons':reasons}
 
 
 def guard(p):
@@ -124,13 +153,13 @@ def output_signature(name):
 def validate(p):
     root=Path(p['directory']);record=read_json(root/MARKER);saved=read_json(root/'manifest.json')
     if record.get('kind')!='mcpblender-texture-job' or record.get('state')!='succeeded':raise ValueError('Texture job is not a successful bundle')
-    if saved.get('job_id')!=record['job_id'] or saved.get('source')!=record['source']:raise ValueError('Texture manifest binding mismatch')
+    if saved.get('job_id')!=record['job_id'] or saved.get('source')!=record['source'] or saved.get('material_adapters',[])!=record.get('material_adapters',[]):raise ValueError('Texture manifest binding mismatch')
     size=yield from verify_steps(root,saved['files'])
     obj=mesh_object(saved['name'])
     if obj.get(BINDING)!=record['job_id'] or output_signature(obj.name)!=saved['asset_sha256']:raise ValueError('Texture asset binding mismatch; open the unchanged baked asset')
     for image in (n.image for m in obj.data.materials for n in m.node_tree.nodes if n.type=='TEX_IMAGE'):
         if Path(bpy.path.abspath(image.filepath)).resolve().parent!=(root/'textures').resolve():raise ValueError('Baked image path does not reference this bundle')
-    return {'validated':True,'bytes':size,'maps':saved['maps'],'material':saved['material'],'projection':saved['projection'],'validation_scope':'file hashes and native low geometry/UV/material/image binding'}
+    return {'validated':True,'bytes':size,'maps':saved['maps'],'material':saved['material'],'projection':saved['projection'],'material_adapters':saved.get('material_adapters',[]),'validation_scope':'file hashes and native low geometry/UV/material/image binding'}
 
 
 def bake(p):
@@ -144,7 +173,7 @@ def bake(p):
     policy=bridge._bridge.active['storage'];policy.update(estimated_bytes=estimate,estimate_kind='texture_pixels_maps_and_snapshot_heuristic')
     reserve=policy.get('reserve_bytes',256*1024**2);require_space(root,estimate,reserve_bytes=reserve,estimate_kind=policy['estimate_kind'])
     root.mkdir(parents=True,exist_ok=False)
-    record={'kind':'mcpblender-texture-job','version':1,'job_id':uuid.uuid4().hex,'state':'running','source':info['bake_sha256'],'parent_pid':os.getpid(),'worker_pid':None}
+    record={'kind':'mcpblender-texture-job','version':1,'job_id':uuid.uuid4().hex,'state':'running','source':info['bake_sha256'],'parent_pid':os.getpid(),'worker_pid':None,'material_adapters':info.get('material_adapters',[])}
     write_json(root/MARKER,record);proc=None;success=False;cancelled=False;started=time.monotonic()
     try:
         yield {'phase':'saving isolated texture source','native_call_interruptible':False}
@@ -164,11 +193,11 @@ def bake(p):
             status=read_json(root/'result.json') if (root/'result.json').exists() else {}
             raise RuntimeError(f"Texture worker exited {proc.returncode}: {status.get('error','inspect worker.log')}; partial bundle preserved")
         result=read_json(root/'result.json');saved=read_json(root/'manifest.json')
-        if result.get('state')!='succeeded' or result.get('job_id')!=record['job_id'] or saved.get('source')!=record['source'] or saved.get('job_id')!=record['job_id']:raise ValueError('Texture worker result binding mismatch')
+        if result.get('state')!='succeeded' or result.get('job_id')!=record['job_id'] or saved.get('source')!=record['source'] or saved.get('job_id')!=record['job_id'] or saved.get('material_adapters',[])!=record.get('material_adapters',[]):raise ValueError('Texture worker result binding mismatch')
         if sum(r['bytes'] for r in inventory(root)[0])>p['max_bytes']:raise ValueError('Completed texture bundle exceeds max_bytes')
         guard(p);yield from verify_steps(root,saved['files'])
         record['state']='succeeded';write_json(root/MARKER,record);success=True
-        return {'directory':str(root),'path':str(root/'asset.blend'),'maps':saved['maps'],'material':saved['material'],'projection':saved['projection'],'live_scene_unchanged':True,'bytes':sum(r['bytes'] for r in inventory(root)[0])}
+        return {'directory':str(root),'path':str(root/'asset.blend'),'maps':saved['maps'],'material':saved['material'],'projection':saved['projection'],'material_adapters':saved.get('material_adapters',[]),'live_scene_unchanged':True,'bytes':sum(r['bytes'] for r in inventory(root)[0])}
     except GeneratorExit:cancelled=True;raise
     finally:
         if proc and proc.poll() is None:
@@ -191,7 +220,7 @@ def recover(p):
     result=read_json(root/'result.json') if (root/'result.json').is_file() else {}
     if result.get('state')=='succeeded' and result.get('job_id')==record['job_id']:
         saved=read_json(root/'manifest.json')
-        if saved.get('source')!=record['source'] or saved.get('job_id')!=record['job_id']:raise ValueError('Abandoned texture manifest binding mismatch')
+        if saved.get('source')!=record['source'] or saved.get('job_id')!=record['job_id'] or saved.get('material_adapters',[])!=record.get('material_adapters',[]):raise ValueError('Abandoned texture manifest binding mismatch')
         yield from verify_steps(root,saved['files']);record['state']='succeeded'
     else:record['state']='interrupted'
     write_json(root/MARKER,record)

@@ -4,6 +4,60 @@
 
 
 
+## Explicit thin-leaf front-PBR baking and alpha-card delivery — 2026-11-03
+
+`thin_foliage_mode` defaults to REFUSE for inspection/baking. Explicit FRONT_PBR
+qualifies only the managed native thin-leaf shader topology and supported static
+upstream nodes. Its mode-bound guard and `material_adapters` report identify the
+selected front-surface approximation and omitted native back color, translucent/
+transmission lobe and backface shader. The disposable worker forces the leaf-side
+color selector to its front branch and retains connected normal/bump inputs.
+The editor's source material and optics remain unchanged.
+
+The final front-adapter/native topology/profile/server/addon/capability gate passed
+**15 tests in 53.34 seconds**, with the existing Starlette/AnyIO deprecation warning.
+Existing texture-bake worker cancellation/reconnect/completed-adoption/parent-crash
+and native surface ownership checks passed **6 tests in 86.50 seconds**. The alpha
+card/export plus existing foliage cancellation/optics/addon checks passed
+**5 tests in 53.78 seconds**. Both bundled skills validate and whitespace checks pass.
+These are focused checks, not a fresh full-project regression.
+
+With arbitrary Python tools disabled, a reversed high-source plane carrying a
+managed leaf material bakes front green (mean RGB approximately .196/.665/.247)
+while the native back color is red and its culling/translucency settings differ.
+The editing material fingerprint and inspection guard are unchanged after baking.
+Default mode refuses before output-directory creation. Unknown topology/nodes
+refuse even with FRONT_PBR. Manifest conversion tampering refuses validation;
+a simulated abandoned complete bundle also refuses recovery until the declaration
+matches its owned record, then adopts without replay and passes native validation.
+
+A second structured fixture projects an actual curved, lobed leaf/petiole onto a
+UV plane using FRONT_PBR and BASE_COLOR/NORMAL/ROUGHNESS/ALPHA maps at 128x128.
+The template's auxiliary petiole now uses a direct node-based PBR material so
+both source slots qualify. Intended silhouette gaps explicitly use a .25 minimum
+projection threshold: 5,878/16,384 samples hit geometry (35.876%); two-pixel map
+padding produces 39.624% alpha occupancy. The reopened delivered card has two
+triangles and passes file/native binding validation. Its Cycles preview and mask
+were opened and inspected. Exported GLB material is BLEND/double-sided; its
+embedded base-color PNG was independently extracted and decoded, with alpha
+0/255 and 39.624% mean occupancy. This proves sampled file alpha, not downstream
+engine rendering, optimal mipmaps/overdraw or native optical equivalence.
+
+The fixtures use default scene units. Automatic fitting, multi-leaf/branch atlas
+packing, transmission/thickness/back-color maps, wind/LOD attributes and Godot
+validation remain open. The standalone leaf-template metre-to-scene-unit mapping
+also needs a separate nondefault-unit audit; the existing woody-root unit fixture
+does not prove that standalone conversion. This milestone does not claim it.
+
+Default direct-Principled material signatures remain unchanged. A real bark PBR
+bundle created before this adapter (without adapter fields in its manifest or
+record) was reopened in a fresh Blender and passed current validation with an
+empty adapter list. Source snapshot preservation, storage admission/progress,
+owned-child cancellation and recovery continue through the existing bake machinery.
+Local evidence retains the source/baked bundles, extracted alpha image, GLB, card
+preview and inspection/validation records. No service/environment/install/push
+changes were made.
+
 ## Procedural botanical bark and leaf surface detail — 2026-11-03
 
 Structured create/inspect/configure/remove tools add reusable UV-driven OAK_BARK
@@ -42,10 +96,9 @@ tree valid and reuses the same native material IDs and detail graphs.
 
 Bump distance is a native shader control, not a calibrated physical length across
 arbitrary objects/UVs. Both profiles require suitable named source UVs
-(BarkUV/LeafUV by default); ordinary meshes can explicitly choose another UV name. Native
-thin-leaf output still deliberately refuses the direct-Principled texture-bake
-profile: an explicit front-PBR approximation and fitted alpha cards/atlases remain
-open. Procedural graph interchange, back-color/translucency/thickness transfer,
+(BarkUV/LeafUV by default); ordinary meshes can explicitly choose another UV name. At that surface-detail milestone, native thin-leaf output still refused the
+direct-Principled texture-bake profile; the subsequent explicit front-PBR adapter
+and manual card qualification are documented above. Automatic fitting/atlases remain open. Procedural graph interchange, back-color/translucency/thickness transfer,
 vegetation wind/LODs and realistic mature-oak/bark appearance are not qualified
 by this milestone. No installed service, package, environment or installed skill
 was changed, and no Git publication was performed.

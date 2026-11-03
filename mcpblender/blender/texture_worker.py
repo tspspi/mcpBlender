@@ -28,7 +28,7 @@ def main():
     def status(phase,**kw):write_json(root/'result.json',{'job_id':job['job_id'],'state':'running','phase':phase}|kw)
     status('loading isolated texture source')
     bpy.ops.wm.open_mainfile(filepath=str(root/'source.blend'),load_ui=False,use_scripts=False)
-    bpy.context.preferences.filepaths.save_version=0;textures.guard(job)
+    bpy.context.preferences.filepaths.save_version=0;source_info=textures.guard(job)
     names=[job['name'],*job['sources']]+([job['cage']] if job.get('cage') else [])
     # Capture all evaluated meshes before replacing any dependency.
     frozen=[];deps=bpy.context.evaluated_depsgraph_get()
@@ -53,7 +53,12 @@ def main():
         low.data.materials.clear();low.data.materials.append(recipient)
         for face in low.data.polygons:face.material_index=0
     target_materials=set(low.data.materials)
-    originals={m:m.node_tree.copy() for m in source_materials}
+    source_nodes={m:textures.bake_surface_node(m,job.get('thin_foliage_mode','REFUSE'))[0].name for m in source_materials}
+    for mat in source_materials:
+        if any(a['material']==mat.name for a in source_info.get('material_adapters',[])):
+            front=mat.node_tree.nodes['Leaf Sides'].inputs[0]
+            for link in list(front.links):mat.node_tree.links.remove(link)
+            front.default_value=0
     scene=bpy.context.scene;scene.render.engine='CYCLES';scene.cycles.samples=job['samples'];scene.cycles.device='CPU'
     scene.render.image_settings.file_format='PNG';scene.render.image_settings.color_depth='8';scene.render.image_settings.color_mode='RGBA'
     scene.render.bake.use_clear=True
@@ -95,13 +100,12 @@ def main():
     for index,kind in enumerate(job['maps']):
         status('baking texture map',map=kind,completed_maps=index)
         # Restore the source output between passes; source inputs stay intact.
-        for mat,original in originals.items():
+        for mat,source_name in source_nodes.items():
             # Rewire only the surface output; source sockets and bump/normal graph
             # remain available for subsequent passes.
             output=next(n for n in mat.node_tree.nodes if n.type=='OUTPUT_MATERIAL' and n.is_active_output)
             for link in list(output.inputs['Surface'].links):mat.node_tree.links.remove(link)
-            principled=next(n for n in original.nodes if n.type=='OUTPUT_MATERIAL' and n.is_active_output).inputs['Surface'].links[0].from_node
-            source=mat.node_tree.nodes[principled.name]
+            source=mat.node_tree.nodes[source_name]
             previous=mat.node_tree.nodes.get('MCP_BakeEmission')
             if previous:mat.node_tree.nodes.remove(previous)
             if kind in {'AO','NORMAL'}:
@@ -159,7 +163,7 @@ def main():
         if obj!=low:bpy.data.objects.remove(obj,do_unlink=True)
     low[textures.BINDING]=job['job_id']
     finished(bpy.ops.wm.save_as_mainfile(filepath=str(root/'asset.blend'),check_existing=False,relative_remap=False))
-    saved={'version':1,'job_id':job['job_id'],'source':job['expected_bake'],'name':low.name,'material':mat.name,'maps':maps,'projection':projection,'blender_version':bpy.app.version_string,'asset_sha256':textures.output_signature(low.name)}
+    saved={'version':1,'job_id':job['job_id'],'source':job['expected_bake'],'name':low.name,'material':mat.name,'maps':maps,'projection':projection,'blender_version':bpy.app.version_string,'asset_sha256':textures.output_signature(low.name),'material_adapters':source_info.get('material_adapters',[])}
     saved['files']=manifest(root);write_json(root/'manifest.json',saved)
     write_json(root/'result.json',{'job_id':job['job_id'],'state':'succeeded','phase':'complete','completed_maps':len(maps)})
 

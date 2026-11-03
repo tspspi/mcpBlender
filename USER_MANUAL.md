@@ -1013,7 +1013,8 @@ the evaluated meshes/transforms/UVs/normals/material slots and supported source
 shader graphs/images at the current frame. The target needs a nondegenerate,
 nonoverlapping unit-tile UV layout with a complete bounded overlap check. A cage
 must match the evaluated target's topology and vertex order. Source materials
-must connect directly to Principled BSDF; supported procedural/image nodes are
+connect directly to Principled BSDF by default. Managed thin leaves additionally
+support the explicit FRONT_PBR conversion described below. Supported procedural/image nodes are
 inspected, while groups, external coordinate objects, linked materials and
 animated material graphs are refused. Source images must be saved, packed,
 single-frame images with no unsaved pixel edits.
@@ -1080,6 +1081,46 @@ cancelled partial bundles. Interrupted bundles require `include_interrupted=true
 successful deliverables, current-project/image references, symlinks and unknown
 files are protected. These explicit output bundles are not temporary retention
 artifacts. Keep wanted source projects/maps before removing partial work.
+
+## Thin-leaf front-PBR conversion
+
+Texture baking defaults to `thin_foliage_mode="REFUSE"`. Mixed native thin-leaf
+shaders require `thin_foliage_mode="FRONT_PBR"` on both `inspect_texture_bake` and
+`bake_textures`. The mode is part of the inspection guard. This bounded adapter
+accepts the managed thin-leaf shader topology, including supported procedural vein
+and bump inputs; it does not accept arbitrary mixed shaders or unknown node types.
+
+Inspection, results, job records, manifests and validation expose
+`material_adapters`. Each entry identifies the converted material and reports
+omitted native back color, translucent/transmission shading and the backface/
+double-sided shader. The worker selects the native `Leaf Surface` Principled inputs
+and forces `Leaf Sides` to its front branch inside the disposable child. Original
+materials, nodes, optical controls and the editable source snapshot stay intact.
+A normal transfer still samples the source geometry and its connected bump;
+it does not reverse source geometry or reconstruct tissue thickness.
+
+The result is ordinary front-surface PBR, not equivalent thin-leaf optics. Keep the
+editable source and review target-sidedness/shading separately. Conversion metadata
+is bound to the owned job during completion, recovery and validation; a mismatched
+conversion declaration refuses adoption/validation. Default direct-PBR jobs and
+older direct-PBR bundles retain their existing guards and need no conversion flag.
+
+For a static alpha card, create a UV-mapped target plane below a leaf and project
+from the editable leaf mesh. Standalone leaf templates now create a node-based PBR
+petiole as well as the managed thin blade, so both slots qualify. Select FRONT_PBR
+and include BASE_COLOR, NORMAL, ROUGHNESS and ALPHA maps. Deliberately empty pixels
+around the leaf require an explicit lower `min_projection_coverage` than the
+ordinary .99 high-to-low default. Compare the geometry-hit mask and alpha silhouette;
+a lower threshold alone does not prove complete transfer of the intended leaf.
+
+The qualified example uses a default 12cm blade, a 0.08 by 0.14 target rectangle
+and 128x128 maps at default scene units. It measures about 35.9% geometry hits and
+39.6% alpha occupancy after two-pixel padding. Its delivered mesh has two triangles.
+The native PBR card renders in Cycles, and its exported GLB has a nonopaque material
+and an embedded base-color texture containing transparent and opaque alpha values.
+This verifies the sampled files/Blender path, not Godot behavior or final atlas
+quality. Automatic fitting, branch-cluster atlas packing, overdraw/memory budgets,
+multi-view foliage representations and wind-aware delivery remain separate work.
 
 ## Mesh element editing and cleanup
 
@@ -1322,9 +1363,9 @@ unit-tile target UV map (or low mesh) for delivery. Bark's direct PBR graph work
 with the existing `inspect_texture_bake` /
 `bake_textures` pipeline: normal baking includes connected bump, and base-color/
 roughness maps can be delivered in the ordinary PBR bundle. Native thin-leaf
-shader lobes are still outside that direct-PBR bake profile. An explicit lossy
-front-surface adapter, fitted alpha cards, atlases, thickness/transmission maps and
-runtime shader equivalence require separate qualification. The procedural native
+shader lobes require the explicit FRONT_PBR conversion described above; the full
+optical shader is not preserved. Automatic fitting, atlases, thickness/transmission
+maps and runtime shader equivalence require separate qualification. The procedural native
 graph itself is not a promise of equivalent GLB shading.
 
 ## Modular leaves and instanced botanical foliage

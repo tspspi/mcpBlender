@@ -188,7 +188,8 @@ def dispatch(command,p):
         if p['name'] in bpy.data.objects:raise ValueError('Leaf object already exists')
         before=set(bpy.data.user_map());success=False
         try:
-            leafmat=material(p['name']+'_Surface');bark=bpy.data.materials.new(p['name']+'_Petiole');bark.diffuse_color=(.08,.12,.02,1)
+            leafmat=material(p['name']+'_Surface');bark=bpy.data.materials.new(p['name']+'_Petiole');bark.use_nodes=True;bark.diffuse_color=(.08,.12,.02,1)
+            petiole=bark.node_tree.nodes.get('Principled BSDF');petiole.inputs['Base Color'].default_value=(.08,.12,.02,1);petiole.inputs['Roughness'].default_value=.8
             mesh=leaf_mesh(p['name']+'_Mesh',p['leaf'],leafmat,bark);obj=bpy.data.objects.new(p['name'],mesh);bpy.context.scene.collection.objects.link(obj)
             obj['mcpblender_leaf_template']=json.dumps(p['leaf'],sort_keys=True);check_cancelled();success=True;return {'object':obj.name,'mesh':realization.mesh_record(mesh),'leaf_sha256':p['expected_leaf']}
         finally:

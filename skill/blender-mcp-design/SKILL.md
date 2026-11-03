@@ -378,3 +378,11 @@ realizing foliage or replacing the material ID. Render close-ups and retain the
 editable project; bake procedural bark with the existing texture tools before
 portable PBR delivery. Native thin-leaf optics and atlas/wind/vegetation LOD work
 remain separate. See USER_MANUAL.md for surface ownership and removal guards.
+
+Thin-leaf materials can enter the texture pipeline using explicit FRONT_PBR on
+both inspect_texture_bake and bake_textures; review material_adapters for omitted
+optics. Native source materials stay editable. A tested static leaf-to-card recipe
+uses separate UV plane geometry, projected normal/color/roughness/ALPHA maps,
+reviewed hit/alpha masks, reopened bundle validation and GLB alpha inspection.
+Automatic fit/atlas packing, vegetation representation/wind and target runtime
+validation remain open. Never present front-PBR transfer as native optical parity.

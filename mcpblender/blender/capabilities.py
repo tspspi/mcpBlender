@@ -52,7 +52,7 @@ WORKFLOWS = {
                            "bake_fluid", "validate_fluid_bake", "inspect_fluid_job", "recover_fluid_job", "cleanup_fluid_job"},
                           "Embedded rigid/cloth/soft/particle snapshots; fluid external bundles use isolated worker, manifest validation, interrupted-job reconciliation and guarded cleanup."),
     "texture_baking": ({"inspect_texture_bake", "bake_textures", "validate_texture_bake", "inspect_texture_job", "recover_texture_job", "cleanup_texture_job"},
-                       "Isolated evaluated-mesh normal/AO/PBR PNG bundles, source guards, native asset binding and owned-worker lifecycle; static direct Principled shader graphs."),
+                       "Isolated evaluated-mesh normal/AO/PBR PNG bundles, source guards, native asset binding and owned-worker lifecycle; static direct Principled shader graphs plus explicit loss-reporting managed thin-leaf FRONT_PBR conversion."),
     "asset_assemblies": ({"inspect_asset_realization", "realize_asset_instances", "inspect_asset_assembly_source", "create_asset_assembly", "inspect_asset_assembly", "place_asset_instance", "set_asset_assembly_editing", "inspect_asset_instance", "remove_asset_instance"},
                          "Closed local object/data/action graphs copied to persistent collection prototypes; managed nested prototypes stay shared. Guarded linked placements, native viewport leaf/bounds inspection and direct scene editing links. Static current-viewport realization preserves evaluated mesh attributes and shared materials. External library linking, independent instance animation and assembly bundle export remain separate."),
     "asset_proxies": ({"inspect_asset_proxy_source", "generate_asset_proxies", "inspect_asset_proxies", "remove_asset_proxies"},

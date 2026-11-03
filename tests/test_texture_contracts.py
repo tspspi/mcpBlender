@@ -15,6 +15,8 @@ def test_bake_limits_paths_and_policy(tmp_path):
     for extra in ({'maps':['NORMAL','NORMAL']},{'width':4096,'height':4096},{'samples':0},{'cage_extrusion':float('nan')},{'sources':['Low']},{'cage':'Cage'},{'max_ray_distance':0}):
         with pytest.raises(ValueError):BakeTextures.model_validate(base|extra)
     with pytest.raises(ValueError):TextureSources(name='Low',sources=['High','High'])
+    with pytest.raises(ValueError):TextureSources(name='Low',thin_foliage_mode='AUTOMATIC')
+    assert TextureSources(name='Low').thin_foliage_mode=='REFUSE'
     config=Config();config.stdio.library_root=str(tmp_path/'library');config.stdio.allow_scene_edit=False;config.stdio.allow_library_write=False
     server,state=build_server(config)
     with pytest.raises(ValueError,match='library_root'):state.prepare('bake_textures',base|{'directory':'../outside'})

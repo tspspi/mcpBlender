@@ -1,5 +1,47 @@
 # Local validation: 0.2.0
 
+## GLB physical scene units — 2026-11-03
+
+The common exporter now applies scene scale through file-only uniform root
+transforms. Scene objects/settings and mesh, skin, morph and animation binary
+payloads remain unchanged. Default scale 1 bypasses rewriting. LOD/package
+manifests bind their declared scale to encoded transforms; static LODs record
+physical world bounds and batch packages prove metre-world surfaces. Native
+skeletal/morph replay retains source-scene error budgets through a separately
+labeled comparison decode, after checking the delivered unit roots.
+
+Pure unit/LOD/skin/package contract checks passed **31 tests in 11.41 seconds**.
+The structured MCP unit workflow and parametrized native morph/package fixtures
+passed **5 tests in 60.28 seconds**. Additional native mixed-scene/static-LOD/
+skeletal-export checks passed **6 tests in 72.87 seconds**. These are focused
+checks, not a fresh full-project regression.
+
+Addon archive/frontend isolation, export-job crash recovery, cancellation before
+publication and server policy checks passed **18 tests in 33.60 seconds**, with
+the existing Starlette/AnyIO deprecation warning. The bundled design skill
+validates.
+
+After tightening physical-bound validation to reject malformed/nonfinite bounds,
+the structured unit workflow and unit/LOD/skin/package contract gate passed
+**32 tests in 29.81 seconds**, including corrupted-bound refusal.
+
+With arbitrary Python tools disabled, the structured centimetre-scene fixture
+delivers a standalone leaf with independently decoded 0.104m extent, static LOD
+world bounds, a package with nested LODs, and animated skin. Its raw decoded joint
+translation is 0.10 to 0.12m and sampled endpoint displacement is 0.02m. Separate
+native morph-only and skinned-morph fixtures run at scale 1 and .01, checking raw
+physical coordinates against known source ranges as well as native replay.
+Package failure/rollback/ID cleanup runs at both scales. Binary chunk identity,
+shared homogeneous scene roots, metadata/transform tampering and scale-1 no-write
+behavior have direct checks.
+
+Whole-file mixed-unit scenes refuse before modifying an existing output; explicit
+active-scene export still works and leaves units, matrices and native IDs intact.
+Nondefault rewriting is bounded to 512 MiB files/16 MiB JSON and inherits native
+export's partial-write boundary. No camera/light-unit or downstream Godot
+qualification is claimed. Evidence is retained locally under
+`/tmp/mb-gltf-units-20261103`; no service, installed runtime or dependencies changed.
+
 
 
 
@@ -20,12 +62,11 @@ centimetre-scene leaf reopens at the same physical size; final cancellation rest
 exact native IDs and preserves scene scale. The default-unit thin-leaf PBR/card
 and capability regression passed **3 tests in 50.59 seconds**.
 
-A separate export probe exposed an existing general boundary issue: in the .01
-scene, native physical extent is approximately .104m, but the current GLB's
-independently decoded world extent is approximately 10.4. This native correction
-does not claim GLB scene-unit normalization. That export work is tracked separately
-before nonmetre delivery can be qualified; default-unit card results above/below
-are unaffected. No service/package/environment changes were made.
+A separate export probe originally found .104m native physical extent becoming
+10.4 in the .01-scene GLB. The subsequent common-export correction documented
+above now independently decodes approximately .104m. The original leaf-creation
+fixture itself remains a native-size check; default-unit card results are
+unaffected. No service/package/environment changes were made.
 
 ## Explicit thin-leaf front-PBR baking and alpha-card delivery — 2026-11-03
 
@@ -68,9 +109,8 @@ engine rendering, optimal mipmaps/overdraw or native optical equivalence.
 
 The fixtures use default scene units. Automatic fitting, multi-leaf/branch atlas
 packing, transmission/thickness/back-color maps, wind/LOD attributes and Godot
-validation remain open. The subsequent standalone leaf unit correction is documented above. General
-nonmetre export normalization remains a separate boundary audit; this adapter
-fixture itself uses default units.
+validation remain open. Subsequent standalone leaf and common GLB unit corrections
+are documented above; this adapter fixture itself uses default units.
 
 Default direct-Principled material signatures remain unchanged. A real bark PBR
 bundle created before this adapter (without adapter fields in its manifest or

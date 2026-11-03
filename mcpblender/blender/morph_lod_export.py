@@ -323,7 +323,7 @@ def export(p):
                 export_objects_glb({'objects':[*([proxy.rig.name] if rig else []),proxy.obj.name],'path':str(path),'animations':bool(clips),'overwrite':False,'apply_modifiers':False,'_lod_animation_profile':True})
                 rename_file(path,proxy,obj,rig,actions)
             finally:proxy.close();bpy.context.view_layer.update()
-            report=glb_report(path,skinned=True,morphs=True);document=Document(path,morphs=True,check_cancelled=check_cancelled)
+            report=glb_report(path,skinned=True,morphs=True);document=Document(path,morphs=True,check_cancelled=check_cancelled,comparison_unit_scale=bpy.context.scene.unit_settings.scale_length)
             if report['triangles']!=record['triangles']:raise ValueError('Exported morph triangle count differs from native LOD')
             mapping,delta_error,weight_error=correspondence(obj,rig,document,ref_mesh,ref_rig,p['skin_tolerance'])
             samples=playback(obj,rig,document,clips,reference,p,mapping)
@@ -341,7 +341,7 @@ def export(p):
         bpy.context.view_layer.update()
         if lods.native_chain(p)[-1]!=signature or guard(meta,clips)!=animation:raise ValueError('Morph chain or controller changed during export')
         doc={'format':MORPH_MARKER,'chain':p['chain'],'chain_sha256':signature,'source_sha256':meta['source_sha256'],'animation_sha256':animation,
-             'blender_version':bpy.app.version_string,'reference_frame':reference,'animation_samples':p['animation_samples'],'skin_tolerance':p['skin_tolerance'],'fps':scene.render.fps/scene.render.fps_base,'clips':clips,'levels':levels,
+             'blender_version':bpy.app.version_string,'scene_unit_scale':bpy.context.scene.unit_settings.scale_length,'reference_frame':reference,'animation_samples':p['animation_samples'],'skin_tolerance':p['skin_tolerance'],'fps':scene.render.fps/scene.render.fps_base,'clips':clips,'levels':levels,
              'animation_source':'Baked evaluated current timeline, integer frames, linear interpolation; clip seconds start at zero.'}
         (stage/'manifest.json').write_text(json.dumps(doc,indent=2,allow_nan=False)+'\n');verified=validate(stage);check_cancelled()
         if directory.exists() or directory.is_symlink():raise FileExistsError(directory)

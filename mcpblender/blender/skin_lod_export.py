@@ -221,7 +221,7 @@ def export(p):
                 if proxy:
                     mesh=proxy.data;bpy.data.objects.remove(proxy,do_unlink=True);bpy.data.meshes.remove(mesh)
                     bpy.context.view_layer.update()
-            report=glb_report(path,skinned=True);document=Document(path)
+            report=glb_report(path,skinned=True);document=Document(path,comparison_unit_scale=bpy.context.scene.unit_settings.scale_length)
             if report['triangles']!=record['triangles']:raise ValueError('Exported skin triangle count differs from native LOD')
             playback=verify(obj,rig,document,choices,saved,p,reference_world)
             levels.append({'file':path.name,'sha256':file_hash(path),'triangles':record['triangles'],'triangle_budget':record['triangle_budget'],'uv_required':bool(record['uv_maps']),
@@ -236,7 +236,7 @@ def export(p):
         bpy.context.view_layer.update()
         if lods.native_chain(p)[-1]!=signature or animation_guard(rig,choices)!=anim_guard:raise ValueError('Skin chain or animation changed during export')
         doc={'format':SKIN_MARKER,'chain':p['chain'],'chain_sha256':signature,'source_sha256':meta['source_sha256'],'animation_sha256':anim_guard,
-             'blender_version':bpy.app.version_string,'reference_frame':saved['frame']+saved['subframe'],'fps':bpy.context.scene.render.fps/bpy.context.scene.render.fps_base,
+             'blender_version':bpy.app.version_string,'scene_unit_scale':bpy.context.scene.unit_settings.scale_length,'reference_frame':saved['frame']+saved['subframe'],'fps':bpy.context.scene.render.fps/bpy.context.scene.render.fps_base,
              'clips':[{'name':name,'native_frame_start':int(a.frame_range[0]),'native_frame_end':int(a.frame_range[1])} for name,(a,s,record) in choices.items()],
              'levels':levels,'switching':'Separate skeletal representations. Clip seconds start at zero; metadata maps to native frame endpoints.'}
         (stage/'manifest.json').write_text(json.dumps(doc,indent=2,allow_nan=False)+'\n');verified=validate(stage);check_cancelled()

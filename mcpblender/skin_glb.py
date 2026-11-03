@@ -93,9 +93,13 @@ class WeightRows:
 
 
 class Document:
-    def __init__(self,path,*,morphs=False,check_cancelled=None):
+    def __init__(self,path,*,morphs=False,check_cancelled=None,comparison_unit_scale=None):
         self.allow_sparse=morphs;self.check_cancelled=check_cancelled or (lambda:None)
-        self.doc,self.binary=read_glb(path);self.arrays={};self.nodes=self.doc.get('nodes',[])
+        self.doc,self.binary=read_glb(path)
+        from .gltf_units import validate_document,native_comparison
+        self.comparison_unit_scale=comparison_unit_scale
+        self.scene_unit_scale=validate_document(self.doc) if comparison_unit_scale is None else native_comparison(self.doc,comparison_unit_scale)
+        self.arrays={};self.nodes=self.doc.get('nodes',[])
         if not 1<=len(self.nodes)<=2048 or len(self.doc.get('meshes',[]))!=1 or len(self.doc.get('skins',[])) not in ({0,1} if morphs else {1}):raise ValueError('Expected one bounded mesh and at most one skin')
         if any('EXT_meshopt_compression' in v.get('extensions',{}) for v in self.doc.get('bufferViews',[])) or any('EXT_mesh_gpu_instancing' in n.get('extensions',{}) for n in self.nodes) or any('KHR_draco_mesh_compression' in p.get('extensions',{}) for m in self.doc.get('meshes',[]) for p in m.get('primitives',[])):raise ValueError('Compressed or instanced GLB geometry is outside the replay profile')
         self.parents={}
@@ -277,6 +281,7 @@ class Document:
         return {'joints':{name:world[node] for name,node in zip(self.names,self.joints)},'points':points}
     def report(self):
         result={'joints':self.names,'vertices':self.vertex_count,'clips':[{'name':name,'start':min(c[2][0] for c in channels),'end':max(c[2][-1] for c in channels),'channels':len(channels)} for name,channels in sorted(self.clips.items())]}
+        if self.scene_unit_scale!=1:result.update(scene_unit_scale=self.scene_unit_scale,coordinate_space='METRES' if self.comparison_unit_scale is None else 'SOURCE_SCENE_UNITS')
         if self.morph_count:result.update(morph_targets=self.target_names,default_weights=list(self.default_weights))
         return result
 

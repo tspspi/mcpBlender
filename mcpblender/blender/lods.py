@@ -159,7 +159,7 @@ def native_chain(p):
     if meta.get('morph'):
         from .morph_lods import native_checks
         native_checks(objects,meta,issues)
-    signature=digest({'metadata':meta,'levels':records,'root_matrix':matrix(root.matrix_world),'issues':issues})
+    signature=digest({'metadata':meta,'levels':records,'root_matrix':matrix(root.matrix_world),'issues':issues}|({'scene_unit_scale':bpy.context.scene.unit_settings.scale_length} if bpy.context.scene.unit_settings.scale_length!=1 else {}))
     return collection,root,objects,meta,records,issues,signature
 
 
@@ -330,16 +330,21 @@ def export(p):
             check_cancelled();obj.hide_viewport=False;obj.hide_render=False;obj.hide_select=False;obj.hide_set(False);bpy.context.view_layer.update()
             path=stage/f'level_{i:02}.glb'
             export_objects_glb({'objects':[obj.name],'path':str(path),'animations':False,'overwrite':False,'apply_modifiers':False})
-            parsed=glb_report(path)
+            unit_scale=bpy.context.scene.unit_settings.scale_length
+            parsed=glb_report(path,expected_scene_unit_scale=unit_scale,world_bounds=True)
+            obj.data.calc_loop_triangles();used={v for t in obj.data.loop_triangles for v in t.vertices}
+            coords=[obj.matrix_world@obj.data.vertices[v].co for v in used]
+            physical=[(v.x*unit_scale,v.z*unit_scale,-v.y*unit_scale) for v in coords]
+            physical_bounds={key:[fn(v[a] for v in physical) for a in range(3)] for key,fn in (('min',min),('max',max))}
             if parsed['triangles']!=record['triangles']:raise ValueError('Exported GLB triangle count differs from native LOD')
             levels.append({'file':path.name,'sha256':file_hash(path),'triangles':record['triangles'],'triangle_budget':record['triangle_budget'],
-                           'uv_required':bool(record['uv_maps']),'position_bounds':{'min':[record['local_surface_bounds']['min'][0],record['local_surface_bounds']['min'][2],-record['local_surface_bounds']['max'][1]],
+                           'world_bounds_m':physical_bounds,'uv_required':bool(record['uv_maps']),'position_bounds':{'min':[record['local_surface_bounds']['min'][0],record['local_surface_bounds']['min'][2],-record['local_surface_bounds']['max'][1]],
                            'max':[record['local_surface_bounds']['max'][0],record['local_surface_bounds']['max'][2],-record['local_surface_bounds']['min'][1]]},'quality':record['quality'],'glb':parsed})
             report_progress({'phase':'exported and decoded LOD','level':i,'levels':len(objects),'bytes':path.stat().st_size,'fraction':(i+1)/len(objects)})
         for o,a,b,c,d in saved:o.hide_viewport=a;o.hide_render=b;o.hide_select=d;o.hide_set(c)
         bpy.context.view_layer.update()
         if native_chain(p)[-1]!=signature:raise ValueError('LOD chain changed during export')
-        doc={'format':MARKER,'chain':p['chain'],'chain_sha256':signature,'source_sha256':meta['source_sha256'],'blender_version':bpy.app.version_string,
+        doc={'format':MARKER,'chain':p['chain'],'chain_sha256':signature,'source_sha256':meta['source_sha256'],'scene_unit_scale':bpy.context.scene.unit_settings.scale_length,'blender_version':bpy.app.version_string,
              'levels':levels,'switching':'Separate static representations. Runtime distance switching is a downstream choice.'}
         (stage/'manifest.json').write_text(json.dumps(doc,indent=2,allow_nan=False)+'\n')
         verified=validate(stage);check_cancelled()

@@ -44,8 +44,10 @@ def read_glb(path):
     return doc,binary
 
 
-def glb_report(path,skinned=False,morphs=False):
+def glb_report(path,skinned=False,morphs=False,expected_scene_unit_scale=None,world_bounds=False):
     doc,binary=read_glb(path)
+    from .gltf_units import validate_document
+    unit_scale=validate_document(doc,expected_scene_unit_scale)
     if not skinned and (doc.get('skins') or doc.get('animations')):raise ValueError('Static LOD bundle cannot contain skins/animations')
     def attribute(index,components):
         accessor=doc['accessors'][index]
@@ -84,7 +86,14 @@ def glb_report(path,skinned=False,morphs=False):
             triangles+=count//3;primitives.append({'triangles':count//3,'position':position,'normals':True,'uv_sets':sorted(uv),'material':prim.get('material')})
     if not triangles:raise ValueError('GLB contains no triangle geometry')
     bounds={key:[f(p['position'][key][i] for p in primitives) for i in range(3)] for key,f in (('min',min),('max',max))}
-    return {'position_bounds':bounds,'triangles':triangles,'primitives':primitives,'meshes':len(doc.get('meshes',[])),'materials':len(doc.get('materials',[])),'images':len(doc.get('images',[])),'embedded_dependencies':True}
+    extra={}
+    if unit_scale!=1:extra.update(scene_unit_scale=unit_scale,position_bounds_space='MESH_LOCAL')
+    if world_bounds:
+        from .skin_glb import Document,point
+        document=Document(path,morphs=True);world=document.world(None,0)[document.mesh_node]
+        coords=[point(world,position) for _,_,position,_,_ in document.vertices()]
+        extra['world_bounds_m']={key:[fn(v[a] for v in coords) for a in range(3)] for key,fn in (('min',min),('max',max))}
+    return extra|{'position_bounds':bounds,'triangles':triangles,'primitives':primitives,'meshes':len(doc.get('meshes',[])),'materials':len(doc.get('materials',[])),'images':len(doc.get('images',[])),'embedded_dependencies':True}
 
 
 def validate(directory):
@@ -99,10 +108,10 @@ def validate(directory):
         if path.is_symlink() or not path.is_file() or path.stat().st_size>512*1024**2 or file_hash(path)!=level['sha256']:raise ValueError('LOD member missing or hash mismatch')
         morphs=doc['format']==MORPH_MARKER
         skinned=doc['format'] in {SKIN_MARKER,MORPH_MARKER}
-        report=glb_report(path,skinned=skinned,morphs=morphs)
+        report=glb_report(path,skinned=skinned,morphs=morphs,expected_scene_unit_scale=doc.get('scene_unit_scale',1),world_bounds='world_bounds_m' in level)
         if skinned:
             from .skin_glb import Document
-            skin=Document(path,morphs=morphs)
+            skin=Document(path,morphs=morphs,comparison_unit_scale=doc.get('scene_unit_scale',1))
             if skin.report()!=level['skin']:raise ValueError('Skin/animation inventory differs from manifest')
             if morphs:
                 from .morph_bundle import validate_proofs
@@ -111,6 +120,10 @@ def validate(directory):
         bounds=level['position_bounds']
         if any(not isinstance(bounds.get(key),list) or len(bounds[key])!=3 or any(type(v) not in (int,float) or not math.isfinite(v) for v in bounds[key]) for key in ('min','max')):raise ValueError('Invalid recorded LOD bounds')
         if any(abs(a-b)>1e-5+abs(b)*1e-7 for key in ('min','max') for a,b in zip(report['position_bounds'][key],level['position_bounds'][key])):raise ValueError('Exported position bounds differ from native LOD')
+        if 'world_bounds_m' in level:
+            physical=level['world_bounds_m']
+            if not isinstance(physical,dict) or any(not isinstance(physical.get(key),list) or len(physical[key])!=3 or any(type(v) not in (int,float) or not math.isfinite(v) for v in physical[key]) for key in ('min','max')):raise ValueError('Invalid recorded LOD metre world bounds')
+            if any(abs(a-b)>1e-5+abs(b)*1e-7 for key in ('min','max') for a,b in zip(report['world_bounds_m'][key],physical[key])):raise ValueError('GLB metre world bounds differ from source')
         if level['uv_required'] and any('TEXCOORD_0' not in p['uv_sets'] for p in report['primitives']):raise ValueError('Expected exported UV coordinates')
         if skinned:
             from .skin_glb import check_recorded_samples

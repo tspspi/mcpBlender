@@ -1380,8 +1380,8 @@ The recipe and local generated mesh use metres. Creation sets object scale to
 project units. The response includes normalized `recipe`, `scene_unit_scale` and
 `world_bounds_m`. Existing objects are not retroactively resized, and changing the
 project's unit settings later does not trigger automatic leaf rescaling. Native
-physical size is qualified separately from export unit handling; nonmetre GLB
-normalization remains under audit.
+physical size and nonmetre GLB delivery are checked separately; see the export
+unit contract below.
 The blade has a raised midrib, not a secondary vein network or scanned texture.
 Rows increase when necessary to resolve the selected lobe count.
 
@@ -3193,6 +3193,27 @@ selection, normals, materials and desired animation clips. Keep the editable
 `.blend` project alongside the GLB. Godot import, collision setup, shader fidelity
 and game behavior require checks in the Godot project; GLB creation alone does
 not prove that integration.
+
+GLB world coordinates use metres. For a scene whose `scale_length` differs from
+1, export adds positive uniform root transforms to the file, without changing
+editor objects, project units or mesh/skin/morph/animation buffers. The response
+reports `unit_normalization`. Mesh-local POSITION bounds are still local values;
+they must not be read as physical world dimensions. Static LOD manifests also
+record `world_bounds_m`, and package geometry proofs use metre world coordinates.
+Skeletal/morph quality comparisons retain source scene units and their existing
+error budgets. Nondefault decoder reports label their coordinate space; manifests
+record `scene_unit_scale` and validation checks the actual encoded root transforms.
+Legacy manifests without this field assume scale 1. Scale-1 exports undergo no
+unit rewrite.
+
+Use `export_objects_glb` for explicit active-scene export in projects containing
+scenes with different unit scales. Whole-file export requires all scenes to have
+the same scale and refuses mixed scales before writing. Shared roots across
+homogeneous scenes are scaled once. Nondefault-unit normalization is bounded to
+512 MiB GLB files and 16 MiB JSON chunks, and writes only the existing owned output
+path. It inherits native export's partial-write failure boundary; it does not make
+ordinary exports crash-atomic. Camera/light unit properties and downstream engine
+behavior are outside the current qualification.
 
 The installed FreeBSD Blender 5.0.1 glTF add-on crashes in its Draco library-name
 probe even when compression is disabled. Our structured import/export calls use a

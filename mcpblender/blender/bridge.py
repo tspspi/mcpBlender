@@ -219,6 +219,8 @@ def dispatch(command, params):
         from .rigging import export_managed_clips
         from .morphs import export_managed_clips as export_morph_clips
         path = params["path"]
+        if not params.get("_active_scene_only",False) and any(s.unit_settings.scale_length!=scene.unit_settings.scale_length for s in bpy.data.scenes):
+            raise ValueError("Mixed scene units require active-scene export_objects_glb; whole-file GLB export requires homogeneous scene units")
         if params.get("selected_only", True) and not bpy.context.selected_objects:
             raise ValueError("No scene objects selected for export")
         if Path(path).exists() and not params.get("overwrite", False):
@@ -241,7 +243,9 @@ def dispatch(command, params):
                                               **({"export_frame_range":False,"export_force_sampling":True,"export_frame_step":1,"export_anim_slide_to_zero":True,"export_negative_frame":"SLIDE","export_current_frame":True,"export_rest_position_armature":True,"export_def_bones":False} if params.get("_lod_animation_profile") else {}))
         if "FINISHED" not in result:
             raise RuntimeError(f"Export failed: {result}")
-        return {"path": path, "bytes": Path(path).stat().st_size, "format": "GLB",
+        from mcpblender.gltf_units import normalize_file
+        unit_scale=scene.unit_settings.scale_length;normalized=normalize_file(path,unit_scale)
+        return {"unit_normalization":{"scene_unit_scale":unit_scale,"world_units":"METRES","applied":normalized},"path": path, "bytes": Path(path).stat().st_size, "format": "GLB",
                 "freebsd_draco_probe_workaround": workaround}
     if command in ("capture_viewport", "render_still"):
         return capture(command, params)

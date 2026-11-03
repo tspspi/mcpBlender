@@ -19,13 +19,13 @@ COMMANDS={'inspect_asset_package','export_asset_package','validate_asset_package
 
 
 def native_proof(meshes):
-    points=[];hashes=[];triangles=0
+    points=[];hashes=[];triangles=0;unit=bpy.context.scene.unit_settings.scale_length
     for mesh in meshes:
         mesh.calc_loop_triangles()
         for triangle in mesh.loop_triangles:
             coords=[]
             for index in triangle.vertices:
-                v=mesh.vertices[index].co;coords.append((v.x,v.z,-v.y))
+                v=mesh.vertices[index].co;coords.append((v.x*unit,v.z*unit,-v.y*unit))
             hashes.append(triangle_hash(coords));points.extend(coords);triangles+=1
     if not points:raise ValueError('Asset package members require triangle surfaces')
     return {'surface_sha256':surface_digest(hashes),'triangles':triangles,'mesh_instances':len(meshes),
@@ -113,6 +113,7 @@ def collect(p,check_cancelled=lambda:None):
             assets.append({'id':identifier,'objects':asset['objects'],'members':entries,'lods':lod_entries})
         result={'assets':assets,'frame':bpy.context.scene.frame_current+bpy.context.scene.frame_subframe,'estimated_bytes':estimated,
                 'blockers':sorted(set(blockers)),'warnings':sorted(set(warnings))}
+        if bpy.context.scene.unit_settings.scale_length!=1:result['scene_unit_scale']=bpy.context.scene.unit_settings.scale_length
         result['source_sha256']=lods.digest(result);result['can_export']=not blockers
         result['scope']='Primary and proxy GLBs are static current-viewport world-space snapshots. LOD bundles retain their own supported static/skin/morph profiles. Shader fidelity and engine integration require review.'
         return owned,parts,result
@@ -142,7 +143,7 @@ def export(p):
         if _bridge and _bridge.active:_bridge.active['storage']['estimated_bytes']=planned['estimated_bytes']
         check_cancelled();stage=(p['_export_job'].stage if p.get('_export_job') else directory.parent/('.mcpblender-package-'+uuid.uuid4().hex));stage.mkdir(mode=0o700);stage_created=True
         if p.get('_export_job'):p['_export_job'].created()
-        scene=bpy.data.scenes.new('MCP_PackageExport');manifest_assets=[]
+        scene=bpy.data.scenes.new('MCP_PackageExport');scene.unit_settings.scale_length=bpy.context.scene.unit_settings.scale_length;manifest_assets=[]
         for asset in planned['assets']:
             (stage/asset['id']).mkdir(mode=0o700);members=[];lod_entries=[]
             for part in [item for item in parts if item['asset']==asset['id']]:
@@ -163,7 +164,7 @@ def export(p):
                     finally:
                         window.scene=previous_scene;window.view_layer=previous_layer
                         bpy.context.view_layer.update()
-                    parsed=inspect_static_glb(path,check_cancelled)
+                    parsed=inspect_static_glb(path,check_cancelled,expected_scene_unit_scale=bpy.context.scene.unit_settings.scale_length)
                     if parsed['surface_sha256']!=part['native']['surface_sha256'] or parsed['triangles']!=part['native']['triangles'] or parsed['mesh_instances']!=part['native']['mesh_instances']:raise ValueError('Exported triangle surface differs from native asset snapshot')
                     member={'file':part['file'],'role':part['role'],'sha256':file_hash(path),'scene':parsed,'native':part['native'],
                             'dependencies':part['dependencies'],'source_sha256':part.get('source_sha256')}
@@ -184,7 +185,7 @@ def export(p):
             manifest_assets.append({'id':asset['id'],'objects':asset['objects'],'members':members,'lods':lod_entries})
         check_cancelled()
         if plan(p)['source_sha256']!=p['expected_source']:raise ValueError('Asset package source changed during export')
-        document={'format':MARKER,'source_sha256':p['expected_source'],'frame':planned['frame'],'blender_version':bpy.app.version_string,
+        document={'format':MARKER,'source_sha256':p['expected_source'],'frame':planned['frame'],'scene_unit_scale':bpy.context.scene.unit_settings.scale_length,'blender_version':bpy.app.version_string,
                   'assets':manifest_assets,'warnings':planned['warnings'],'scope':planned['scope']}
         (stage/'manifest.json').write_text(json.dumps(document,indent=2,allow_nan=False)+'\n')
         verified=validate(stage,check_cancelled);report_progress({'phase':'verified asset package inventory','assets':len(manifest_assets),'files':len(verified['files'])});check_cancelled()

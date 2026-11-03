@@ -113,8 +113,8 @@ def image_info(payload,mime):
         raise ValueError('JPEG missing end marker')
     raise ValueError('Package texture profile supports PNG and JPEG only')
 
-def inspect_static_glb(path,check_cancelled=lambda:None):
-    try:return _inspect_static_glb(path,check_cancelled)
+def inspect_static_glb(path,check_cancelled=lambda:None,expected_scene_unit_scale=None):
+    try:return _inspect_static_glb(path,check_cancelled,expected_scene_unit_scale)
     except (KeyError,TypeError,IndexError,OverflowError,AttributeError,zlib.error) as exc:raise ValueError('Malformed static GLB scene/dependencies: '+str(exc)) from exc
 
 
@@ -159,8 +159,10 @@ def embedded_dependencies(doc,binary):
                 if type(coordinate)!=int or coordinate<0 or f'TEXCOORD_{coordinate}' not in primitive.get('attributes',{}):raise ValueError('Material texture references missing UV set')
     return image_records
 
-def _inspect_static_glb(path,check_cancelled):
+def _inspect_static_glb(path,check_cancelled,expected_scene_unit_scale):
     doc,binary=read_glb(path)
+    from .gltf_units import validate_document
+    unit_scale=validate_document(doc,expected_scene_unit_scale)
     if doc.get('asset',{}).get('version')!='2.0' or doc.get('skins') or doc.get('animations'):raise ValueError('Static GLB 2.0 scene required')
     permitted={'KHR_texture_transform','KHR_materials_clearcoat','KHR_materials_transmission','KHR_materials_volume',
                'KHR_materials_ior','KHR_materials_specular','KHR_materials_sheen','KHR_materials_emissive_strength',
@@ -248,7 +250,7 @@ def _inspect_static_glb(path,check_cancelled):
     if len(visited)!=len(nodes) or len(used_meshes)!=len(meshes) or not world_points:raise ValueError('GLB contains unreachable/unused nodes or meshes')
     if any(not math.isfinite(v) for p in world_points for v in p):raise ValueError('Nonfinite transformed positions')
     bounds={key:[fn(p[a] for p in world_points) for a in range(3)] for key,fn in (('min',min),('max',max))}
-    return {'surface_sha256':surface_digest(surface_hashes),'triangles':triangles,'mesh_instances':instances,'meshes':len(meshes),'nodes':len(nodes),
+    return ({'scene_unit_scale':unit_scale,'world_units':'METRES'} if unit_scale!=1 else {})|{'surface_sha256':surface_digest(surface_hashes),'triangles':triangles,'mesh_instances':instances,'meshes':len(meshes),'nodes':len(nodes),
             'world_bounds':bounds,'mesh_nodes':node_records,'materials':len(materials),'images':len(images),'textures':len(textures),
             'embedded_dependencies':True,'image_records':image_records}
 
@@ -285,7 +287,7 @@ def _validate(root,check_cancelled):
             if not relative.startswith(asset['id']+'/') or not relative.endswith('.glb') or relative in declared:raise ValueError('Invalid/duplicate asset member')
             declared.add(relative)
             if not DIGEST.fullmatch(member['sha256']) or file_hash(path)!=member['sha256']:raise ValueError('Package member hash mismatch')
-            report=inspect_static_glb(path,check_cancelled)
+            report=inspect_static_glb(path,check_cancelled,expected_scene_unit_scale=doc.get('scene_unit_scale',1))
             if report!=member['scene']:raise ValueError('Package scene/dependency proof differs')
             proof=member['native']
             if proof.get('surface_sha256')!=report['surface_sha256'] or type(proof['triangles'])!=int or proof['triangles']!=report['triangles'] or proof['mesh_instances']!=report['mesh_instances']:raise ValueError('Native/file geometry count differs')
@@ -310,6 +312,7 @@ def _validate(root,check_cancelled):
             if not isinstance(relative,str) or not relative.startswith(asset['id']+'/') or not SLUG.fullmatch(relative.split('/')[-1]) or len(relative.split('/'))!=2:raise ValueError('Unsafe LOD association directory')
             lod_manifest=safe_file(root,relative+'/manifest.json');validate_lods(root/relative)
             lod_doc=json.loads(lod_manifest.read_text())
+            if lod_doc.get('scene_unit_scale',1)!=doc.get('scene_unit_scale',1):raise ValueError('Associated LOD scene unit scale differs from package')
             if any(lod_doc.get(k)!=entry.get(k) for k in ('chain','chain_sha256','source_sha256','animation_sha256')):raise ValueError('LOD association guards differ')
             for file in (root/relative).iterdir():
                 member_relative=relative+'/'+file.name;path=safe_file(root,member_relative)

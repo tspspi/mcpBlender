@@ -221,6 +221,15 @@ rotations. Verify the exported artifact and, when Godot is available and in scop
 check import there. GLB export is not proof of Godot material, collision or gameplay
 behavior.
 
+GLB world coordinates are metres: nondefault scene units use file-only uniform
+root transforms. Mesh-local POSITION bounds are not world dimensions. Inspect
+static LOD `world_bounds_m` or package world proofs; skeletal/morph quality budgets
+remain in source scene units, with labeled comparison decodes. Export manifests
+bind scene scale to encoded roots. For projects with mixed scene scales, use
+explicit active-scene `export_objects_glb`; whole-file export refuses mixed units.
+Nondefault unit rewriting is bounded to 512 MiB GLB/16 MiB JSON and does not change
+the editable scene. Camera/light unit properties are not qualified.
+
 The scene is shared across keys and clients. Operations execute serially; named
 actions group dependent steps into one operation. Operator-local JSON recipes can
 compose supported structured commands without Python. For long

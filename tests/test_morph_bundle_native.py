@@ -8,9 +8,10 @@ import pytest
 pytestmark=[pytest.mark.blender,pytest.mark.skipif(os.environ.get('MCPBLENDER_TEST_BLENDER')!='1' or not shutil.which('blender'),reason='Installed Blender opt-in required')]
 
 
-def test_morph_bundle_native_timeline_controls_both_modes_and_rollback(tmp_path):
+@pytest.mark.parametrize('scene_unit_scale',[1,.01])
+def test_morph_bundle_native_timeline_controls_both_modes_and_rollback(tmp_path,scene_unit_scale):
     source=Path(__file__).resolve().parents[1];script=tmp_path/'probe.py'
-    script.write_text('import sys\nsys.path.insert(0,'+repr(str(source))+')\n'+r'''
+    script.write_text('import sys\nsys.path.insert(0,'+repr(str(source))+')\nSCENE_UNIT_SCALE='+repr(scene_unit_scale)+'\n'+r'''
 import bpy,json
 from pathlib import Path
 from mathutils import Vector
@@ -21,6 +22,7 @@ from mcpblender.lod_files import validate
 root=Path(__file__).parent
 bridge.check_cancelled=lambda:None;bridge.report_progress=lambda v:None
 bpy.context.scene.render.fps=12
+bpy.context.scene.unit_settings.scale_length=SCENE_UNIT_SCALE
 for skinned in (False,True):
     label='SkinMorph' if skinned else 'MorphOnly'
     bpy.ops.mesh.primitive_uv_sphere_add(segments=24,ring_count=16,location=(4,0,1));obj=bpy.context.object;obj.name=label
@@ -107,6 +109,13 @@ for skinned in (False,True):
         assert max(s.get('max_vertex_error',0) for s in level['playback'])<.001
         assert all(c['native_vertex_error']<.001 for c in level['timeline_bake'])
     assert validate(p['directory'])['valid']
+    unit=bpy.context.scene.unit_settings.scale_length
+    raw=Document(Path(p['directory'])/'level_00.glb',morphs=True)
+    native=Document(Path(p['directory'])/'level_00.glb',morphs=True,comparison_unit_scale=unit)
+    indices=raw.representatives(16);a=raw.replay(None,0,indices)['points'];b=native.replay(None,0,indices)['points']
+    assert all(abs(x-y*unit)<1e-6 for p0,p1 in zip(a,b) for x,y in zip(p0,p1))
+    assert all(2*unit<p0[0]<7*unit for p0 in a)
+    if unit!=1:assert raw.report()['coordinate_space']=='METRES' and native.report()['coordinate_space']=='SOURCE_SCENE_UNITS'
     manifest=Path(p['directory'])/'manifest.json';original_text=manifest.read_text()
     for corrupt in ('fps','proof','bounds'):
         changed=json.loads(original_text)

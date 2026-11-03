@@ -7,15 +7,17 @@ import pytest
 pytestmark=[pytest.mark.blender,pytest.mark.skipif(os.environ.get('MCPBLENDER_TEST_BLENDER')!='1' or not shutil.which('blender'),reason='Installed Blender opt-in required')]
 
 
-def test_package_native_publication_rollback_and_source_preservation(tmp_path):
+@pytest.mark.parametrize('scene_unit_scale',[1,.01])
+def test_package_native_publication_rollback_and_source_preservation(tmp_path,scene_unit_scale):
     repo=Path(__file__).resolve().parents[1];script=tmp_path/'probe.py'
-    script.write_text('import sys\nsys.path.insert(0,'+repr(str(repo))+')\n'+r'''
+    script.write_text('import sys\nsys.path.insert(0,'+repr(str(repo))+')\nSCENE_UNIT_SCALE='+repr(scene_unit_scale)+'\n'+r'''
 import bpy
 from pathlib import Path
 from mcpblender.blender import asset_packages as packages,bridge
 from mcpblender.package_contracts import Plan
 from mcpblender.package_files import validate
 bridge.check_cancelled=lambda:None;bridge.report_progress=lambda v:None
+bpy.context.scene.unit_settings.scale_length=SCENE_UNIT_SCALE
 bpy.ops.mesh.primitive_cube_add(location=(3,1,2));obj=bpy.context.object;obj.name='Source'
 # Unpacked texture bytes and loaded pixel edits both participate in the guard.
 import struct,zlib

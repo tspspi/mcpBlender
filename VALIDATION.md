@@ -1,5 +1,75 @@
 # Local validation: 0.2.0
 
+## Batch asset packages — 2026-11-03
+
+Focused contracts, independent decoder, native rollback and structured pipeline:
+
+```sh
+MCPBLENDER_TEST_BLENDER=1 MCPBLENDER_PACKAGE_EVIDENCE_DIR=/tmp/mb-package-20261103 python3 -m pytest -q tests/test_package_files.py tests/test_package_contracts.py tests/test_package_native.py tests/test_asset_packages.py --tb=short --maxfail=1
+```
+
+Result: **22 passed in 48.80s**.
+
+The structured fixtures use arbitrary Python execution disabled. A two-asset
+textured package contains a building primary, associated 28-triangle convex
+collider, textured prop primary, 150-triangle shadow proxy and a three-level
+static LOD bundle. Independently decoded oriented triangle fingerprints, counts,
+node transforms, bounds and embedded image/texture/UV references match native
+snapshots. Re-imported building counts/UVs/world bounds match the placed source.
+Proxy mappings retain method/shape/quality/source association and per-node proofs.
+Tampered member bytes, extra files and a collider associated with another asset
+refuse validation/planning. Queued progress reports free space and the refined
+geometry/texture estimate. The manifest has no absolute source path fields.
+
+A separate skin fixture packages a static current-pose primary plus a three-level
+animated skin bundle. Adding an inactive clip changes the package guard even at
+an unchanged current pose; the stale plan refuses export. The nested bundle
+contains two independently validated clips per level. A morph fixture packages a
+static primary and a three-level timeline-baked morph bundle with the named
+Breathe range. All nested bundle/animation/source guards are associated in the
+root manifest and revalidated with their existing independent LOD validators.
+
+A staging-name collision refuses creation and preserves the pre-existing
+directory and contents. Native cancellation after mesh export and after final package validation restores
+the exact native ID set and deletes owned staging. Injected decoder failure also
+cleans staging and owned data. Successful export preserves frame/subframe,
+selection, active object and source guard; no overwrite is allowed. Additional
+checks cover missing unpacked textures and loaded-pixel edits participating in the
+guard. The final expanded native gate, including staging collision preservation,
+passed **1 test in 4.97s**. Known-answer pure fixtures check hierarchical translation/scale, oriented
+surface fingerprints, cycles/multiple parents/unreachable nodes, invalid references,
+image/texture/UV dependencies, PNG CRC/scanline layout, unsafe paths, symlinks,
+hashes, native proof corruption and undeclared files.
+
+A scene-only context override crashed the installed Blender glTF exporter in an
+owned headless probe. Export now temporarily activates the isolated scene through
+the actual window and restores the original scene/view layer in finally. Native
+rollback/success checks pass with this path. Explicit-object GLB export now uses
+the active scene to prevent selections from other scenes entering the export.
+
+Existing server/storage/capability/static LOD/animated skin bundle and textured
+asset delivery regression passed **16 tests in 99.56s**, with the existing
+Starlette/AnyIO deprecation warning:
+
+```sh
+MCPBLENDER_TEST_BLENDER=1 python3 -m pytest -q tests/test_server.py tests/test_storage.py tests/test_capabilities.py tests/test_lods.py tests/test_skin_lod_export.py tests/test_action_integration.py::test_game_asset_inspection_preflight_and_textured_delivery --tb=short --maxfail=1
+```
+
+Retained evidence is under the focused command's evidence directory: static
+batch (two assets/nine files), animated skin (one asset/six files), morph (one
+asset/six files), a source scene and structured proof JSON. System Python validates
+all three without importing bpy. The bundled design skill passes its structural
+validator. Qualification remains FreeBSD Blender 5.0.1.
+
+This is prepared static primary/proxy delivery plus reused supported LOD animation
+profiles. It does not provide general animated assembly export, editable external
+library packaging, shader fidelity certification, automatic engine setup or full
+glTF conformance. The decoder has explicit dense/native-profile limits; PNG uses
+CRC/decompressed scanline validation, JPEG uses structural validation without
+entropy decoding. Process-crash staging reconciliation and broader retention,
+LOD lifecycle and botanical requirements remain separate. See USER_MANUAL.md.
+
+
 ## Collision/shadow proxies and guarded render visibility — 2026-11-03
 
 Final focused gate:

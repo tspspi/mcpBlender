@@ -23,6 +23,7 @@ from . import drivers
 from . import nla
 from . import lods
 from . import assembly_realization
+from . import asset_packages
 from . import proxies
 from . import assemblies
 from . import rest_edit
@@ -57,6 +58,7 @@ COMMANDS.update(rest_edit.COMMANDS)
 COMMANDS.update(lods.COMMANDS)
 COMMANDS.update(assemblies.COMMANDS)
 COMMANDS.update(proxies.COMMANDS)
+COMMANDS.update(asset_packages.COMMANDS)
 COMMANDS.update(assembly_realization.COMMANDS)
 
 
@@ -82,6 +84,8 @@ def curves(action, slot):
 
 
 def dispatch(command, p):
+    if command in asset_packages.COMMANDS:
+        return asset_packages.dispatch(command,p)
     if command in proxies.COMMANDS:
         return proxies.dispatch(command,p)
     if command in assembly_realization.COMMANDS:

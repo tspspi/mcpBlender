@@ -204,6 +204,96 @@ hull group. Shadow budgets range from 4 to 500,000 triangles per leaf. Sample
 counts range from 32 to 2,048 per target/group, with at least eight source samples
 per constituent leaf. Point/curve/volume geometry requires conversion first.
 
+## Batch asset packages and dependency validation
+
+`inspect_asset_package` accepts up to 32 named `assets`. Each entry has a portable
+ASCII `id` (1..48 letters/digits/underscores/hyphens, starting with a letter or
+digit) and `objects` naming local mesh objects or managed assembly placements.
+IDs must be distinct ignoring case. Example:
+
+```json
+{
+  "assets": [
+    {"id": "building", "objects": ["BuildingOne"],
+     "collision_proxies": ["BuildingCollision"]},
+    {"id": "prop", "objects": ["Prop"],
+     "shadow_proxies": ["PropShadow"],
+     "lods": [{"chain": "PropLOD", "animations": false}]}
+  ]
+}
+```
+
+Optional `collision_proxies` and `shadow_proxies` name owned proxy collections
+(up to eight of each per asset). They must be valid, fresh, match the declared
+role, and have source objects drawn from that asset's inputs. Optional `lods`
+contains up to four native chain selections. A chain must be valid and fresh and
+its source must be an asset input. Its existing export profile must permit the
+requested options. `animations` defaults to true; morph chains can specify named
+`timeline_clips` as in `export_lod_chain`. `animation_samples` (3..9, default 3)
+and `skin_tolerance` (default 0.001) use that exporter's native/file proof rules.
+Inactive compatible clips participate in the package guard as well as current
+geometry; an inactive clip change therefore requires a new plan.
+
+Check `can_export`, `blockers`, dependency inventory and warnings. Carry
+`source_sha256` as `expected_source` into `export_asset_package`, with identical
+`assets` and a fresh library-relative `directory`. The operation defaults to a
+queued job. Estimates include mesh geometry and loaded texture pixel sizes, with
+current free-space checks and progress snapshots. Estimates remain heuristic.
+
+The package contains one `primary.glb` per asset, separate collision/shadow GLBs,
+optional nested LOD bundles and a root `manifest.json`. Proxy mappings identify each
+exported mesh node and retain its original proxy name, method, suggested collision
+shape, volume and sampled quality evidence, with independent per-node geometry
+proofs. This preserves the information needed for later engine adapters. Primary and proxy geometry
+is prepared as independent current-viewport world-space mesh snapshots: evaluated
+modifiers, rigs and shape keys freeze into geometry with identity object transforms.
+Sources and shared materials remain intact. To deliver a chosen asset pivot/origin,
+prepare its source/placement at the desired origin before inspection. Animation
+is retained only through the nested LOD export profiles; this is not general
+animated assembly export. Cycles shadow visibility and engine collision behavior
+are recorded roles requiring downstream integration, not portable GLB behavior.
+
+Export uses a temporary scene with native window-scene activation restored after
+each export. Named-object GLB export is limited to the active scene, preventing
+selections in other scenes from entering the file. Package publication occurs
+only after all members validate, using a staged sibling directory and a final
+rename. Existing output directories are refused. Ordinary errors/cooperative
+cancellation remove owned scene data and staging, including cancellation at the
+final validation boundary. Native export calls cannot be interrupted mid-call;
+interrupted-process staging reconciliation remains separate.
+
+`validate_asset_package` checks the complete relative file inventory, hashes,
+roles/associations, native/file triangle counts and world bounds, and an independent
+fingerprint of every oriented triangle (32-bit world positions, cyclic starting
+corner/primitive ordering ignored). It decodes node hierarchy/transforms, validates
+positions/normals/UV references and embedded image/texture/material references,
+and revalidates nested LOD manifests and association guards. Extra files, symlinks,
+unsafe paths, stale native associations at export and mismatched proofs refuse.
+The standalone `mcpblender.package_files.validate` uses only the Python standard
+library and does not require Blender.
+
+Material dependencies are conservatively inventoried from the referenced native
+graph, including unused image nodes. FILE/GENERATED images need loaded finite
+pixels; unpacked FILE images also need an available file. Guards include loaded
+pixel and external-file hashes, shader state and image color space. Script shaders,
+scene-object/context material dependencies and volume delivery require a separate
+baking/workflow step. Manifests include names and hashes without absolute source
+path fields. Image limits are 64 million float components per image and one GiB
+of loaded dependency pixels per member inspection. File/image guards do not make
+arbitrary shaders portable: review GLB material conversion and bake unsupported
+procedural effects before delivery.
+
+The decoder is a bounded native-export profile, not a general glTF conformance
+validator. Static members require one scene, dense nonnormalized attributes,
+uncompressed triangles, finite transforms, unit normals and supported material
+extensions. It rejects unused/unreachable mesh nodes. PNG validation checks chunks,
+CRCs and decompressed non-interlaced scanline layout; JPEG validation checks marker
+and segment structure without decoding entropy. Other texture encodings require
+conversion. Per-file limits include 512 MiB, 2,048 meshes, 4,096 nodes, depth 64,
+two million elements per accessor and four million instantiated triangles. Package
+inventory is capped at 2,048 files. Rendered shading, alpha coverage, collisions,
+physics and target-engine behavior still need their own qualification.
+
 ## Blender startup and attachment
 
 `get_capabilities` reports the connected Blender version and worker command

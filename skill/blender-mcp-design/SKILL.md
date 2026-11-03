@@ -284,3 +284,15 @@ renderers do not inherit these Cycles flags. Materials stay shared. Inspect sour
 obsolete proxies using a fresh proxy guard after detaching physics/dependencies.
 These generic proxies do not infer trunk/branch collision or validate foliage
 silhouette/alpha coverage.
+
+For batch delivery, inspect `inspect_asset_package` with portable asset IDs,
+primary `objects`, optional owned collision/shadow collections and native `lods`.
+Resolve blockers and review material/dependency warnings. Proxies and LOD sources
+must belong to the declared asset inputs and remain fresh. Carry the package guard
+and identical assets into `export_asset_package` with a fresh directory; wait for
+completion and run `validate_asset_package`. Static primary/proxy snapshots use
+world-space geometry, so stage the desired origin beforehand. Animation belongs
+to the selected nested LOD profiles, not the static primary mesh. The manifest
+records role associations; downstream tools must apply collision/shadow behavior.
+Keep source scenes separately for editing, and visually review converted shaders.
+See USER_MANUAL.md for validation limits and timeline/skin proof options.

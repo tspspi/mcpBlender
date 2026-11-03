@@ -3474,6 +3474,19 @@ distances, not measurements of Cycles dilation, generated mip image quality,
 self-padding within one chart, HDR/material optics, target-engine filtering or
 visual maturity. Existing prepared layouts are not automatically modified.
 
+## Dense default face attributes during preparation
+
+Re-preparing an already textured component with NEW UVs can make Blender's
+BMesh operators omit its dense all-zero `material_index` attribute. Preparation
+now restores that exact default representation alongside default sharp layers
+before comparing all source attributes. Nonzero indices remain subject to the
+ordinary preservation check. A native complete preparation fixture, using a
+static source resolver, proves dense zero-index retention, source preservation
+and owned cleanup (one test passed in 6.30 seconds). A read-only retained-profile
+probe subsequently prepared leaf, shoot and wood copies without the previous
+attribute refusal. This does not qualify their texture quality: increasing
+resolution still leaves narrow chart coverage and mip-gap failures.
+
 ## Explicit UV tile borders
 
 `pack_uv_islands` accepts an optional pixel border at declared texture dimensions.

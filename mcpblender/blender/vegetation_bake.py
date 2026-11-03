@@ -227,9 +227,9 @@ def create(p):
                 values=[v for item in layer.data for v in item.uv]
                 layer.data.foreach_set('uv',inset_tile(values,p['texture_width'],p['texture_height'],p['tile_padding_pixels'],True))
             mesh.uv_layers.active=layer;layer.active_render=True;mesh.update();bpy.context.view_layer.update()
-            # BMesh omits all-false built-in sharp layers. Restore their dense
+            # BMesh omits all-default built-in layers. Restore their dense
             # representation before comparing every original public attribute.
-            for name in ('sharp_face','sharp_edge'):
+            for name in ('sharp_face','sharp_edge','material_index'):
                 attr=obj.data.attributes.get(name)
                 if attr and name not in mesh.attributes and not any(v.value for v in attr.data):mesh.attributes.new(name=name,type=attr.data_type,domain=attr.domain)
             mesh.update()

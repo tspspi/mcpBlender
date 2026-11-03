@@ -25,7 +25,13 @@ def validate(record):
         total+=m['width']*m['height']*4
     if total!=record['rgba8_base_bytes'] or record.get('portable_optical_equivalence') is not False:raise ValueError('Invalid baked vegetation memory/optical claim')
     if not record['uv_map'] or record['uv_map'] not in record['uv_witness'] or any(not re.fullmatch('[a-f0-9]{64}',str(v)) for v in record['uv_witness'].values()):raise ValueError('Invalid baked vegetation UV witness')
-    if record['material_adapters'] and record.get('front_pbr_accepted') is not True:raise ValueError('Baked vegetation optical loss was not accepted')
+    if (record['material_adapters'] or record.get('inherited_material_adapters')) and record.get('front_pbr_accepted') is not True:raise ValueError('Baked vegetation optical loss was not accepted')
+    if type(record.get('revision',1))!=int or not 1<=record.get('revision',1)<=1024:raise ValueError('Invalid vegetation texture revision')
+    if record.get('revision',1)>1 and record.get('previous_adoption_sha256') is None:raise ValueError('Vegetation texture revision lacks previous binding')
+    if 'preparation_owner' in record and (not re.fullmatch('[a-f0-9]{32}',str(record['preparation_owner'])) or type(record.get('preparation_revision'))!=int or not 0<=record['preparation_revision']<=1024):raise ValueError('Invalid preparation revision lineage')
+    owners=record.get('source_preparation_owners',[])
+    if not isinstance(owners,list) or len(owners)>1024 or len(set(owners))!=len(owners) or any(not re.fullmatch('[a-f0-9]{32}',str(owner)) for owner in owners):raise ValueError('Invalid source preparation lineage')
+    if record.get('previous_adoption_sha256') is not None and not re.fullmatch('[a-f0-9]{64}',str(record['previous_adoption_sha256'])):raise ValueError('Invalid previous vegetation adoption binding')
     return total
 
 

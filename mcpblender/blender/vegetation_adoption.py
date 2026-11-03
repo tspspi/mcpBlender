@@ -34,6 +34,19 @@ def bundle(directory,component,limits):
     return saved,maps,size
 
 
+def dependencies(mesh):
+    values=set(mesh.materials)
+    for mat in mesh.materials:
+        for node in mat.node_tree.nodes:
+            if node.type=='TEX_IMAGE' and node.image:values.add(node.image)
+            if node.type=='GROUP' and node.node_tree:values.add(node.node_tree)
+    return values
+
+
+def unique(rows):
+    return list({botany.digest(row):row for row in rows}.values())
+
+
 def plan(p):
     from .bridge import check_cancelled
     bpy.context.view_layer.update()
@@ -44,27 +57,42 @@ def plan(p):
     targets=materials.lod_objects(col,meta);entries={};total=0;encoded=0;source_bytes=0
     for entry in p['entries']:
         check_cancelled();role=entry['asset']
-        if role in meta.get('baked_materials',{}):raise ValueError('This LOD asset already has adopted maps; replacement requires a new profile')
+        previous=meta.get('baked_materials',{}).get(role)
+        if previous:schema.validate(previous)
+        if previous and not p.get('replace_existing',False):raise ValueError('This LOD asset already has adopted maps; use explicit replace_existing')
         if role not in targets or role not in pm['components']:raise ValueError('Asset is not a prepared LOD component')
         target=targets[role];w=pm['source']['assets'][role]
         actual=textures.mesh_signature(target,target.data);actual['matrix']=[list(row) for row in preparation.static_matrix(target)];changed=[k for k in w['mesh'] if botany.digest(actual[k])!=botany.digest(w['mesh'][k])]
+        retained=previous and (previous['preparation_sha256']==ps['preparation_sha256'] or pm['owner'] in set(previous.get('source_preparation_owners',[])+([previous['preparation_owner']] if previous.get('preparation_owner') else [])))
+        if retained:
+            # A retained, guardedly refreshed original source may precede adoption's
+            # intentional material-index and target-UV additions on the LOD mesh.
+            expected_uvs=previous['uv_witness'];source=bpy.data.objects[pm['components'][role]['name']]
+            current_uvs={l.name:schema.uv_digest([list(v.uv) for v in l.data]) for l in target.data.uv_layers}
+            prepared_uvs={l.name:schema.uv_digest([list(v.uv) for v in l.data]) for l in source.data.uv_layers}
+            if current_uvs!=expected_uvs or prepared_uvs!=expected_uvs or previous['geometry_sha256']!=actual['geometry']:raise ValueError('Retained preparation no longer matches adopted geometry/UVs')
+            changed=[k for k in changed if k not in {'uv','render_uv','materials'}]
+        else:
+            current=materials.contract({role:target});original=pm['source']['source_materials'];names=set(original['slots'][role])
+            if current['materials']!=[m for m in original['materials'] if m['name'] in names]:raise ValueError('Prepared component source materials changed')
         if target.name!=w['source_object'] or changed:raise ValueError('Prepared component no longer matches this LOD mesh/placement: '+role+' '+', '.join(changed))
-        current=materials.contract({role:target});original=pm['source']['source_materials'];names=set(original['slots'][role])
-        if current['materials']!=[m for m in original['materials'] if m['name'] in names]:raise ValueError('Prepared component source materials changed')
         saved,maps,size=bundle(entry['directory'],pm['components'][role],p);source_bytes+=size
         if source_bytes>p['max_bytes']:raise ValueError('Adoption source files exceed max_bytes')
-        if saved.get('material_adapters') and not p['accept_front_pbr']:raise ValueError('Explicit accept_front_pbr is required for lossy leaf maps')
+        inherited=unique((previous.get('inherited_material_adapters',[])+previous.get('material_adapters',[])) if previous else [])
+        if (saved.get('material_adapters') or inherited) and not p['accept_front_pbr']:raise ValueError('Explicit accept_front_pbr is required for lossy leaf maps')
         source=bpy.data.objects[pm['components'][role]['name']];uvs={layer.name:schema.uv_digest([list(v.uv) for v in layer.data]) for layer in source.data.uv_layers}
         item={'format':schema.FORMAT,'preparation_sha256':ps['preparation_sha256'],'bake_sha256':saved['source'],'bundle_manifest_sha256':botany.digest(saved),
+              'preparation_owner':pm['owner'],'preparation_revision':pm.get('revision',0),'source_preparation_owners':sorted(set(previous.get('source_preparation_owners',[])+([previous['preparation_owner']] if previous.get('preparation_owner') else []))-{pm['owner']}) if previous else [],'revision':previous.get('revision',1)+1 if previous else 1,'previous_adoption_sha256':previous['adoption_sha256'] if previous else None,
+              'inherited_material_adapters':inherited,'inherited_sampling_changes':unique(previous.get('inherited_sampling_changes',[])+previous.get('source_sampling_changes',[])) if previous else [],
               'geometry_sha256':w['mesh']['geometry'],'uv_map':pm['components'][role]['inspect_texture_bake']['uv_map'],'uv_witness':uvs,'maps':maps,
               'material_adapters':saved.get('material_adapters',[]),'front_pbr_accepted':p['accept_front_pbr'],'source_sampling_changes':[v for v in ps['source_sampling_changes'] if v['asset']==role],
               'rgba8_base_bytes':sum(m['width']*m['height']*4 for m in maps),'portable_optical_equivalence':False}
         item['adoption_sha256']=botany.digest(item);schema.validate(item);total+=item['rgba8_base_bytes'];encoded+=sum(m['bytes'] for m in maps);entries[role]=item
-    total+=sum(schema.validate(r) for r in meta.get('baked_materials',{}).values())
+    total+=sum(schema.validate(r) for role,r in meta.get('baked_materials',{}).items() if role not in entries)
     if total>p['max_texture_bytes']:raise ValueError('Adoption exceeds the profile base RGBA8 texture budget')
     if encoded>p['max_bytes']:raise ValueError('Adopted map bytes exceed max_bytes')
     result={'lods_sha256':state['lods_sha256'],'preparation_sha256':ps['preparation_sha256'],'entries':entries,'rgba8_base_bytes':total,
-            'source_bytes_verified':source_bytes,'options':{k:p[k] for k in ('accept_front_pbr','max_bytes','max_texture_bytes')},'scope':'Verified source-bound PNG maps, prepared UVs and packed private native PBR materials. No native asset import, mipmap/GPU budget or optical equivalence.'}
+            'source_bytes_verified':source_bytes,'replaced_assets':sorted(set(entries)&set(meta.get('baked_materials',{}))),'peak_rgba8_base_bytes':sum(r['rgba8_base_bytes'] for r in meta.get('baked_materials',{}).values())+sum(r['rgba8_base_bytes'] for r in entries.values()),'options':{k:p.get(k,False) if k=='replace_existing' else p[k] for k in ('accept_front_pbr','replace_existing','max_bytes','max_texture_bytes')},'scope':'Verified source-bound PNG maps, prepared UVs and packed private native PBR materials. No native asset import, mipmap/GPU budget or optical equivalence.'}
     result['plan_sha256']=botany.digest(result)
     return col,owned,meta,targets,pm,result
 
@@ -96,14 +124,19 @@ def adopt(p):
             replacements[role]=mesh
         # Revalidate external files and both native guards before the atomic swap.
         if plan(p)[-1]['plan_sha256']!=p['expected_plan']:raise ValueError('Bake adoption inputs changed while packing maps')
-        check_cancelled();new_owned=owned|staged;new_meta=dict(meta);new_meta['baked_materials']=dict(meta.get('baked_materials',{}))|info['entries']
+        check_cancelled()
+        old_resources=set().union(*(dependencies(targets[role].data) for role in replacements))
+        kept=set().union(*(dependencies(mesh) for mesh in replacements.values()),*(dependencies(obj.data) for role,obj in targets.items() if role not in replacements))
+        obsolete.update((old_resources-kept)&owned)
+        new_owned=(owned|staged)-obsolete
+        new_meta=dict(meta);new_meta['baked_materials']=dict(meta.get('baked_materials',{}))|info['entries']
         for role,mesh in replacements.items():
             obj=targets[role];old=obj.data;name=old.name;swaps.append((obj,old,mesh,name));obsolete.add(old);new_owned.remove(old)
             old.name='MCP_AdoptionOld_'+uuid.uuid4().hex;mesh.name=name;obj.data=mesh
         for value in staged:value[lods.OWNER]=meta['owner'];value.use_fake_user=False
         new_meta['owned']=[{'type':v.bl_rna.identifier,'name':v.name} for v in sorted(new_owned,key=lambda v:(v.bl_rna.identifier,v.name))]
         bpy.context.view_layer.update();new_meta['content_sha256']=lods.signature(new_owned);col[lods.META]=json.dumps(new_meta,sort_keys=True,allow_nan=False)
-        result=lods.inspect(p)[-1]
+        result=lods.inspect(p,ignore_users=obsolete)[-1]
         if not result['valid']:raise ValueError('Adopted LOD content/ownership verification failed')
         success=True;bpy.data.batch_remove(ids=tuple(obsolete));return result
     finally:

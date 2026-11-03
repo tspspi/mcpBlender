@@ -3799,7 +3799,7 @@ unowned source images retain their existing shared behavior. Estimated copy byte
 include cloned packed-image bytes and their base RGBA8 memory; this is a memory
 heuristic, not a disk write. Private clones follow preparation ownership, source
 hashing, save/reopen and guarded cleanup. Refresh alone does not replace maps on
-the source LOD; map replacement remains a separate guarded adoption action.
+the source LOD; use the explicit replacement adoption workflow below.
 
 ## Adopt vegetation PBR bakes into native LODs
 
@@ -3837,9 +3837,8 @@ Files and native guards are rechecked before the batch swap. Cancellation while
 packing and failures during final native verification roll back the created IDs,
 meshes, metadata and names. Cancellation does not interrupt native image packing
 or individual native API calls. This is cooperative transaction behavior, not
-crash/power-loss durability; save the edited project after success. Replacing an
-already adopted role currently refuses; keep the original editable profile if a
-new texture revision is needed. Foreign references block owned profile cleanup.
+crash/power-loss durability; save the edited project after success. Replacing an adopted role requires explicit `replace_existing=true`; the
+replacement workflow is described below. Foreign references block owned profile cleanup.
 Shared source materials remain outside the adopted resource ownership.
 
 The returned `baked_materials` records bind source fingerprints, map hashes,
@@ -3860,6 +3859,55 @@ reencode texture channels, so they do not claim byte identity with encoded image
 These unsigned witnesses prove file correspondence, not authenticated provenance
 or rendered optical/runtime parity. Export-stage recovery uses the existing
 journal; native scene adoption itself does not replay after a crash.
+
+### Replace or restore adopted map revisions
+
+Use the same inspection/adoption tools with `replace_existing=true` to replace
+selected already adopted asset roles. The default refuses replacement. Entries
+may mix new roles and replacements; unrelated roles remain intact. Inspection
+returns `replaced_assets`, a final whole-profile `rgba8_base_bytes` budget and
+`peak_rgba8_base_bytes` for old plus staged new base images. `max_texture_bytes`
+applies to the final profile, so replaced maps are not counted twice. Peak is a
+base RGBA8 estimate only; preparation copies, Blender caches, mipmaps and runtime
+allocations are not covered by that number. Map/frame/source guards and optical
+acceptance still apply.
+
+There are two supported source paths. Keep the original preparation to rebake
+procedural detail or edit/refresh its private materials. Alternatively, prepare
+the current packed PBR component with EXISTING BakeUV, edit/refresh that independent
+source and rebake. This works after earlier preparations/bake files were removed.
+Rebaking already baked textures can accumulate filtering loss; keep original
+sources when quality matters. Both paths require unchanged target geometry and
+its adopted UV layout. Source ownership/revision witnesses identify retained
+preparations and their ancestors, allowing a later return to an original source
+or a previously verified bake without rebuilding the LOD. Reusing an older saved
+source is deliberate revision input, not automatic operation replay.
+
+Each map record increments `revision` and binds `previous_adoption_sha256`.
+Optical omissions and copy-only sampling changes carry forward through
+`inherited_material_adapters` and `inherited_sampling_changes`. A simple PBR rebake
+does not erase the earlier FRONT_PBR loss declaration: explicit acceptance is
+still required when either direct or inherited losses exist. There are at most
+1024 revisions/source ancestors per component. Existing unsigned records remain
+readable; older preparations without refresh witnesses must be recreated before
+source editing.
+
+The guarded batch stages new meshes, packed images and PBR materials, verifies
+files and native guards again, then swaps the selected components. Unused old
+private meshes/materials/images/AO groups are retired only after native verification.
+Resources still needed by remaining components are retained. External references
+block the operation before changes; release them or use independent copies. Failed
+pre-handoff validation restores old data and names. The returned LOD guard matches
+fresh inspection after retirement. Bounded ownership inventories now permit 512
+IDs for a LOD/preparation, accommodating complete multi-level mapped profiles;
+that capacity is not a full-profile quality/performance qualification.
+
+Replacement does not delete old external bake directories, nor does it archive
+old native image pixels. Retain/pin old bake bundles or editable preparations when
+restoration is needed. It preserves the current adopted layout/original UVs and
+wind fields, and export retains revision, source and loss witnesses. Save the
+changed project; scene replacement retains the same cooperative rollback and
+crash-recovery limits as initial adoption.
 
 ## Blender to Godot
 

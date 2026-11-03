@@ -490,3 +490,8 @@ adopt_vegetation_bakes with a matching plan and explicit FRONT_PBR loss acceptan
 Private packed maps retain original UVs and numeric wind fields; default LOD
 export carries adoption/material/UV/loss witnesses. This does not certify animated
 LOD playback or an engine wind shader. See the design/render skill and manual.
+
+When revising adopted vegetation maps, explicit replace_existing retains prior
+optical/source lineage and the same geometry/UV/wind correspondence. It does not
+add animated LOD qualification. Use the design/render workflow for source refresh,
+map replacement, budgets and cleanup of retired private resources.

@@ -1,5 +1,54 @@
 # Local validation: 0.2.0
 
+## Guarded vegetation texture replacement and source lineage — 2026-11-03
+
+The final local FreeBSD/Blender 5.0.1 gate passed six tests in 72.96s: structured
+replacement with native fault/resource probes, portable claims/path/UV checks,
+native preparation regression and add-on import. An earlier four-test replacement
+gate passed in 89.60s, and a focused native probe confirmed two-role replacement,
+constant owned resource counts and retirement of all obsolete private images/
+materials. These are bounded functional results, not population-scale benchmarks.
+
+The MCP fixture disabled arbitrary execution, adopted leaf/reduced-wood maps,
+then prepared the current leaf PBR with EXISTING BakeUV and private image/AO copies.
+Structured IOR and multiplicative color-tint shader edits were refreshed and
+self-baked. The new map's mean green channel was below 80 percent of the original
+with unchanged UV coverage. Explicit replacement planning excluded the old maps
+from the final texture budget while reporting old-plus-staged peak base RGBA8.
+Inherited FRONT_PBR loss required acceptance even though the new source was simple
+PBR. The resulting second revision retained previous/adaptation/sampling bindings.
+The retained original preparation then restored the first verified map source as
+revision three, with matching original base-color PNG hash and unchanged UV count.
+Default replacement refusal remained active.
+
+The final profile survived removal of preparations and all source bake directories,
+save/reopen, GLB export and standalone validation after native profile removal.
+The shared prototype, canonical hierarchy/wind attributes, original/bake UVs,
+material inventories and inherited losses remained checked. Evidence under
+`/tmp/mb-vegetation-revisions-20261103` contains tinted.blend, the restored
+adopted.blend, delivery and pre-adoption actual worker inputs. Earlier evidence
+remains under the adoption/preparation folders documented below.
+
+Native tests injected failure after replacement swaps and restored exact IDs and
+the old LOD guard. Replacements through revisions two and three kept the owned ID
+count constant; fresh post-retirement guards matched returned guards. An external
+material referencing an adopted image blocked replacement and profile removal.
+Releasing the reference allowed private-resource cleanup while the independent
+preparation remained valid. Cleanup verifies against the intended retired IDs
+internally without relaxing normal public ownership checks. Remaining component
+resource dependencies are retained; external users are never silently detached.
+
+New optional version-one record fields bind source owners/revisions/ancestors,
+previous adoption hashes and inherited losses. Schema checks reject unaccepted
+inherited loss, missing previous revision bindings, invalid lineage and UV-channel
+mismatches. Ownership inventories are bounded at 512 IDs to accommodate all
+multi-level map resources; complete 512-ID/full-profile stress is not qualified by
+these small fixtures. Original source/bake files are not automatically archived or
+deleted. Peak estimates exclude other native/cache/driver allocations; physical
+optics, full-profile quality, mipmaps, shadow/runtime behavior, cards/impostors and
+collision remain open. Scene transactions do not provide crash/power-loss
+atomicity or replay. No installs, venvs, runtime/service changes or pushes occurred.
+
 ## Reusable vegetation bake UVs and shader-source refresh — 2026-11-03
 
 A four-test focused gate passed in 54.86s on local FreeBSD/Blender 5.0.1: the

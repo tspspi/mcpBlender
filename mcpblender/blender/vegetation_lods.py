@@ -40,17 +40,22 @@ def signature(owned):
     return botany.digest({'native':base,'baked_materials':{m.name:textures.material_signature(m,source=False) for m in sorted(private,key=lambda m:m.name)}})
 
 
-def inspect(p):
+def inspect(p,*,ignore_users=None):
     col=bpy.data.collections.get(p['lod_collection'])
     if not col or not isinstance(col.get(META),str) or len(col[META])>8*1024**2:raise ValueError('Owned botanical LODs not found or invalid metadata')
     meta=json.loads(col[META]);owned=set()
-    if meta.get('format')!=solver.FORMAT or not 1<=len(meta.get('owned',[]))<=128 or not isinstance(meta.get('owner'),str) or len(meta['owner'])!=32:raise ValueError('Invalid botanical LOD ownership')
+    if meta.get('format')!=solver.FORMAT or not 1<=len(meta.get('owned',[]))<=512 or not isinstance(meta.get('owner'),str) or len(meta['owner'])!=32:raise ValueError('Invalid botanical LOD ownership')
     for entry in meta['owned']:
         table=TABLES.get(entry['type']);value=getattr(bpy.data,table).get(entry['name']) if table else None
         if value is None or value.get(OWNER)!=meta['owner']:raise ValueError('Botanical LOD owned ID missing/renamed or ownership changed')
         owned.add(value)
     if len(owned)!=len(meta['owned']) or col not in owned:raise ValueError('Duplicate botanical LOD ownership')
-    blockers=[];users=bpy.data.user_map();embedded={v.node_tree for v in owned if isinstance(v,bpy.types.Material) and v.node_tree}
+    blockers=[];users=bpy.data.user_map();ignored=set(ignore_users or ())
+    # During staged replacement only the retiring IDs remain alive for rollback.
+    # Compute the guard of the post-retirement graph without ignoring other users.
+    ignored.update(v.node_tree for v in list(ignored) if isinstance(v,bpy.types.Material) and v.node_tree)
+    users={v:set(u)-ignored for v,u in users.items()}
+    embedded={v.node_tree for v in owned if isinstance(v,bpy.types.Material) and v.node_tree}
     for value in owned:
         if value.library or value.override_library or value.use_fake_user:blockers.append('Owned LOD data became linked/persistent: '+value.name)
         for user in users.get(value,set()):

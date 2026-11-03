@@ -17,11 +17,15 @@ def document():
 
 def test_witness_claims():
     assert schema.validate(document())==4096
-    for field in ('budget','uv','loss','optical','map'):
+    for field in ('budget','uv','loss','inherited_loss','revision','lineage','owners','optical','map'):
         r=copy.deepcopy(document())
         if field=='budget':r['rgba8_base_bytes']=0
         elif field=='uv':r['uv_witness']={}
         elif field=='loss':r['material_adapters']=[{'kind':'loss'}]
+        elif field=='inherited_loss':r['inherited_material_adapters']=[{'kind':'loss'}]
+        elif field=='revision':r['revision']=2
+        elif field=='lineage':r['preparation_owner']='invalid';r['preparation_revision']=0
+        elif field=='owners':r['source_preparation_owners']=['invalid']
         elif field=='optical':r['portable_optical_equivalence']=True
         else:r['maps'][0]['map']='THICKNESS'
         r['adoption_sha256']=botany.digest({k:v for k,v in r.items() if k!='adoption_sha256'})

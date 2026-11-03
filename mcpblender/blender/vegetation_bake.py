@@ -125,7 +125,7 @@ def inspect(p):
     col=bpy.data.collections.get(p['bake_collection'])
     if not col or not isinstance(col.get(META),str) or len(col[META])>4*1024**2:raise ValueError('Owned vegetation bake preparation not found')
     meta=json.loads(col[META]);owned=set()
-    if meta.get('format')!=FORMAT or not 1<=len(meta.get('owned',[]))<=128 or len(meta.get('owner',''))!=32:raise ValueError('Invalid vegetation bake ownership')
+    if meta.get('format')!=FORMAT or not 1<=len(meta.get('owned',[]))<=512 or len(meta.get('owner',''))!=32:raise ValueError('Invalid vegetation bake ownership')
     for entry in meta['owned']:
         table=TABLES.get(entry['type']);value=getattr(bpy.data,table).get(entry['name']) if table else None
         if value is None or value.get(OWNER)!=meta['owner']:raise ValueError('Owned bake ID missing/renamed or owner changed')

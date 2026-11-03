@@ -217,7 +217,7 @@ inspect_vegetation_bake_adoption takes lod_collection, bake_collection and entri
 of asset/directory. Review optical loss and budgets; accept_front_pbr=true is
 required for leaf approximations. Adopt with its expected_plan. Packed owned maps
 and prepared UVs then survive preparation/file removal and save/reopen. Original
-wind fields/UVs remain intact. Adopted roles currently refuse replacement. LOD
+wind fields/UVs remain intact. Adopted roles require explicit replace_existing=true for replacement. LOD
 export automatically carries material/loss/UV witnesses; this is not optical parity.
 
 For revisions on an already textured LOD, prepare with uv_strategy=EXISTING and
@@ -228,3 +228,13 @@ accepts supported material/frame edits with that expected_preparation and return
 a new initial bake fingerprint. It refuses frozen geometry/UV/attribute/placement
 changes; older preparations need recreation. Refresh updates the bake source,
 not the LOD's adopted maps. Keep the original source and re-bake with fresh guards.
+
+For an adopted texture revision, inspect/adopt with replace_existing=true, the
+new successful bake directories and the current plan guard. Final profile budgets
+exclude retired maps; inspect peak_rgba8_base_bytes separately. Retained original
+preparations and refreshed/current-PBR sources are supported when geometry/UVs
+match. FRONT_PBR acceptance remains required for inherited losses, even for a
+simple PBR rebake. Revisions preserve previous/source/optical lineage and retire
+only unused private resources; external references refuse. Keep old source/bake
+bundles if restoration is needed; replacement does not archive old pixels. Save
+and revalidate export. Repeated PBR rebakes can accumulate filtering loss.

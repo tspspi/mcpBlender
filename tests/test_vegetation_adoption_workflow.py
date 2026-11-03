@@ -64,18 +64,44 @@ def test_adopt_shared_leaf_and_reduced_wood_maps(assets_live):
             copy=(await client.call_tool('get_object_info',{'name':revision['components']['leaf-0']['name']})).data
             old_bake=revision['components']['leaf-0']['initial_bake_sha256']
             await tool(client,'configure_shader_node',material=copy['materials'][0],node={'name':'Surface','type':'ShaderNodeBsdfPrincipled','inputs':[{'socket':'IOR','value':1.7}]})
+            await tool(client,'configure_shader_node',material=copy['materials'][0],node={'name':'RevisionTint','type':'ShaderNodeMixRGB','properties':{'blend_type':'MULTIPLY'},'inputs':[{'socket':0,'value':1},{'socket':2,'value':[1,.2,.2,1]}]})
+            await tool(client,'connect_shader_nodes',material=copy['materials'][0],replace_existing=True,links=[{'from_node':'BASE_COLOR','from_socket':'Color','to_node':'RevisionTint','to_socket':1},{'from_node':'RevisionTint','from_socket':'Color','to_node':'Surface','to_socket':'Base Color'}])
             changed=await tool(client,'inspect_vegetation_bake',bake_collection='Revision');assert changed['content_changed']
             with pytest.raises(ToolError,match='stale'):
                 await tool(client,'refresh_vegetation_bake',bake_collection='Revision',expected_preparation=revision['preparation_sha256'])
             revision=await tool(client,'refresh_vegetation_bake',bake_collection='Revision',expected_preparation=changed['preparation_sha256'])
             assert revision['valid'] and revision['revision']==1 and revision['components']['leaf-0']['initial_bake_sha256']!=old_bake
             assert (await tool(client,'inspect_botanical_lods',lod_collection='Lods'))['lods_sha256']==state['lods_sha256']
+            row=revision['components']['leaf-0'];info=await tool(client,'inspect_texture_bake',**row['inspect_texture_bake'])
+            await client.call_tool('bake_textures',{'params':row['inspect_texture_bake']|{'expected_bake':info['bake_sha256'],'directory':'leaf-revision','width':64,'height':64,'samples':2,'margin':1,'maps':['BASE_COLOR','NORMAL','AO','ROUGHNESS','ALPHA']},'wait':True})
+            oldmaps=json.loads((root/'library/leaf-0/manifest.json').read_text())['maps'];newmaps=json.loads((root/'library/leaf-revision/manifest.json').read_text())['maps']
+            oldgreen=next(m for m in oldmaps if m['map']=='BASE_COLOR')['statistics']['mean'][1]
+            newgreen=next(m for m in newmaps if m['map']=='BASE_COLOR')['statistics']['mean'][1];assert newgreen<oldgreen*.8
+            replace={'lod_collection':'Lods','bake_collection':'Revision','entries':[{'asset':'leaf-0','directory':'leaf-revision'}],'replace_existing':True,'max_texture_bytes':plan['rgba8_base_bytes']}
+            with pytest.raises(ToolError,match='accept_front_pbr'):await wait(client,'inspect_vegetation_bake_adoption',**replace)
+            replace['accept_front_pbr']=True;newplan=await wait(client,'inspect_vegetation_bake_adoption',**replace)
+            assert newplan['replaced_assets']==['leaf-0'] and newplan['rgba8_base_bytes']==plan['rgba8_base_bytes']
+            oldrecord=state['baked_materials']['leaf-0'];state=await wait(client,'adopt_vegetation_bakes',**replace,expected_plan=newplan['plan_sha256'])
+            assert state['valid'] and state['baked_materials']['leaf-0']['revision']==2
+            assert state['baked_materials']['leaf-0']['previous_adoption_sha256']==oldrecord['adoption_sha256']
+            assert state['baked_materials']['leaf-0']['inherited_material_adapters'] and state['baked_materials']['leaf-0']['inherited_sampling_changes']
+            assert state['lods_sha256']==(await tool(client,'inspect_botanical_lods',lod_collection='Lods'))['lods_sha256']
+            await client.call_tool('save_blend',{'path':'tinted.blend'})
+            # An original retained preparation remains a valid source ancestor,
+            # even after a newer preparation was made from packed PBR materials.
+            restore={'lod_collection':'Lods','bake_collection':'Bake','entries':[{'asset':'leaf-0','directory':'leaf-0'}],'accept_front_pbr':True}
+            with pytest.raises(ToolError,match='replace_existing'):await wait(client,'inspect_vegetation_bake_adoption',**restore)
+            restore['replace_existing']=True;restoreplan=await wait(client,'inspect_vegetation_bake_adoption',**restore)
+            state=await wait(client,'adopt_vegetation_bakes',**restore,expected_plan=restoreplan['plan_sha256'])
+            assert state['valid'] and state['baked_materials']['leaf-0']['revision']==3
+            assert next(m['sha256'] for m in state['baked_materials']['leaf-0']['maps'] if m['map']=='BASE_COLOR')==next(m['sha256'] for m in oldrecord['maps'] if m['map']=='BASE_COLOR')
             await tool(client,'remove_vegetation_bake',bake_collection='Revision',expected_preparation=revision['preparation_sha256'])
             assert (await tool(client,'inspect_vegetation_bake',bake_collection='Bake'))['preparation_sha256']==preparation['preparation_sha256']
             # Remove the preparation and all external texture files. Owned packed
             # images, original UVs, wind fields and shared prototype identity survive.
             await tool(client,'remove_vegetation_bake',bake_collection='Bake',expected_preparation=preparation['preparation_sha256'])
             for entry in entries:shutil.rmtree(root/'library'/entry['directory'])
+            shutil.rmtree(root/'library/leaf-revision')
             await client.call_tool('save_blend',{'path':'adopted.blend'})
             await client.call_tool('open_blend',{'path':'adopted.blend'})
             state=await tool(client,'inspect_botanical_lods',lod_collection='Lods');assert state['valid']
@@ -84,7 +110,7 @@ def test_adopt_shared_leaf_and_reduced_wood_maps(assets_live):
             exported=await wait(client,'export_botanical_lods',lod_collection='Lods',expected_lods=state['lods_sha256'],directory='delivery')
             assert len(exported['proof']['assets'])==5 and exported['proof']['shared_leaf_templates']==1
             semantic=json.loads((root/'library/delivery/semantics.json').read_text());manifest=json.loads((root/'library/delivery/manifest.json').read_text())
-            assert semantic['baked_materials']['leaf-0']['material_adapters']
+            assert semantic['baked_materials']['leaf-0']['inherited_material_adapters']
             for role in ('leaf-0','lod-1-wood'):
                 delivery=manifest['material_delivery'][role]
                 assert len(delivery['images'])>=3 and all(m['encoded'].get('occlusionTexture') and m['encoded'].get('normalTexture') for m in delivery['materials'])
@@ -116,8 +142,8 @@ else:raise AssertionError('Map packing cancellation missed')
 bridge.report_progress=lambda v:None
 assert set(bpy.data.user_map())==before and lods.inspect(p)[-1]['lods_sha256']==guard
 inspect=lods.inspect
-def fail_after_swap(p):
-    result=inspect(p)
+def fail_after_swap(p,**kwargs):
+    result=inspect(p,**kwargs)
     if result[-1]['baked_materials']:raise RuntimeError('fault after swaps')
     return result
 lods.inspect=fail_after_swap
@@ -138,9 +164,30 @@ assert set(bpy.data.user_map())==before
 # private to the adopted profile and do not depend on preparation lifetimes.
 image.write_bytes(original)
 state=adoption.adopt(p);assert state['valid']
+# Replacement rollback protects existing maps too, then repeated replacement
+# retires obsolete private resources without growing the owned ID inventory.
+p['replace_existing']=True;plan=adoption.plan(p)[-1];p['expected_plan']=plan['plan_sha256']
+ids=set(bpy.data.user_map());guard=lods.inspect(p)[-1]['lods_sha256'];count=len(lods.inspect(p)[1])
+def fail_replacement(p,**kwargs):
+    result=inspect(p,**kwargs)
+    if any(r.get('revision',1)>1 for r in result[-1]['baked_materials'].values()):raise RuntimeError('replacement fault')
+    return result
+lods.inspect=fail_replacement
+try:adoption.adopt(p)
+except RuntimeError as e:assert str(e)=='replacement fault'
+else:raise AssertionError('Replacement rollback missed')
+lods.inspect=inspect
+assert set(bpy.data.user_map())==ids and lods.inspect(p)[-1]['lods_sha256']==guard
+for revision in (2,3):
+    p['expected_plan']=adoption.plan(p)[-1]['plan_sha256'];state=adoption.adopt(p)
+    assert state['valid'] and all(r['revision']==revision for r in state['baked_materials'].values())
+    assert len(lods.inspect(p)[1])==count and state['lods_sha256']==lods.inspect(p)[-1]['lods_sha256']
 col,owned,meta,state=lods.inspect(p);private=next(v for v in owned if isinstance(v,bpy.types.Image))
 foreign=bpy.data.materials.new('Foreign');foreign.use_nodes=True;foreign.node_tree.nodes.new('ShaderNodeTexImage').image=private
 state=lods.inspect(p)[-1];assert state['ownership_blockers']
+try:adoption.plan(p)
+except ValueError as e:assert 'Valid unchanged' in str(e)
+else:raise AssertionError('Externally referenced maps replaced')
 try:lods.dispatch('remove_botanical_lods',{'lod_collection':'Lods','expected_lods':state['lods_sha256']})
 except ValueError as e:assert 'ownership' in str(e)
 else:raise AssertionError('External image dependency deleted')

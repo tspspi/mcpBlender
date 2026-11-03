@@ -8,7 +8,7 @@ from mcpblender import botany,texture_files,vegetation_adoption as schema
 from mcpblender.package_files import image_info
 from . import vegetation_bake as preparation,vegetation_lods as lods,vegetation_materials as materials,textures,assemblies
 
-COMMANDS={'inspect_vegetation_bake_adoption','adopt_vegetation_bakes'}
+COMMANDS={'inspect_vegetation_bake_adoption','adopt_vegetation_bakes','inspect_vegetation_delivery'}
 
 
 def bundle(directory,component,limits):
@@ -148,4 +148,10 @@ def adopt(p):
         bpy.context.view_layer.update()
 
 
-def dispatch(command,p):return plan(p)[-1] if command=='inspect_vegetation_bake_adoption' else adopt(p)
+def dispatch(command,p):
+    if command=='inspect_vegetation_delivery':
+        col,owned,meta,state=lods.inspect(p)
+        if not state['valid']:raise ValueError('Valid unchanged native LOD profile required')
+        report=schema.delivery(meta.get('baked_materials',{}),list(materials.lod_objects(col,meta)),p['required_maps'],p['min_texture_size'],p['max_texture_bytes'],p['max_mip_bytes'])
+        return report|{'lod_collection':col.name,'lods_sha256':state['lods_sha256'],'levels':len(meta['levels']),'shared_leaf_templates':meta['prototypes']}
+    return plan(p)[-1] if command=='inspect_vegetation_bake_adoption' else adopt(p)

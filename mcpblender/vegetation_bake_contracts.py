@@ -71,3 +71,18 @@ COMMANDS.update({
  'inspect_vegetation_bake_adoption':(Adoption,(),'Plan guarded adoption of successful source-bound texture-bake PNGs and prepared UVs into matching native LOD components. Verify files, source/material correspondence, optical-loss acceptance and base RGBA8 budget. No scene edits or native file import.'),
  'adopt_vegetation_bakes':(Adopt,('allow_scene_edit',),'Guardedly adopt a checked batch of baked PBR maps/UVs into unchanged owned LOD components. Preserve geometry, wind fields and original UVs; pack privately owned images and retain loss/source witnesses. Requires explicit acceptance for FRONT_PBR leaves. Replacing adopted roles requires explicit replace_existing; preserve inherited optical losses and retire only unused private resources.'),
 })
+
+
+class Delivery(Model):
+    lod_collection: SafeName
+    required_maps: list[Literal['NORMAL','AO','BASE_COLOR','ROUGHNESS','METALLIC','EMISSION','ALPHA']] = Field(default=['BASE_COLOR','NORMAL','AO','ROUGHNESS','METALLIC','ALPHA'],min_length=1,max_length=7)
+    min_texture_size: int = Field(default=128,strict=True,ge=32,le=4096)
+    max_texture_bytes: int = Field(default=64*1024**2,strict=True,ge=4096,le=512*1024**2)
+    max_mip_bytes: int = Field(default=96*1024**2,strict=True,ge=4096,le=768*1024**2)
+    @model_validator(mode='after')
+    def maps(self):
+        if len(self.required_maps)!=len(set(self.required_maps)):raise ValueError('Choose distinct required maps')
+        return self
+
+
+COMMANDS['inspect_vegetation_delivery']=(Delivery,(),'Inspect every native LOD wood/shoot and shared leaf template for adopted-map coverage, requested map/resolution gaps, optical omissions and whole-profile source-map base/full-mipmap RGBA8 estimates. Returns complete only for these declared file/material criteria, not visual or engine qualification.')

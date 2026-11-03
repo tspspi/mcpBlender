@@ -1,5 +1,54 @@
 # Local validation: 0.2.0
 
+## Complete mapped-profile coverage and mip-budget inspection — 2026-11-04
+
+The final regenerated workflow gate passed 11 tests in 107.76s on local FreeBSD/
+Blender 5.0.1, after the strength-aware emission correction. It covered the full
+MCP profile workflow, source paths/claims/UV and encoding conventions, read-only
+policy/discovery, capabilities and add-on import. A later six-test pure convention
+gate passed in 7.25s, including unknown extra emission outside the required map set.
+Earlier full-profile gates passed 1 test in 180.77s and 10 tests in 211.62s; their
+initial render review found the emission bug described below. Final claims here
+refer to the regenerated strength-aware assets.
+
+The 5 m sparse fixture has four native LOD levels and three shared leaf templates:
+eight wood/shoot components plus three templates. All eleven received seven maps
+(BASE_COLOR/NORMAL/AO/ROUGHNESS/METALLIC/EMISSION/ALPHA), 64x64, two samples. Every
+fixture source had zero emission strength; all final emission-map RGB maxima were
+zero. The packed profile contains 137 owned IDs, exercising the capacity above
+128. All temporary preparation and bake inputs were removed before save/reopen,
+export, native profile removal and independent validation of all eleven assets.
+Canonical hierarchy/fields, shared-template identity, original/bake UVs, material/
+image inventories and source optical-loss records remained checked. Export
+operation storage data reported free bytes and available space after reserve.
+
+`inspect_vegetation_delivery` initially reported eleven missing components. After
+adoption it passed an explicit 64-pixel/seven-map target with 1261568 source base
+RGBA8 bytes and 1681988 bytes for full floor-halved mip chains. A 128-pixel target
+reported all eleven resolution gaps; a mip limit one byte below the estimate
+failed the budget. Pure tests cover non-power-of-two chains, partial coverage,
+missing channels, and legacy emission convention gaps. Counts treat each source
+component/map separately; exporter channel packing, compression, GPU allocation,
+Blender caches and mip generation are outside the model. Inspection is read-only.
+
+Additional MCP review rendered the full and most reduced levels at 320x256 with
+eight Cycles samples and unchanged preview lighting before/after the emission fix.
+The original white glow was traced to the bad emission maps; corrected previews
+show brown bark and green leaves. Packed image inspection independently confirmed
+black emission maps. Evidence under `/tmp/mb-full-profile-20261104` includes the
+editable packed profile, delivery, coverage.json, both level PNGs/render operation
+records and before-strength-fix views. Independent native inspection counted 137
+owned IDs. The sparse, small-map fixture is not a realistic mature-oak or final
+texture-quality qualification. The stronger default-size wood-UV case is documented
+separately below and does not supply those missing visual claims.
+
+Coverage `complete` means only expected components, required maps/resolution,
+known emission convention and declared input-memory budgets pass. Physical
+transmission/thickness, lightmap UV2, padding/filtering/texel density, front/back
+lighting parity, animated/engine LOD behavior, population performance, cards/
+impostors/collision and a mature-oak visual fixture remain open. No packages,
+virtual environments, installed runtime/service changes, tags or pushes occurred.
+
 ## Strength-aware emission maps — 2026-11-04
 
 Full-profile render review exposed unwanted white glow. Packed BASE_COLOR images

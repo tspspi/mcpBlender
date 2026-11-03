@@ -54,3 +54,31 @@ def verify(root,records,assets):
         used={p['material'] for mesh in doc['meshes'] for p in mesh['primitives'] if 'material' in p}
         infos=[spec for i in used for spec in texture_infos(doc['materials'][i])]
         if not infos or any(spec.get('extensions',{}).get('KHR_texture_transform',{}).get('texCoord',spec.get('texCoord',0))!=channel for spec in infos):raise ValueError('Encoded baked vegetation textures do not use the adopted UV channel')
+
+
+def mip_bytes(width,height):
+    total=0
+    while True:
+        total+=width*height*4
+        if width==height==1:return total
+        width=max(1,width//2);height=max(1,height//2)
+
+
+def delivery(records,assets,required_maps,min_texture_size,max_texture_bytes,max_mip_bytes):
+    if not assets or len(set(assets))!=len(assets) or not set(records)<=set(assets):raise ValueError('Invalid vegetation delivery component inventory')
+    if not required_maps or len(set(required_maps))!=len(required_maps) or not set(required_maps)<=MAPS:raise ValueError('Invalid vegetation delivery required maps')
+    missing=[asset for asset in assets if asset not in records];map_gaps={};resolution_gaps={};encoding_gaps={};base=0;mips=0;losses=set();sampling=[]
+    for asset,record in records.items():
+        base+=validate(record);mips+=sum(mip_bytes(m['width'],m['height']) for m in record['maps'])
+        if any(m['map']=='EMISSION' for m in record['maps']) and record.get('emission_encoding')!=EMISSION_ENCODING:encoding_gaps[asset]=['EMISSION_RADIANCE_CONVENTION']
+        gaps=sorted(set(required_maps)-{m['map'] for m in record['maps']})
+        if gaps:map_gaps[asset]=gaps
+        small=[{'map':m['map'],'size':[m['width'],m['height']]} for m in record['maps'] if m['map'] in required_maps and min(m['width'],m['height'])<min_texture_size]
+        if small:resolution_gaps[asset]=small
+        for adapter in record['material_adapters']+record.get('inherited_material_adapters',[]):losses.update(adapter.get('omitted_features',[]))
+        if record.get('source_sampling_changes') or record.get('inherited_sampling_changes'):sampling.append(asset)
+    budget={'rgba8_base_bytes':base,'rgba8_full_mip_bytes':mips,'max_texture_bytes':max_texture_bytes,'max_mip_bytes':max_mip_bytes,'passed':base<=max_texture_bytes and mips<=max_mip_bytes,
+            'scope':'All adopted source map inputs counted separately per component, with a full floor-halved mip chain to 1x1. No cross-component deduplication, encoded-channel packing, compression, Blender cache or GPU allocation model.'}
+    return {'complete':not missing and not map_gaps and not resolution_gaps and not encoding_gaps and budget['passed'],'expected_assets':assets,'adopted_assets':sorted(records),'missing_assets':missing,'missing_maps':map_gaps,'resolution_gaps':resolution_gaps,'map_encoding_gaps':encoding_gaps,
+            'required_maps':required_maps,'min_texture_size':min_texture_size,'budget':budget,'optical_omissions':sorted(losses),'sampling_changed_assets':sorted(sampling),
+            'scope':'Adopted input-map coverage and declared resolution/memory criteria. Not visual texture quality, physical optics, shadow/filtering, receiving-engine or animated LOD qualification.'}

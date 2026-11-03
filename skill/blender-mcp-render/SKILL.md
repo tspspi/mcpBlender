@@ -244,3 +244,12 @@ overlapping face charts. Review repaired_uv_faces; max_uv_repairs=0 refuses repa
 default 64, maximum 256. Existing source UVs and explicit EXISTING layouts are
 preserved. A clear exact overlap check is not a texel-density, padding/filtering
 or visual-quality guarantee. Native packing still has coarse cancellation limits.
+
+Before delivering a textured vegetation profile, inspect_vegetation_delivery
+checks every level's wood/shoot mesh and each shared leaf template. Choose the
+required maps, min_texture_size and base/full-mipmap RGBA8 budgets explicitly.
+Review missing_assets, missing_maps, resolution_gaps, optical_omissions and sampling
+changes. complete means only these declared coverage/resolution/input-budget
+criteria passed; it does not certify visual quality, padding/filtering, UV2,
+physical optics, engine shaders or animated LOD behavior. Export/validate files
+separately and review representative renders at the intended quality target.

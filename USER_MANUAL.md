@@ -3944,6 +3944,39 @@ wind fields, and export retains revision, source and loss witnesses. Save the
 changed project; scene replacement retains the same cooperative rollback and
 crash-recovery limits as initial adoption.
 
+### Check full-profile textured delivery coverage
+
+`inspect_vegetation_delivery` reads a valid native `lod_collection` and reports
+all expected per-level wood/shoot components plus each shared leaf template.
+`required_maps` defaults to BASE_COLOR, NORMAL, AO, ROUGHNESS, METALLIC and ALPHA;
+include EMISSION when that channel is part of the intended delivery. The result
+lists `missing_assets`, per-component `missing_maps`, `resolution_gaps`,
+`map_encoding_gaps`, optical
+omissions and source-sampling-change roles, along with the current LOD guard.
+It does not edit the scene and is available under read-only scene policy.
+
+`min_texture_size` defaults to 128 and applies to both dimensions of every required
+map. `max_texture_bytes` defaults to 64 MiB for all adopted input images' base RGBA8
+estimate, including maps beyond the required set. `max_mip_bytes` defaults to
+96 MiB for hypothetical full mip chains: floor-halve each dimension to at least
+one until 1x1, summing four bytes per pixel at each level. Rectangular/non-power-of-
+two sizes use that same explicit rule. Counts are per source component/map; they
+do not assume cross-component deduplication, exporter channel packing, driver
+compression, runtime allocation or Blender cache behavior. No mip images are
+created by inspection.
+
+`complete=true` means every expected component has valid adopted records, every
+requested map/resolution is present, emission conventions are known, and these
+declared budgets pass. Legacy emission without the strength-aware convention
+creates an encoding gap, including extra emission maps outside the required set. It does not
+mean visual quality, padding/filtering, physical optics, lightmap UV2, shadow
+behavior, animation or receiving-engine qualification. Source loss declarations
+remain visible even when coverage is complete. Use a stricter resolution/budget
+request to check a different delivery target rather than reinterpreting a small
+fixture as production quality. Export still checks actual byte/storage limits and
+independently decodes the resulting field/UV/material buffers; input estimates
+are not actual encoded GLB/GPU memory measurements.
+
 ## Blender to Godot
 
 Use Blender for modeling, materials, UVs, rigging and animation; export selected

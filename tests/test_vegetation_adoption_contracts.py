@@ -41,7 +41,7 @@ def test_paths_and_policy(tmp_path):
     assert State.input_paths('adopt_vegetation_bakes',values)==['bundle']
     async def run():
         async with Client(server) as client:
-            names={t.name for t in await client.list_tools()};assert 'inspect_vegetation_bake_adoption' in names and 'adopt_vegetation_bakes' not in names
+            names={t.name for t in await client.list_tools()};assert {'inspect_vegetation_bake_adoption','inspect_vegetation_delivery'}<=names and 'adopt_vegetation_bakes' not in names
     asyncio.run(run())
 
 
@@ -60,3 +60,29 @@ def test_exported_uv_binding(tmp_path,monkeypatch):
     doc['materials'][0]['normalTexture']['texCoord']=1
     d=json.loads(path.read_text());d['witness']['uvs'][1][0]=[.1,.1];path.write_text(json.dumps(d))
     with pytest.raises(ValueError,match='UVs differ'):schema.verify(tmp_path,{'leaf-0':record},['leaf-0'])
+
+
+def test_profile_coverage_and_exact_mipmap_budgets():
+    r=document();report=schema.delivery({'leaf-0':r},['wood','leaf-0'],['NORMAL','AO'],64,4096,4096)
+    assert not report['complete'] and report['missing_assets']==['wood'] and report['missing_maps']=={'leaf-0':['AO']} and report['resolution_gaps']
+    assert report['budget']['rgba8_base_bytes']==4096 and report['budget']['rgba8_full_mip_bytes']==5460 and not report['budget']['passed']
+    report=schema.delivery({'leaf-0':r},['leaf-0'],['NORMAL'],32,4096,5460)
+    assert report['complete']
+    assert schema.mip_bytes(3,5)==4*(15+2+1)
+
+
+def test_legacy_emission_requires_known_radiance_convention():
+    record=document();record['maps'][0]['map']='EMISSION';record['maps'][0]['color_space']='sRGB'
+    record['adoption_sha256']=botany.digest({k:v for k,v in record.items() if k!='adoption_sha256'})
+    result=schema.delivery({'leaf-0':record},['leaf-0'],['EMISSION'],32,4096,6000)
+    assert not result['complete'] and result['map_encoding_gaps']=={'leaf-0':['EMISSION_RADIANCE_CONVENTION']}
+    record['emission_encoding']=schema.EMISSION_ENCODING;record['adoption_sha256']=botany.digest({k:v for k,v in record.items() if k!='adoption_sha256'})
+    assert schema.delivery({'leaf-0':record},['leaf-0'],['EMISSION'],32,4096,6000)['complete']
+
+
+def test_unrequested_legacy_emission_still_flags_material_gap():
+    record=document();extra=dict(record['maps'][0])|{'map':'EMISSION','color_space':'sRGB'}
+    record['maps'].append(extra);record['rgba8_base_bytes']*=2
+    record['adoption_sha256']=botany.digest({k:v for k,v in record.items() if k!='adoption_sha256'})
+    report=schema.delivery({'leaf-0':record},['leaf-0'],['NORMAL'],32,8192,12000)
+    assert not report['complete'] and not report['missing_maps'] and report['map_encoding_gaps']

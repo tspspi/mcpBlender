@@ -1,5 +1,66 @@
 # Local validation: 0.2.0
 
+## Owned vegetation bake preparation — 2026-11-03
+
+A four-test gate passed locally on FreeBSD/Blender 5.0.1 in 49.99s: native owned
+preparation/sampling/lifecycle checks, an MCP workflow with arbitrary execution
+disabled, and source-policy/discovery checks. Native tests prepared all five
+small-tree components plus selected reduced-LOD wood/shared-leaf components.
+Original mesh/material signatures, UV coordinates, source guards, native ID sets
+and selection were preserved. Missing source UVs refused without allocations;
+explicit BAKE_LAYOUT generated copy-only sampling and recorded affected consumers.
+Stale plans refused. Injected cancellation after actual UV work restored exact
+native IDs/selection. Independent copies survived original tree/LOD removal,
+save/reopen and guarded cleanup; an externally shared mesh blocked deletion.
+
+Additional preservation checks compared source geometry/topology, corner normals,
+material indices, texture space, original UV hashes and every original public
+attribute after native UV generation. All-false native sharp-face/edge layers may
+be omitted by BMesh; the equivalent dense default layers are restored before
+comparison. A nonuniform parent and rotated root exercised inherited shear. The
+native preparation and opacity-masked procedural-pixel MCP gate passed together
+in 74.30s. Persistent original materials were copied without propagating their
+fake-user persistence to owned copies. The final standard-worker affine bake and existing high-to-low regression passed
+together in 89.16s (two tests). The reopened baked wood's world matrix matched
+the sheared source within 1e-6. The high-to-low fixture retained projection
+coverage, all seven maps, native bundle validation, embedded-texture GLB export
+and rendered-preview checks. A separate policy/capability/add-on import gate
+passed seven tests in 23.63s. Affine snapshot preservation applies to the standard
+texture worker; the separate atlas worker was unchanged and is not qualified
+for sheared source placement by these checks.
+
+Implicit image and Texture Coordinate UV links were pinned to the original BarkUV
+on private materials, while original graphs stayed untouched. Existing named UVs
+were retained alongside the new BakeUV. The existing baker independently required
+unit-tile, nondegenerate, complete nonoverlapping target UVs. Edit-mode UV operators
+rebuild CustomData: holding and writing a pre-edit layer wrapper caused native save
+crashes during development. Preparation now reacquires the layer after the native
+operation; the final native and MCP save/reopen sequences passed. This is a local
+regression result, not general crash-free operation qualification.
+
+The MCP fixture configured procedural OAK_BARK/OAK_LEAF detail, selected wood and
+one shared leaf variant, removed the original tree, saved/reopened the preparation,
+and baked BASE_COLOR/NORMAL/ROUGHNESS/ALPHA through the existing isolated worker.
+Both 64x64, two-sample bundles retained map statistics and actual procedural color
+variation. The leaf bundle recorded the FRONT_PBR optical omissions; bark needed
+no thin-leaf adapter. Bake operations left the preparation guard unchanged. After
+guarded native-copy removal, both baked asset.blend files reopened and passed
+native bundle validation. Evidence is retained under the local
+`/tmp/mb-vegetation-bake-20261103` directory, including prepared.blend and both
+map/editable-asset bundles. Small maps and sample counts qualify plumbing and file
+binding, not final visual delivery quality.
+
+Generated missing source coordinates are an explicit appearance change, not a
+proof of source shader parity. Automatic adoption into native LOD profiles/bundle
+exports, full-tree texture quality/budgets, physical optical calibration, filtering/
+shadow/runtime behavior, cards/impostors and engine delivery remain open. An edited
+preparation is reported as changed; unsupported shader/image edits can require
+operator review before safe inspection/cleanup. Source-backed images stay shared
+and are never deleted by preparation cleanup. Smart projection runs on Blender's
+main thread with cancellation boundaries between components. Storage checks and
+worker cancellation/recovery come from the existing baker; preparation itself
+writes no files. No installation, venv, runtime/service changes or pushes occurred.
+
 ## Vegetation source material contracts and encoded inventories — 2026-11-03
 
 Read-only `inspect_vegetation_materials` and opt-in parameter delivery are qualified

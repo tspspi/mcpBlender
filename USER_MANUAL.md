@@ -3703,6 +3703,70 @@ thin leaves, suitable nonoverlapping target UVs and its recorded optical omissio
 Preparing owned vegetation copies with those bake UVs and integrating the results
 into these bundles remain separate work.
 
+## Owned vegetation bake preparation
+
+Use `inspect_vegetation_bake_source` with exactly one `collection` (tree) or
+`lod_collection` (native LOD profile). The optional `assets` list selects returned
+roles such as `wood`, `shoots`, `leaf-0`, or `lod-1-wood`; omit it to inspect all.
+The plan records source geometry/material/UV witnesses, available roles, per-node
+UV consumers, corner and estimated-copy-memory budgets, and `plan_sha256`.
+It requires valid local static base meshes without modifiers or shape keys and a
+fresh target `uv_map` name (default `BakeUV`). Original UVs are retained; the target
+uses an additional channel and does not reserve UV2 for any other purpose.
+
+Pass the same options, `expected_plan` and a fresh `bake_collection` to
+`prepare_vegetation_bake`. This defaults to a tracked asynchronous operation.
+Poll the original operation. Preparation creates independent mesh/material copies,
+smart-projects the new map, and requires the existing baker's complete clear
+overlap check, nondegenerate islands and unit-tile bounds to pass. It preserves
+geometry, numeric attributes, original UV coordinates and physical placement.
+The full affine placement, including inherited shear, is retained under an
+independent placement anchor. Source selection, active object and UV selection
+settings are restored. Copies
+are excluded from renders by default; the isolated bake worker enables its own
+frozen target. Preparation itself writes no images or files.
+
+Before activating the bake map, copied materials pin implicit image/Texture
+Coordinate UV inputs, empty UV-map names and tangent normal-map coordinates to
+the original source render map. Original materials remain untouched. External
+instancer UV sampling and linked implicit Geometry Tangent output refuse, because
+their sampling cannot be retained by these independent copies. Supported static
+graph/image limits match `inspect_texture_bake`. When pinning changes a copied
+managed procedural graph, its editable-detail marker is removed; the original
+recipe remains in the source witness. The managed thin-leaf adapter marker stays
+available for explicit FRONT_PBR conversion.
+
+Missing named source UVs refuse by default (`missing_uv_policy="REFUSE"`). For
+example, a shared bark material may request BarkUV on shoots or leaf petioles
+that have no BarkUV layer. Explicit `missing_uv_policy="BAKE_LAYOUT"` redirects
+only those missing consumers on the copies to the new layout. This deliberately
+changes their source sampling and may change their appearance. The plan/result
+records every affected asset/material/node under `source_sampling_changes`.
+Existing source UVs continue to be sampled unchanged. Choose this policy before
+obtaining the plan guard; changing it requires reinspection.
+
+`inspect_vegetation_bake` returns `components`, each containing ready-to-use
+`inspect_texture_bake` arguments. Inspect that component for a fresh bake guard,
+then call `bake_textures` with those arguments plus `expected_bake`, a new output
+`directory`, map list and texture/sample/byte limits. Managed leaf components
+return `thin_foliage_mode="FRONT_PBR"`; retain that explicit mode and its optical
+omission metadata. This reuses the existing isolated worker, cancellation,
+storage progress, recovery and file-bundle validation workflow. The standard
+texture worker also retains an independent affine placement anchor in its baked
+asset; it does not flatten inherited shear into transform channels. The initial bake
+fingerprint in the preparation is a convenience witness; reinspection accounts
+for subsequent frame/material edits. Bake maps are ordinary PBR approximations,
+not a native front/back/translucent optical shader.
+
+Preparations survive source deletion and save/reopen. Guarded
+`remove_vegetation_bake` takes `expected_preparation` from a fresh inspection and
+removes only its owned collection, objects, meshes and private materials. Foreign
+members, external references and persistent/linked owned IDs block deletion.
+Changed owned content can be inspected for a current cleanup guard; it is not
+silently used as an unchanged preparation. Baked file bundles remain independent.
+Automatic adoption of baked maps/UVs into botanical LOD profiles and shared-template
+bundle exports is separate work; keep the prepared .blend and each baked asset.
+
 ## Blender to Godot
 
 Use Blender for modeling, materials, UVs, rigging and animation; export selected

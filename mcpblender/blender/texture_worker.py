@@ -9,6 +9,7 @@ from array import array
 
 sys.path.insert(0,str(Path(__file__).resolve().parents[2]))
 import bpy
+from mathutils import Matrix
 from mcpblender.blender import textures
 from mcpblender.blender.assets import finished
 from mcpblender.texture_files import write_json,read_json,manifest
@@ -39,11 +40,15 @@ def main():
         obj=bpy.data.objects[name];ev=obj.evaluated_get(deps)
         data=bpy.data.meshes.new_from_object(ev,preserve_all_data_layers=True,depsgraph=deps)
         frozen.append((obj,data,ev.matrix_world.copy()))
+    # A plain matrix_world assignment decomposes and loses inherited shear.
+    # Preserve each evaluated affine transform under an independent identity anchor.
+    anchor=bpy.data.objects.new('MCP_BakePlacement',None);bpy.context.scene.collection.objects.link(anchor)
     for obj,data,matrix in frozen:
-        obj.modifiers.clear();obj.constraints.clear();obj.animation_data_clear();obj.parent=None;obj.data=data;obj.matrix_world=matrix
+        obj.modifiers.clear();obj.constraints.clear();obj.animation_data_clear();obj.parent=anchor;obj.data=data
+        obj.matrix_parent_inverse=matrix;obj.matrix_basis=Matrix.Identity(4)
         obj.hide_render=False;obj.hide_viewport=False;obj.hide_set(False);obj.hide_select=False
     for obj in list(bpy.data.objects):
-        if obj.name not in names:bpy.data.objects.remove(obj,do_unlink=True)
+        if obj.name not in names and obj!=anchor:bpy.data.objects.remove(obj,do_unlink=True)
     bpy.context.view_layer.update()
     low=bpy.data.objects[job['name']]
     low.data.uv_layers.active=low.data.uv_layers[job['uv_map']];low.data.uv_layers[job['uv_map']].active_render=True
@@ -163,7 +168,7 @@ def main():
     low.data.materials.clear();low.data.materials.append(mat)
     for face in low.data.polygons:face.material_index=0
     for obj in list(bpy.data.objects):
-        if obj!=low:bpy.data.objects.remove(obj,do_unlink=True)
+        if obj!=low and obj!=anchor:bpy.data.objects.remove(obj,do_unlink=True)
     low[textures.BINDING]=job['job_id']
     finished(bpy.ops.wm.save_as_mainfile(filepath=str(root/'asset.blend'),check_existing=False,relative_remap=False))
     saved={'version':1,'job_id':job['job_id'],'source':job['expected_bake'],'name':low.name,'material':mat.name,'maps':maps,'projection':projection,'blender_version':bpy.app.version_string,'asset_sha256':textures.output_signature(low.name),'material_adapters':source_info.get('material_adapters',[])}

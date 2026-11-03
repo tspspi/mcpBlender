@@ -481,3 +481,18 @@ check actual encoded material/texture inventories; their base RGBA8 estimate
 excludes mipmaps and runtime allocations. No maps or physical thickness are created.
 Use the existing isolated FRONT_PBR bake workflow for portable maps; source
 parameters do not establish optical parity. See USER_MANUAL.md for the contract.
+
+For portable vegetation map preparation, inspect_vegetation_bake_source on a tree
+or native LOD profile, optionally choosing asset roles. Use its plan_sha256 as
+expected_plan for prepare_vegetation_bake with identical options and a fresh
+bake_collection. Poll that operation. Copies preserve source geometry/UVs and pin
+shader sampling before adding verified BakeUV. Missing source UVs refuse by
+default; BAKE_LAYOUT is an explicit copy-only sampling change, recorded per node.
+Review source_sampling_changes before choosing that fallback. Existing UV maps
+stay unchanged. Preparation writes no images. For each returned component, pass
+its inspect_texture_bake arguments to that inspector, then bake_textures with the
+fresh guard, directory, map/texture limits and the returned explicit FRONT_PBR
+mode for leaves. Keep its optical omissions. Prepared copies survive source
+removal and save/reopen; inspect/remove_vegetation_bake guard owned cleanup and
+preserve file bundles. Automatic PBR adoption into botanical LOD exports is still
+separate; read USER_MANUAL.md for ownership, UV and sampling limits.

@@ -1,5 +1,49 @@
 # Local validation: 0.2.0
 
+## Portable hierarchical wind preparation — 2026-11-03
+
+`inspect_botanical_wind`, `sample_botanical_wind` and `export_botanical_wind`
+introduce a standard-library motion model over valid managed botanical masters.
+It compiles explicit seeded spatial/temporal world-metre waves, applies
+parent-first anchored segment rotations and rigid branch-attached leaf flutter,
+and reports a conservative all-time rotation bound. Root translation/proper
+rotation/positive uniform physical scale are captured from the evaluated source;
+admitted float32 rotation roundoff is fitted to an orthonormal basis and reported.
+The source geometry, frame and native IDs remain unchanged.
+
+The final math/policy/native/MCP/capability/addon gate passed **9 tests in 36.05
+seconds**. Known field phases have independent answers; canonical settings and
+seeds reproduce explicit waves. Branch endpoint distances, connected starts,
+fixed root and orthonormal rotations are checked from returned coordinates and
+matrices. Leaf rotations preserve point distances; a globally zero field returns
+the rest centerline and zero flutter. Tests exercise time variation, rotation
+budgets, finite/type/time/placement limits and cooperative sampling cancellation.
+
+The native centimetre fixture uses a translated, rotated, uniformly resized tree
+with foliage. It verifies metre placement, unchanged source guard/native-ID set,
+root matrix and frame, all-branch length/junction/root metrics, and refusal of
+nonuniform placement. Sidecar cancellation after the owned temporary file is
+written preserves an existing destination and a foreign conventional `.tmp` file;
+the owned temporary is removed. Stale guards and byte limits refuse before
+publication; the valid JSON retains model, explicit waves and leaf/shoot data.
+
+With arbitrary Python tools disabled, the structured 5m fixture has 37 branches
+and 28 leaves. Sampling at −.5, .2 and 1.5 seconds gives maximum endpoint
+displacements approximately .0783, .0818 and .0989m, with cumulative rotations
+approximately 2.19, 2.20 and 2.91 degrees. Model segment-length errors are below
+1e-12m and junction/root errors are zero. Paged responses stay bounded while
+metrics cover every branch. The exported JSON replays the sampled coordinates;
+inspection/export avoid mutation checkpoints. Both bundled design/animation
+skills validate and whitespace checks pass. Evidence is local under
+`/tmp/mb-wind-20261103`. These are focused checks, not a fresh full-project run.
+
+This milestone qualifies portable kinematics and guarded semantic publication.
+The field is sampled at undeformed world anchors; parent animation is frozen.
+Stiffness/response are artistic controls. Native deformation/animation, tube-surface
+strain, collision, rendered wind appearance, GLB attribute packing and runtime
+shader parity remain open. No packages, installed runtime/service or user Blender
+session were changed.
+
 ## Verified-bundle PBR atlases — 2026-11-03
 
 `inspect_texture_atlas` / `build_texture_atlas` now pack successful original bake

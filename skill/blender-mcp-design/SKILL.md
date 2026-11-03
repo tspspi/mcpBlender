@@ -410,5 +410,9 @@ budget; the estimate does not emit mipmaps or prove runtime memory/bleed behavio
 Reopen asset.blend and validate_texture_bake checks every ID mesh and shared
 material before export. It preserves source placement in metres; arrange separate
 representations deliberately. Existing texture-job tools handle recovery/cleanup.
-Vegetation wind and target runtime validation remain open. Never present front-PBR
+Portable wind field/anchored pose preparation uses inspect_botanical_wind and
+sample_botanical_wind. Review all-time bounds plus sampled root/junction/length
+errors, then export_botanical_wind with its guard for semantic JSON. Sampling
+preserves native geometry; native animated preview and attribute-retention proof
+remain open alongside target runtime validation. Never present front-PBR
 transfer as native optical parity or geometry coverage as measured render overdraw.

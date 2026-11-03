@@ -1590,6 +1590,62 @@ prototypes. For a dense study of the default 14m source, a tested proposal uses
 completed realistic-oak preset or vegetation LOD. Detailed bark, branch junctions,
 atlases and wind remain separate milestones.
 
+## Portable botanical wind preparation
+
+Use `inspect_botanical_wind` with a valid managed tree `collection` and optional
+`wind` settings, then `sample_botanical_wind` with the same settings and `seconds`.
+These tools leave the native scene, frame and geometry unchanged. They prepare
+and qualify an engine-independent motion model; native deformation/animation and
+GLB attribute packing remain separate implementation steps.
+
+The field is a steady world-space `steady_mps` vector plus 1–8 seeded sinusoidal
+waves. `gust_mps`, `wavelength_m` and `frequency_hz` control their amplitudes,
+spatial scale and frequency. Inspection returns the explicit wave vectors,
+amplitudes, angular frequencies and phases, plus the formula. World positions
+use metres and time uses seconds. Identical settings produce the same field
+across trees, retaining spatial correlation. `phase_offset` varies branch response
+and leaf flutter while keeping that common field. Wind speeds and response
+coefficients are artistic controls, without a calibrated mechanical model.
+
+Branches rotate parent-first about their segment starts, with each child attached
+to its posed parent's endpoint. The field is sampled at undeformed anchors mapped
+to world metres. The rotation axis is perpendicular to the inherited branch
+direction and wind; response uses perpendicular speed, segment length, recorded
+stiffness and phase. `bend_degrees_per_mps` controls response, capped per segment
+by `max_segment_degrees`. Sampling refuses poses exceeding
+`max_accumulated_degrees`. Inspection reports a conservative all-time field-speed
+and summed-rotation bound. A false `rotation_budget_proven_for_all_times` means
+the bound cannot establish the guarantee; inspect actual samples or lower response.
+
+Leaf positions and base orientations inherit their parent branch's rigid motion.
+Local-X flutter uses `flutter_degrees`, `flutter_hz`, recorded leaf phase/flutter
+and `phase_offset`, preserving each leaf's shape. A globally zero field disables
+flutter. Root placement is a frozen evaluated snapshot: positive uniform physical
+scale, proper rotation and translation are supported; shear, reflection and
+nonuniform scale refuse. Admitted float32 rotation roundoff is orthonormalized,
+with `placement_rotation_fit_error` reporting the maximum element correction.
+Parent animation is excluded from this frozen placement.
+
+Sampling accepts 1–16 distinct times within ±1,000,000 seconds. `offset`,
+`leaf_offset` and `limit` (1–32, default 8) page branch/leaf poses. `max_work`
+(default 100,000, maximum 1,000,000) bounds branches plus sampled leaves across
+times. Every sample reports all-branch segment-length, junction, root-anchor,
+cumulative-rotation and endpoint-displacement metrics. Posed positions are returned
+in canonical local metres and world metres; local rotation matrices act on the
+canonical rest frame. These centerline/rigid-leaf checks exclude tube-surface
+strain, collision, native mesh deformation and rendered appearance.
+
+Use `export_botanical_wind` with fresh `expected_wind=wind_sha256`, matching
+settings and a `.json` `path` to preserve the model for another backend. The sidecar
+contains versioned solver/field settings and formulas, explicit waves, the branch
+graph, frozen placement and full rest foliage/shoot attachments when present.
+Branch IDs and leaf parent indices refer to its canonical model. Its default
+`max_bytes` is 64 MiB; publication checks available space and atomically installs
+an owned temporary file. Existing files require `overwrite=true`; cooperative
+cancellation before publication preserves the original. Reinspect after source,
+placement or settings changes. The JSON carries semantic data for later adapters;
+native preview, GPU packing and target-engine validation remain open.
+
 ## Structured Geometry Nodes
 
 These tools accept `params` and work with Python execution disabled. Use

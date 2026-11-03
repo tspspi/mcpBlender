@@ -377,6 +377,7 @@ class BridgeServer:
                 reads.update({"asset_report", "preflight_game_asset", "render_animation_preview"})
                 reads.add("inspect_foliage_card")
                 reads.update({"inspect_texture_atlas","build_texture_atlas"})
+                reads.update({"inspect_botanical_wind","sample_botanical_wind","export_botanical_wind"})
                 reads.update({"shader_node_catalog", "inspect_shader_graph"})
                 reads.update({"geometry_node_catalog", "inspect_geometry_graph"})
                 reads.update({"inspect_physics", "validate_rigid_bake", "sample_rigid_bodies"})

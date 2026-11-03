@@ -25,6 +25,7 @@ from . import botanical_trees
 from . import botanical_foliage
 from . import foliage_cards
 from . import texture_atlas
+from . import botanical_wind
 from . import botanical_surfaces
 from . import render_batches
 from . import compositing
@@ -69,6 +70,7 @@ COMMANDS.update(botanical_trees.COMMANDS)
 COMMANDS.update(botanical_foliage.COMMANDS)
 COMMANDS.update(foliage_cards.COMMANDS)
 COMMANDS.update(texture_atlas.COMMANDS)
+COMMANDS.update(botanical_wind.COMMANDS)
 COMMANDS.update(botanical_surfaces.COMMANDS)
 COMMANDS.update(render_batches.COMMANDS)
 COMMANDS.update(compositing.COMMANDS)
@@ -109,6 +111,7 @@ def dispatch(command, p):
     if command in botanical_foliage.COMMANDS:return botanical_foliage.dispatch(command,p)
     if command in foliage_cards.COMMANDS:return foliage_cards.dispatch(command,p)
     if command in texture_atlas.COMMANDS:return texture_atlas.dispatch(command,p)
+    if command in botanical_wind.COMMANDS:return botanical_wind.dispatch(command,p)
     if command in botanical_trees.COMMANDS:return botanical_trees.dispatch(command,p)
     if command=='render_camera_batch':return render_batches.launch(p)
     if command in compositing.COMMANDS:

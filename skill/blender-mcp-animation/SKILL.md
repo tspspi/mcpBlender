@@ -436,3 +436,12 @@ editor shutdown preserve handed-off workers. This produces PNG/optional multilay
 EXR, not encoded video. It uses a frozen packed-resource source snapshot; later
 scene edits do not affect that job. See the render skill/manual for file-job
 recovery and cleanup after an uncertain launch; never replay solely on timeout.
+
+For managed vegetation motion preparation, inspect_botanical_wind defines a
+seeded common world-metre field and source/settings guard. sample_botanical_wind
+pages anchored hierarchical branch and rigid leaf/flutter poses at chosen seconds.
+Inspect displacement, root/junction/length errors and the all-time rotation bound;
+sampling leaves the native timeline/geometry unchanged. Native wind preview and
+attribute packing are subsequent work. export_botanical_wind preserves explicit
+waves, canonical hierarchy, placement and foliage attachments as guarded semantic
+JSON. Keep it with the editable source; it does not create animated mesh output.

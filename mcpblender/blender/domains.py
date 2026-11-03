@@ -16,6 +16,7 @@ from . import physics
 from . import simulations
 from . import fluids
 from . import uv
+from . import texture_quality
 from . import textures
 from . import constraints
 from . import animation_curves
@@ -67,6 +68,7 @@ COMMANDS.update(simulations.COMMANDS)
 COMMANDS.update(fluids.COMMANDS)
 COMMANDS.update(uv.COMMANDS)
 COMMANDS.update(textures.COMMANDS)
+COMMANDS.update(texture_quality.COMMANDS)
 COMMANDS.update(constraints.COMMANDS)
 COMMANDS.update(animation_curves.COMMANDS)
 COMMANDS.update(drivers.COMMANDS)
@@ -171,6 +173,7 @@ def dispatch(command, p):
         return animation_curves.dispatch(command, p)
     if command in constraints.COMMANDS:
         return constraints.dispatch(command, p)
+    if command in texture_quality.COMMANDS:return texture_quality.dispatch(command,p)
     if command in textures.COMMANDS:
         return textures.dispatch(command, p)
     if command in uv.COMMANDS:

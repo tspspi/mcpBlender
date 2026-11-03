@@ -27,7 +27,7 @@ def triangle_overlap(a,b):
     return abs(signed_area(polygon)) if len(polygon)>=3 else 0
 
 
-def overlaps(triangles,budget):
+def overlaps(triangles,budget,*,checkpoint=lambda:None):
     """Exact overlap tests after an X sweep and conservative Y-bin broad phase."""
     import heapq
     import math
@@ -37,6 +37,7 @@ def overlaps(triangles,budget):
     def cell(y):return max(0,min(size-1,int((y-low)/(high-low)*size))) if high>low else 0
     bins=[set() for _ in range(size)];expiry=[]
     for index,tri in enumerate(rows):
+        if index%256==0:checkpoint()
         while expiry and expiry[0][0]<=tri[0]:
             _,old,a,b=heapq.heappop(expiry)
             for slot in range(a,b+1):bins[slot].discard(old)
@@ -46,6 +47,7 @@ def overlaps(triangles,budget):
                 if other_index in seen:continue
                 if comparisons>=budget:complete=False;break
                 seen.add(other_index);comparisons+=1;other=rows[other_index]
+                if comparisons%4096==0:checkpoint()
                 if other[3]<=tri[2] or tri[3]<=other[2]:continue
                 if triangle_overlap(tri[5],other[5])>1e-12:pairs.add(tuple(sorted((tri[4],other[4]))))
             if not complete:break

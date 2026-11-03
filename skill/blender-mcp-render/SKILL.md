@@ -29,7 +29,13 @@ RNA, linked materials and animated shader graphs are excluded. Procedural shader
 and glass need target-engine review/baking; the textured PBR export is qualified.
 Use `inspect_texture_bake` then guarded `bake_textures` for normal, opaque-geometry
 AO and supported direct-Principled shader-property maps. Sources need packed,
-saved input images and a clean low-target UV tile. The isolated worker preserves
+saved input images and a clean low-target UV tile. Optional `inspect_texture_quality` checks minimum directional
+texels per physical metre, chart pixel-centre coverage and continuous chart/edge
+padding at declared base/mip sizes. A shared `quality` policy on inspection and
+baking enforces complete/pass and records the report; use matching dimensions
+and margin no larger than policy padding_pixels. Incomplete budgets cannot pass.
+It does not test actual mip kernels, colors, dilation or optical appearance.
+The isolated worker preserves
 the editing scene, producing PNGs plus a static current-frame PBR asset. Check
 `projection.fraction`, map statistics and an actual render; a completed job is
 not visual qualification. Masks detect geometry projection misses at the output

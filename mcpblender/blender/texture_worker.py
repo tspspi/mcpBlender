@@ -165,6 +165,7 @@ def main():
     low[textures.BINDING]=job['job_id']
     finished(bpy.ops.wm.save_as_mainfile(filepath=str(root/'asset.blend'),check_existing=False,relative_remap=False))
     saved={'version':1,'job_id':job['job_id'],'source':job['expected_bake'],'name':low.name,'material':mat.name,'maps':maps,'projection':projection,'blender_version':bpy.app.version_string,'asset_sha256':textures.output_signature(low.name),'material_adapters':source_info.get('material_adapters',[]),'emission_encoding':EMISSION_ENCODING if 'EMISSION' in images else None}
+    saved['texture_quality']=source_info['objects'][0].get('texture_quality')
     saved['files']=manifest(root);write_json(root/'manifest.json',saved)
     write_json(root/'result.json',{'job_id':job['job_id'],'state':'succeeded','phase':'complete','completed_maps':len(maps)})
 

@@ -121,6 +121,10 @@ def inspect(p):
                 overlap=uv.overlaps(triangles,200000)
                 if not overlap['complete'] or overlap['face_pair_count']:raise ValueError('Target UV overlap check must be complete and clear')
                 record['uv_islands']=len(islands)
+                if p.get('quality'):
+                    from .texture_quality import measure
+                    record['texture_quality']=measure(evaluated,mesh,p['uv_map'],p['quality'])
+                    if not record['texture_quality']['passed']:reasons.append(name+': texture quality gate did not pass')
             elif role=='cage' and topology_digest(mesh)!=target_topology:raise ValueError('Cage topology/order must match the evaluated target')
             if role=='source' or role=='target' and not p.get('sources'):
                 if not mesh.materials or any(m is None for m in mesh.materials):raise ValueError('Every source slot needs a material')

@@ -49,6 +49,15 @@ still need explicit isolation. Native unwrap/packing cannot cancel mid-call.
 For high-to-low textures, inspect `inspect_texture_bake` with the low `name`,
 high `sources`, target `uv_map` and optional topology-matched `cage`. Carry its
 `bake_sha256` as `expected_bake` into `bake_textures` with a new output directory.
+Before admission, use `inspect_texture_quality` at the intended dimensions to
+check physical minimum directional texels/metre, per-chart pixel-centre coverage
+and continuous inter-chart/tile-edge padding at base and requested mip sizes.
+Require both complete and passed. To enforce the result, pass the same `quality`
+policy to bake inspection and baking; dimensions must match and margin must not
+exceed policy padding_pixels. The saved bundle retains the report. Budgets can
+make inspection incomplete. These are geometric checks; inspect actual rendered
+maps/filtering separately. Existing UV density editing uses Blender units and
+area averages, while this inspector accounts for physical metres and stretching.
 The default normal/AO/base-color/roughness/metallic maps form a PBR bundle;
 alpha and emission-color maps are optional. Check projection coverage and channel
 statistics, open `asset.blend`, then `validate_texture_bake` before GLB delivery.

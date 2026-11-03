@@ -3434,6 +3434,46 @@ Covered behavior:
 - Actual object/material/modifier edits, selection/transforms, save/open, overwrite
   refusal, GLB export/re-import, CPU rendering and MCP image delivery.
 
+## Geometric texture quality admission
+
+The read-only `inspect_texture_quality` and optional bake `quality` policy are
+qualified on the installed FreeBSD Blender 5.0.1. Pure fixtures check analytic
+directional density, rotated physical geometry, anisotropic sampling hidden by
+area averages, reversed triangle winding, half-open shared-diagonal coverage,
+subpixel charts, continuous segment distances, seeded broad-phase agreement
+against all-pairs distances, work exhaustion, overlap refusal and mip padding
+failure. Contract checks cover dimensions, finite thresholds, bake-margin
+compatibility and read-only discovery.
+
+An MCP fixture with arbitrary Python execution disabled creates a plane and
+material, rejects a 32x32 texture policy at 16 texels/metre, and accepts a 128x128
+policy at 64 texels/metre. It checks stable report witnesses, tile-edge padding
+failure, incomplete raster work, no output directory on refused bake admission,
+and distinct guarded fingerprints with the policy present. A real isolated
+base-color/normal bake retains the quality report, preserves the live source,
+and reopens as a validated bundle. Native fixtures check read-only geometry/ID
+preservation, equivalent metre/centimetre scenes, nonuniform stretching and
+affine placement. The generated add-on imports the inspector with FastMCP and
+Pydantic deliberately blocked.
+
+Retained `/tmp/mb-texture-quality-20261104/` evidence includes the actual bake,
+admission proof and an additional read-only inspection of all eleven textured
+components from the existing four-level vegetation profile. At 256x256, minimum
+density 32 texels/metre, two pixels of padding and mip levels 0–2, every component
+completes inspection but fails the chosen policy. Wood minimum directional
+densities range approximately 12.30–16.33 texels/metre; narrow shoots lose chart
+coverage and all components touch a tile edge. This confirms that the older
+complete map/resolution/budget inventory is not a geometric quality certificate.
+
+The combined targeted gate passed 18 tests in 88.35 seconds, including existing
+emission baking, native add-on import, capabilities and UV overlap regressions.
+Both bundled design/render skills pass their schema validator.
+
+These are pixel-centre geometry samples and continuous inter-chart/tile-edge
+distances, not measurements of Cycles dilation, generated mip image quality,
+self-padding within one chart, HDR/material optics, target-engine filtering or
+visual maturity. Existing prepared layouts are not automatically modified.
+
 ## Representative editing evidence
 
 Retained under `/tmp/mb-building-20261101-final/`:

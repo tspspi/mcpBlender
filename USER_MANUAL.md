@@ -1007,6 +1007,44 @@ texture baking is a separate workflow.
 
 ## Texture baking and PBR bundles
 
+Use read-only `inspect_texture_quality` to check a named evaluated mesh and UV
+map at explicit `width`/`height`. It returns separate `complete` and `passed`
+flags and a `quality_sha256` source/report witness. Its default asynchronous
+operation supports progress, polling and cooperative cancellation. Physical
+directional density includes evaluated affine transforms and the scene's metre
+scale; `min_texels_per_meter` applies to the least sampled direction of every
+triangle, so stretching cannot hide behind an area average. Each UV chart needs
+`min_chart_pixels` pixel-centre samples. Continuous chart-boundary gaps must be
+at least twice `padding_pixels`, and the tile edge needs that padding too.
+These footprint checks repeat at base resolution and `mip_levels` successive
+floor-halved resolutions, stopping at 1x1. The density threshold applies at base.
+
+For example, inspect with `name="Low"`, `uv_map="GameUV"`, `width=1024`,
+`height=1024`, `min_texels_per_meter=64`, `min_chart_pixels=4`,
+`padding_pixels=8` and `mip_levels=2`. The last two options require eight pixels
+of padding even at mip 2. Choose these numbers for the actual asset and viewing
+distance; defaults are admission policies, not universal quality standards.
+
+To make this a bake requirement, supply the same policy object as `quality` to
+both `inspect_texture_bake` and `bake_textures` (omit `name` and `uv_map` inside
+that object). The policy/report enter the bake fingerprint. Bake dimensions
+must match it, and bake `margin` cannot exceed its `padding_pixels`. An incomplete
+or failed gate refuses baking before creating the output bundle. The isolated
+worker rechecks it, and the successful manifest retains `texture_quality`.
+Omitting `quality` preserves the ordinary geometry/material admission rules.
+
+This bounded geometric test checks positive-area overlap before sampling and
+refuses incomplete work. `max_raster_tests` bounds candidate pixel tests across
+requested levels; `max_spacing_tests` separately bounds overlap comparisons and
+boundary comparisons across levels. Images are limited to four megapixels and
+reports preview up to 128 chart counts/gap pairs. Coverage uses a half-open
+triangle raster rule; continuous gaps catch thin charts missed by pixel centres.
+It does not inspect image colors, run Cycles' actual dilation or filtering,
+generate mip images, measure self-padding inside a connected chart, certify
+normal-map tangent conventions in an engine, or assess appearance. Keep a render
+and target-specific filtering review in the delivery workflow. An overlapping
+or incompletely checked UV layout skips further analysis with `complete=false`.
+
 Use `inspect_texture_bake` with a low target `name`, optional high `sources`
 (up to 16), target `uv_map` and optional matching `cage`. Inspection fingerprints
 the evaluated meshes/transforms/UVs/normals/material slots and supported source

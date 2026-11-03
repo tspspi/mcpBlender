@@ -31,6 +31,7 @@ def test_fitted_leaf_and_cluster_bake_delivery(assets_live,scene_unit_scale):
             before=await tool(client,'inspect_botanical_surface',material='FitLeaf_Surface')
             rect=await tool(client,'inspect_foliage_card',**args,outline='RECTANGLE')
             plan=await tool(client,'inspect_foliage_card',**args)
+            assert 'recovery' not in plan # Inspection must not trigger a mutation checkpoint.
             assert plan['card_area_m2']<rect['card_area_m2']*.85
             assert plan['triangles']>2 and plan['projection']['area_amplification']<rect['projection']['area_amplification']
             created=await tool(client,'create_foliage_card',**args,name='FitCard',expected_card=plan['card_sha256'])

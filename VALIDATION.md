@@ -57,6 +57,10 @@ passed **5 tests in 60.28 seconds**. Additional native mixed-scene/static-LOD/
 skeletal-export checks passed **6 tests in 72.87 seconds**. These are focused
 checks, not a fresh full-project regression.
 
+The read-only card inspection is excluded from mutation checkpoints. The
+centimetre end-to-end workflow, including that assertion, passed again in
+**33.64 seconds** after correcting its bridge classification.
+
 Addon archive/frontend isolation, export-job crash recovery, cancellation before
 publication and server policy checks passed **18 tests in 33.60 seconds**, with
 the existing Starlette/AnyIO deprecation warning. The bundled design skill

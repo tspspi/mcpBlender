@@ -268,7 +268,7 @@ def generate(p):
         if fresh['source_sha256']!=signature:raise ValueError('Source changed during LOD generation')
         for i,obj in enumerate(created[1:]):obj.hide_viewport=i!=0;obj.hide_render=i!=0
         collection[META]=json.dumps({'format':skin_lods.MARKER if base_report.get('skin') else morph_lods.MARKER if base_report.get('morph') else MARKER,'morph':base_report.get('morph'),'skin':base_report.get('skin'),'pose_validation':poses,'skin_profile':{'max_influences':p['skin_max_influences'],'joint_importance':p['skin_joint_importance']} if base_report.get('skin') else None,'id':uuid.uuid4().hex,'source':source.name,'source_sha256':signature,'root':root.name,
-                                    'blender_version':bpy.app.version_string,'levels':records},sort_keys=True,allow_nan=False)
+                                    'blender_version':bpy.app.version_string,'generation_recipe':{k:v for k,v in p.items() if k not in {'expected_management','preserve_placement','preserve_visibility'}},'levels':records},sort_keys=True,allow_nan=False)
         bpy.context.view_layer.update();check_cancelled();result=inspect_chain({'chain':p['chain']})
         if not result['valid']:raise ValueError('Created LOD chain did not pass ownership validation')
         success=True;return result

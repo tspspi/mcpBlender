@@ -103,6 +103,25 @@ class Validate(Model):
     directory: str = Field(min_length=1)
 
 
+class Management(Chain):
+    expected_management: Digest
+
+
+class Rebuild(Generate):
+    expected_management: Digest
+    preserve_placement: bool = True
+    preserve_visibility: bool = True
+
+
+class SourceVisibility(Management):
+    hide_viewport: bool | None = None
+    hide_render: bool | None = None
+    @model_validator(mode='after')
+    def patch(self):
+        if self.hide_viewport is None and self.hide_render is None:raise ValueError('Supply a source visibility field')
+        return self
+
+
 COMMANDS={
  'inspect_glb_deformation':(InspectGLB,(),'Independently decode a library GLB with a single native-profile mesh, optional linear skin and relative morph targets. Read-only joint/target/clip inventory, bounded sampled world playback and replay fingerprints; embedded dense/sparse float morph buffers; no compressed/instanced geometry. Does not compare to Blender or certify appearance.'),
  'inspect_lod_source':(Source,(),'Inspect STATIC viewport geometry, MORPH relative shape keys or SKINNED raw rest geometry/linear binding, UV/material/attribute inventory and source guard. Skin mode reports weights, rig and suggested pose frames. Morph weights follow original source controllers; object-motion sources remain separate.'),
@@ -114,3 +133,11 @@ COMMANDS={
  'export_lod_chain':(Export,('allow_library_write',),'Export each static, skeletal or morph LOD into a GLB plus checked manifest. Morphs bake explicit current-timeline ranges (drivers/NLA/constraints) onto owned proxies; source controls remain intact. Skin bundles validate joints/weights/curves and compare independent decoded playback with native poses; compatible integer-frame clips use zero-based seconds. Restore state and publish only after validation.'),
  'validate_lod_export':(Validate,(),'Independently re-read a generated LOD bundle, verify hashes, GLB triangle/attribute/dependency inventory and recorded skin replay fingerprints. No engine or silhouette certification.'),
 }
+
+COMMANDS.update({
+ 'inspect_lod_management':(Chain,(),'Inspect native LOD ownership, external references, shared mesh retention, source freshness and guarded remove/rebuild eligibility. Gives recorded generation settings or explicit defaults for legacy chains.'),
+ 'remove_lod_chain':(Management,('allow_scene_edit',),'Remove a guarded owned LOD chain while preserving shared/fake-user meshes, materials, source rigs/geometry and clips. Refuses ambiguous inventory, foreign links, physics and external native references. Damaged mesh contents need not prevent owned removal.'),
+ 'rebuild_lod_chain':(Rebuild,('allow_scene_edit',),'Generate and verify a replacement LOD chain before public-name handoff, then remove only unshared old data. Requires fresh source and management guards plus full generation recipe. Preserves placement/visibility by default and rolls back names, IDs and links on cooperative failure before final deletion.'),
+})
+
+COMMANDS['configure_lod_source_visibility']=(SourceVisibility,('allow_scene_edit',),'Guardedly show/hide the original local LOD source in viewport/render, preserving its geometry. Global object flags affect all scenes using that source. Refuses keyed/driven targeted flags and rolls back ordinary cancellation. Show the source before fresh generation/rebuild/package planning.')

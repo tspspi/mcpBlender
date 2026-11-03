@@ -21,6 +21,7 @@ from . import constraints
 from . import animation_curves
 from . import drivers
 from . import nla
+from . import lod_management
 from . import lods
 from . import assembly_realization
 from . import asset_packages
@@ -56,6 +57,7 @@ COMMANDS.update(retarget.COMMANDS)
 COMMANDS.update(skin_weights.COMMANDS)
 COMMANDS.update(rest_edit.COMMANDS)
 COMMANDS.update(lods.COMMANDS)
+COMMANDS.update(lod_management.COMMANDS)
 COMMANDS.update(assemblies.COMMANDS)
 COMMANDS.update(proxies.COMMANDS)
 COMMANDS.update(asset_packages.COMMANDS)
@@ -84,6 +86,8 @@ def curves(action, slot):
 
 
 def dispatch(command, p):
+    if command in lod_management.COMMANDS:
+        return lod_management.dispatch(command,p)
     if command in asset_packages.COMMANDS:
         return asset_packages.dispatch(command,p)
     if command in proxies.COMMANDS:

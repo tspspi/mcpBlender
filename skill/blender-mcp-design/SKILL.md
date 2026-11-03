@@ -296,3 +296,15 @@ to the selected nested LOD profiles, not the static primary mesh. The manifest
 records role associations; downstream tools must apply collision/shadow behavior.
 Keep source scenes separately for editing, and visually review converted shaders.
 See USER_MANUAL.md for validation limits and timeline/skin proof options.
+
+For LOD lifecycle changes, use `inspect_lod_management` and its separate management
+guard. Show a hidden original with `configure_lod_source_visibility` before fresh
+source/rebuild/package planning; the flags affect all scenes using that object.
+Start `rebuild_lod_chain` from `suggested_rebuild`, review recipes/defaults, carry
+both fresh source and management guards, and wait for the staged replacement.
+Sources/rigs/morph controllers remain intact. Existing placement/visibility is
+preserved by default; authored root controls and external native references can
+block replacement. `remove_lod_chain` removes owned derived content and retains
+shared/fake-user meshes and source materials/clips. Reinspect after edits/reopen;
+ordinary chain/export guards are not management guards. External adoption and
+process-crash rollback remain separate; read USER_MANUAL.md for limits.

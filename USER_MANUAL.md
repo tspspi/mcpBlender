@@ -1827,6 +1827,65 @@ level, eight representations total and 512 MiB per validated GLB. Broader skinni
 shadow proxies and
 reusable collection-instance/batch delivery workflows remain separate milestones.
 
+## LOD ownership, source visibility and replacement
+
+Use `inspect_lod_management` by `chain` for lifecycle work. It reports a separate
+`management_sha256`, removal/rebuild eligibility and blockers, content issues,
+source visibility/freshness, shared meshes that will remain, and a
+`suggested_rebuild` recipe. The management guard includes native ID identity,
+references, membership and visibility, so inspect again after edits or reopening
+a scene. It is distinct from the ordinary `chain_sha256` used for sampling/export.
+
+`configure_lod_source_visibility` takes `expected_management` and optional
+`hide_viewport`/`hide_render` flags. This hides duplicate original geometry while
+keeping the source mesh and controllers intact. These are global object flags,
+affecting every scene using that source. Keyed/driven targeted flags refuse edits;
+cooperative cancellation restores flags. Show the source before fresh source
+inspection, generation, sampling, rebuild or package preparation. A hidden source
+can be reported as unavailable for rebuild while its owned chain remains removable.
+This tool does not change source geometry, delete sources or automatically choose
+which other chains should be visible.
+
+To rebuild, obtain a fresh management report and source guard. Start with
+`suggested_rebuild`, adjust the requested `levels`/quality settings as needed, and
+call `rebuild_lod_chain` with `expected_management`. The recipe uses the same
+fields as `generate_lod_chain`, including `name`, `expected_source` and deformation
+mode. Newly generated chains record their generation settings. Older valid
+metadata without those settings reconstructs level recipes and known skin profile
+fields, using explicit model defaults for unknown options; review these defaults.
+
+Rebuild defaults to a queued job. A complete replacement is generated and checked
+before any original names change. It then takes the public collection/root/level
+names and parent collection links. Static root placement and parent binding are
+preserved by default; skin roots must remain compatible with their rig binding.
+Root instancing/constraints/animation that replacement cannot preserve block rebuilding.
+`preserve_placement=false` explicitly uses the new source's generated placement.
+`preserve_visibility=false` resets collection/root/level visibility to generated
+defaults. Otherwise existing flags are carried over; if the selected visible level
+was removed by shortening the chain, an available level is made visible.
+
+Selection and the active object follow corresponding replacement levels where
+possible. Removing a selected level without a counterpart clears that selection.
+Ordinary generation, verification and cooperative cancellation failures before
+final deletion restore original IDs, names, links and selection and delete owned
+replacement data. The final native batch deletion is noninterruptible; process
+crash rollback at that boundary is not established. Source geometry/rigs/Key
+controllers and clips remain authoritative and are not replaced or purged.
+
+`remove_lod_chain` takes `expected_management`. It can remove an unambiguously
+owned chain even when its derived mesh contents have been edited or its source is
+unavailable. It refuses missing/changed membership, foreign object collection
+links, external native object/collection/Key references, attached rigid bodies and
+linked/overridden ownership. Shared or fake-user mesh data is preserved; materials,
+source meshes, rigs and clips are never generically purged. This does not infer
+string-name references in scripts or recipes. Rebuild similarly refuses external
+native references rather than redirecting their targets silently.
+
+These operations manage existing marked chains. Adopting arbitrary external LOD
+meshes, automatic controller migration and interrupted-process reconciliation are
+separate workflows. An immutable exported package remains a snapshot; rebuilding
+its live source chain requires planning and exporting a fresh package revision.
+
 ## Skeletal LODs and sampled deformation validation
 
 Use `inspect_lod_source(name=..., deformation="SKINNED")` for raw rest mesh

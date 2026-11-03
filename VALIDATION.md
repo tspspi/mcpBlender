@@ -1,5 +1,57 @@
 # Local validation: 0.2.0
 
+## LOD ownership, replacement and source visibility — 2026-11-03
+
+Focused native/structured/contract gate:
+
+```sh
+MCPBLENDER_TEST_BLENDER=1 MCPBLENDER_LOD_MANAGEMENT_EVIDENCE_DIR=/tmp/mb-lod-management-20261103 python3 -m pytest -q tests/test_lod_management.py tests/test_lod_management_native.py tests/test_lod_management_contracts.py --tb=short --maxfail=1
+```
+
+Result: **5 passed in 51.40s**. With Python execution disabled, the static fixture
+hides/shows its original source through guarded visibility tools, refuses a stale
+management guard, rebuilds 250/120-triangle levels to 200/80 budgets, preserves the
+source fingerprint, saves/reopens and removes only the owned chain. Queued rebuild
+reports storage. The skin/morph fixture rebuilds both deformation profiles and
+removes them while keeping original rig animation and morph source fingerprints.
+Evidence includes an editable source/rebuilt scene and proof JSON under the
+command's evidence directory. No new render qualification is claimed here.
+
+The native fixture verifies unambiguously owned removal despite edited mesh
+contents, outside constraint/instancer refusal, shared mesh retention, fake-user
+mesh retention, stale source replacement, root placement/static parent binding,
+nested collection parent links, active/selected level mapping and visible fallback
+when shortening a chain. Root-authored controls/instancing block replacement. Cancellation
+before name handoff and after handoff verification restores exact ID sets, public
+names, source guard and selection. Source visibility cancellation restores flags.
+A morph-specific handoff cancellation restores all temporary Key/mesh IDs; after
+successful replacement/removal the entire pre-generation ID set returns. Legacy
+metadata without a generation recipe reconstructs its recorded level recipes.
+Explicit placement/visibility reset options are checked separately. The final
+expanded native/lifecycle-contract gate passed **3 tests in 10.87s**.
+
+Existing static/skin/morph LOD exports, package delivery, server/storage/capability
+and contract regression:
+
+```sh
+MCPBLENDER_TEST_BLENDER=1 python3 -m pytest -q tests/test_lods.py tests/test_skin_lod_export.py tests/test_morph_lods.py tests/test_asset_packages.py tests/test_lod_contracts.py tests/test_server.py tests/test_storage.py tests/test_capabilities.py --tb=short --maxfail=1
+```
+
+Result: **23 passed in 136.10s**, with the existing Starlette/AnyIO deprecation
+warning. Both bundled design/animation skills pass their structural validator.
+Qualification remains FreeBSD Blender 5.0.1.
+
+This manages existing marked chains. Arbitrary external-level adoption, authored
+root-controller migration, source-controller detachment and automatic distance
+switching remain separate. Guards inspect native ID references and membership;
+string-name references in scripts/recipes cannot be inferred. Shared/fake-user
+meshes and source/material/clip data are retained, not generically purged. Source
+visibility flags are global to that object; show it before generation, sampling,
+rebuild or package planning. Ordinary cooperative rollback is verified before the
+final noninterruptible native deletion, not through a process crash during it.
+See USER_MANUAL.md for recipes and guard semantics.
+
+
 ## Batch asset packages — 2026-11-03
 
 Focused contracts, independent decoder, native rollback and structured pipeline:

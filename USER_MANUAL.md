@@ -3598,11 +3598,66 @@ views and margin fixed for comparisons. Pixel-center estimates can miss subpixel
 blades and exclude alpha/translucency, perspective, lighting and shadow behavior.
 
 The current profile preserves existing bark/leaf materials and generated UVs;
-managed-master authored UV2, texture budgets, combined LOD GLB/wind packaging,
+managed-master authored UV2, texture budgets, combined engine scene import,
 collision/shadow proxies, cluster cards/impostors and native animated LOD playback
 remain separate work. Cooperative cancellation removes owned staged IDs; hard-crash
 recovery during native staging is not independently qualified here. The generic
 static/skeletal/morph LOD tools remain available for other asset types.
+
+## Shared vegetation LOD bundle export
+
+Inspect the native profile with `inspect_botanical_lods`, then call
+`export_botanical_lods` with `lod_collection`, its current `expected_lods` guard
+and a fresh `directory`. This works after the original tree is removed, provided
+the independent LOD profile remains valid. Both export and
+`validate_botanical_lod_bundle` default to tracked asynchronous operations: poll
+or pass `wait=true`. Save the editable profile `.blend` separately.
+
+The versioned `mcpblender-vegetation-lod-bundle-v1` layout stores one numeric-field
+GLB bundle per level's wood/shoot mesh, one GLB per shared leaf variant and one
+canonical semantic table. Each level refers to that table through its retained
+leaf/branch/shoot indices. Template geometry and per-leaf orientation/phase/flutter
+records are not duplicated per level. Branch/parent indices, distinct axis anchors
+and segment pivots, stiffness, phase and height weight remain encoded in scalar
+lanes. Original branch indices survive pruning. The full hierarchy remains
+available for consistent wind evaluation across LODs.
+
+`placement="SOURCE"` is the default: it uses the original source's frozen physical
+placement and omits the display-only offset used to compare native LODs.
+`placement="DISPLAYED"` uses the profile's displayed physical placement instead.
+The semantic wind placement and every encoded asset transform must agree with
+that choice. Templates normalize to an identity physical metre placement; apply
+the canonical per-leaf pose and the bundle's placement when instancing them.
+Custom vector lanes retain canonical Z-up metre values, while GLB positions use
+ordinary +Y-up conventions. No UV channel carries wind data.
+
+Validation needs only the files. It verifies the file inventory/hashes, decodes
+all mesh fields/positions/triangles/UVs/metre transforms, checks branch indices
+against each retained hierarchy, and verifies shared template vertices. It also
+regenerates the canonical foliage and coverage-scored selections, comparing
+nested IDs, coverage metrics, ancestry, options and triangle totals. Host-specific
+mask-memory estimates are excluded from semantic recomputation equality; the
+saved selection's own content guard remains checked. This is correspondence with
+unsigned source witnesses, not authenticated provenance or an engine shader test.
+Native creation pose-readback records are retained in the manifest as such.
+
+The output ceiling is 512 MiB (`max_bytes`), including the root manifest.
+The existing numeric sub-bundle field/corner bounds and canonical plan work/mask
+limits still apply. Initial space estimates cover geometry/semantics and exclude
+unknown embedded material images; per-component progress and final free-space
+checks report storage. Existing paths refuse. Cooperative cancellation before
+publication removes owned staging/native copies and preserves the profile, its
+active level, frame and selection. Final publication moves multiple folders/files;
+it is not crash-atomic. If publication fails, a partial destination is preserved
+for inspection, including any unrelated files written there. Interrupted bundles
+need review; automatic recovery/retention integration for this format remains
+separate work.
+
+Shared native materials pass through Blender's glTF exporter. PBR/texture-budget,
+backlighting/vein/alpha fidelity, authored managed-tree UV2, animated LOD playback,
+combined engine scenes, optical/shadow/GPU behavior and cards/impostors/collision
+are not certified by these file proofs. Keep the editable source and use the
+existing bake/atlas workflow for portable PBR material delivery.
 
 ## Blender to Godot
 

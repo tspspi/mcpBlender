@@ -57,3 +57,16 @@ COMMANDS={
  'activate_botanical_lod':(Activate,('allow_scene_edit',),'Guardedly select one native botanical LOD for viewport/render visibility. Preserve editable source and other scene objects.'),
  'remove_botanical_lods':(Remove,('allow_scene_edit',),'Guardedly remove only owned botanical LOD data, retaining materials and source. Foreign members/references refuse; edited derived data needs explicit discard.'),
 }
+
+class Export(Edit):
+    directory: str = Field(min_length=1)
+    placement: Literal['SOURCE','DISPLAYED'] = 'SOURCE'
+    max_bytes: int = Field(default=512*1024**2,strict=True,ge=1024,le=512*1024**2)
+
+class Validate(Model):
+    directory: str = Field(min_length=1)
+
+COMMANDS.update({
+ 'export_botanical_lods':(Export,('allow_library_write',),'Export an unchanged owned native botanical LOD profile into a new directory. Shared template GLBs occur once; per-level wood/shoot GLBs retain branch/wind fields and nested canonical leaf mappings. Independently validate before publication. SOURCE placement omits the display offset by default; DISPLAYED preserves it. No engine shader or optical qualification.'),
+ 'validate_botanical_lod_bundle':(Validate,(),'Independently decode/validate shared vegetation LOD files, recompute canonical selections/quality, verify attachment ancestry, wind fields, templates, triangle counts, UVs and metre placement. Works after native source/profile removal. Unsigned witnesses do not establish provenance.'),
+})

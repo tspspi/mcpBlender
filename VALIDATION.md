@@ -1,5 +1,66 @@
 # Local validation: 0.2.0
 
+## Shared-template vegetation LOD GLB/wind bundles — 2026-11-03
+
+New export_botanical_lods/validate_botanical_lod_bundle tools package unchanged
+owned profiles into per-level wood/shoot numeric GLBs, one shared GLB per leaf
+variant and canonical hierarchy/instance/selection semantics. SOURCE placement
+omits preview offsets by default; DISPLAYED uses the displayed physical placement.
+The semantic wind transform and every decoded asset transform are checked against
+that choice. Templates normalize to identity physical metre placement. Canonical
+leaf/branch/shoot indices remain nested; original branch indices survive pruning.
+
+Initial native export plus existing botanical export regression passed **2 tests
+in 86.98 seconds**. The final Python-disabled MCP workflow and expanded native
+placement/pruning/rollback gate passed **2 tests in 142.01 seconds**. Policy,
+capability and dependency-free add-on checks passed **4 tests in 46.80 seconds**.
+The final publication-failure/foreign-file preservation gate passed **1 test in
+34.00 seconds**. Skill/whitespace checks pass. Host/test composition varied;
+these are focused gate timings, not throughput claims or a full-project suite.
+
+The structured fixture uses the existing sparse 5m, 37-branch, 140-leaf canonical
+model and native 140/70/35-leaf levels. Its bundle contains nine GLBs: six
+wood/shoot assets and three shared templates. Expanded triangle counts remain
+28,548/14,620/7,608. It exports after the original tree is removed, preserves the
+native profile guard, saves/reopens the profile, removes it and still validates
+the files. Arbitrary Python execution remains disabled throughout MCP editing
+and export. Native source geometry/render evidence remains in the preceding
+LOD milestone; this gate qualifies delivery rather than new optical behavior.
+
+The native centimetre fixture adds translation, rotation, uniform physical scale
+1.2 and an 8m display offset. SOURCE delivery uses x approximately 3m; DISPLAYED
+uses x approximately 11m. Four levels retain 140/70/35/2 leaves and the final
+stress level prunes wood to nine original branches. Its expanded count is 524;
+its full-loss budgets are explicit and do not qualify visual delivery quality.
+Each mode has eleven GLBs and only three template assets. Every sub-bundle is
+independently decoded for fields, positions, oriented triangles, UVs and metre
+placement. Branch fields are checked against the full hierarchy and each retained
+index set. The validator regenerates canonical foliage and greedy LOD selections,
+comparing quality metrics, nested identities, ancestry and triangle budgets.
+Host-specific mask memory accounting is excluded from semantic plan equality;
+the saved plan content guard remains checked. Rehashed leaf-index tampering is
+rejected. Existing ordinary and centimetre botanical bundles still validate after
+extracting the shared numeric-asset verifier/export helper.
+
+Stale guards, small byte bounds and existing destinations refuse. Cancellation
+inside the numeric sub-bundle and after full LOD-bundle verification removes only
+owned staged data and preserves exact native IDs/profile guard, active level,
+frame, active object and selection. A deliberately injected second-file publication
+failure preserves a partial destination and an unrelated file written there;
+source IDs/guard remain intact. Publication is multi-file and not crash-atomic.
+Automatic interrupted-job recovery/retention for this format is still separate.
+
+Evidence under `/tmp/mb-vegetation-lod-export-20261103` includes source.blend,
+the ordinary three-level bundle, centimetre SOURCE/DISPLAYED four-level bundles
+and proof JSON. All copied bundles were independently revalidated with system
+Python. These unsigned witnesses establish correspondence, not provenance,
+PBR/texture-budget/backlighting/vein/alpha fidelity, authored managed-tree UV2,
+animated LOD playback, a receiving engine scene/shader, optical/shadow/GPU behavior
+or cards/impostors/collision. The whole-bundle output limit is 512 MiB; existing
+sub-bundle and canonical plan limits apply. Free-space estimates exclude unknown
+embedded material images until actual component sizes are available. No packages,
+venvs, installed runtime/service changes or pushes occurred.
+
 ## Coverage-scored native vegetation LODs — 2026-11-03
 
 New plan/create/inspect/activate/remove tools build independent full LOD0 plus

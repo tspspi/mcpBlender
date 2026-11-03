@@ -456,5 +456,15 @@ coverage can miss subpixel leaves; render levels with the same camera and restor
 any temporary source visibility changes. inspect_botanical_lods returns lods_sha256
 for activate_botanical_lod/remove_botanical_lods. Full LOD0 and reduced levels
 share copied templates, retain canonical wind IDs/parents and survive source
-removal. LOD GLB packaging, cards/impostors, collision, optical/shadow/runtime
+removal. Cards/impostors, collision, optical/shadow/runtime
 qualification and animated LOD playback remain separate. See USER_MANUAL.md.
+
+For native LOD file delivery, inspect_botanical_lods then export_botanical_lods
+with expected_lods and a new directory. SOURCE placement omits preview offsets
+by default; DISPLAYED preserves them. Templates occur once and levels retain
+canonical leaf/hierarchy mappings and encoded wind fields. Both export and
+validate_botanical_lod_bundle default async; poll or wait=true. The independent
+validator recomputes selections and checks decoded fields/UVs/counts/metres even
+after all native sources are removed. Save the .blend separately; file proofs do
+not certify native material optics or a runtime wind shader. Publication failures
+preserve partial destinations for review; do not delete unknown files to retry.

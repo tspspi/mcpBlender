@@ -60,6 +60,30 @@ def native_instances(values,population,roles,info):
     return report
 
 
+def export_mesh(original,label,model,directory,*,max_corners,max_bytes,unit,matrix=None):
+    from .bridge import check_cancelled
+    mesh=original.data.copy();mesh.use_fake_user=False;obj=None
+    try:
+        obj=bpy.data.objects.new('MCP_BotanicalDelivery',mesh);bpy.context.scene.collection.objects.link(obj)
+        obj.matrix_world=matrix if matrix is not None else original.matrix_world if label in {'wood','shoots'} else Matrix.Diagonal((1/unit,)*3+(1,))
+        if label in {'wood','shoots'}:
+            ids=[v.value for v in mesh.attributes['bot_branch_index'].data]
+            fields=schema.branch_fields(model,[list(v.co) for v in mesh.vertices],ids)
+            for name,kind,_ in schema.BRANCH_FIELDS:
+                if mesh.attributes.get(name):raise ValueError('Reserved botanical delivery attribute collision')
+                botanical_trees.attribute(mesh,name,kind,fields[name])
+            bindings=[{'attribute':name,'semantic':semantic} for name,_,semantic in schema.BRANCH_FIELDS]
+        else:
+            botanical_trees.attribute(mesh,'template_vertex_index','INT',list(range(len(mesh.vertices))))
+            bindings=[{'attribute':'template_vertex_index','semantic':'template.vertex_index'}]
+        mesh.update();bpy.context.view_layer.update()
+        args={'name':obj.name,'fields':bindings,'max_corners':max_corners};inspected=attribute_export.inspect(args)
+        attribute_export.export(args|{'expected_export':inspected['export_sha256'],'directory':str(directory),'max_bytes':max_bytes})
+    finally:
+        if obj:bpy.data.objects.remove(obj,do_unlink=True)
+        if mesh.users==0:bpy.data.meshes.remove(mesh)
+
+
 def export(p):
     from .bridge import check_cancelled,report_progress,_bridge
     values,population,roles,plan=source(p)
@@ -74,28 +98,12 @@ def export(p):
     storage=require_space(destination,estimate,reserve_bytes=policy.get('reserve_bytes',256*1024**2),estimate_kind='botanical_geometry_semantics_heuristic_excludes_material_images')
     report_progress({'phase':'checking canonical native leaf instances','storage':storage})
     native=native_instances(values,population,roles,plan);check_cancelled()
-    stage=Path(tempfile.mkdtemp(prefix='.mcpblender-botanical-',dir=destination.parent));assets=[];created=[]
+    stage=Path(tempfile.mkdtemp(prefix='.mcpblender-botanical-',dir=destination.parent));assets=[]
     try:
         (stage/'semantics.json').write_bytes(encoded)
         jobs=[('wood',values[2][0])]+([('shoots',roles['so'])]+[(f'leaf-{i}',roles['lo'+str(i)]) for i in range(plan['prototypes'])] if plan['leaf_instances'] else [])
         for label,original in jobs:
-            check_cancelled();mesh=original.data.copy();mesh.use_fake_user=False;created.append(mesh)
-            obj=bpy.data.objects.new('MCP_BotanicalDelivery',mesh);created.append(obj);bpy.context.scene.collection.objects.link(obj)
-            obj.matrix_world=original.matrix_world if label in {'wood','shoots'} else Matrix.Diagonal((1/values[-1]['scene_unit_scale'],)*3+(1,))
-            if label in {'wood','shoots'}:
-                ids=[v.value for v in mesh.attributes['bot_branch_index'].data]
-                fields=schema.branch_fields(values[-2],[list(v.co) for v in mesh.vertices],ids)
-                for name,kind,_ in schema.BRANCH_FIELDS:
-                    if mesh.attributes.get(name):raise ValueError('Reserved botanical delivery attribute collision')
-                    botanical_trees.attribute(mesh,name,kind,fields[name])
-                bindings=[{'attribute':name,'semantic':semantic} for name,_,semantic in schema.BRANCH_FIELDS]
-            else:
-                botanical_trees.attribute(mesh,'template_vertex_index','INT',list(range(len(mesh.vertices))))
-                bindings=[{'attribute':'template_vertex_index','semantic':'template.vertex_index'}]
-            mesh.update();bpy.context.view_layer.update()
-            args={'name':obj.name,'fields':bindings,'max_corners':min(1000000,p['max_corners'])};inspected=attribute_export.inspect(args)
-            attribute_export.export(args|{'expected_export':inspected['export_sha256'],'directory':str(stage/label),'max_bytes':p['max_bytes']})
-            created.remove(obj);bpy.data.objects.remove(obj,do_unlink=True);created.remove(mesh);bpy.data.meshes.remove(mesh)
+            check_cancelled();export_mesh(original,label,values[-2],stage/label,max_corners=min(1000000,p['max_corners']),max_bytes=p['max_bytes'],unit=values[-1]['scene_unit_scale'])
             assets.append(label)
             inventory=schema.files(stage);size=sum(r['bytes'] for r in inventory)
             if size>p['max_bytes']:raise ValueError('Botanical bundle exceeds max_bytes')
@@ -119,12 +127,7 @@ def export(p):
                 else:path.unlink()
             destination.rmdir();raise
         return {'directory':str(destination),'export_sha256':plan['export_sha256'],'proof':proof,'native_instance_readback':native}
-    finally:
-        objects=[v for v in created if isinstance(v,bpy.types.Object)];meshes=[v for v in created if not isinstance(v,bpy.types.Object)]
-        for obj in objects:bpy.data.objects.remove(obj,do_unlink=True)
-        for mesh in meshes:
-            if mesh.users==0:bpy.data.meshes.remove(mesh)
-        shutil.rmtree(stage)
+    finally:shutil.rmtree(stage)
 
 
 def dispatch(command,p):

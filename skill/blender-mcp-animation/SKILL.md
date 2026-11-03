@@ -465,3 +465,10 @@ axis anchors and per-instance leaf rotation/phase/flutter; leaf template GLBs st
 shared. These are rest-geometry/semantic correspondence proofs, not an engine wind
 shader or continuous-motion test. Use the existing sampled native wind preview
 for Blender motion review, keep the .blend, and read USER_MANUAL.md for limits.
+
+For static native LOD wind delivery, export_botanical_lods retains per-level
+branch fields, shared leaf templates and canonical instance/hierarchy mappings.
+Inspect the profile for expected_lods; SOURCE placement omits preview offsets,
+DISPLAYED retains them. validate_botanical_lod_bundle revalidates independently
+of Blender sources. These tools default async. Animated LOD playback and receiving
+engine shaders still need separate qualification; see USER_MANUAL.md.

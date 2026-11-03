@@ -55,6 +55,36 @@ def read(path,limit=256*1024**2):
     return json.loads(path.read_text())
 
 
+def verify_asset(folder,model,population,asset,*,cancelled=None):
+    cancel=cancelled or (lambda:None);folder=Path(folder)
+    cancel();manifest=read(folder/'manifest.json');witness=manifest['witness']
+    if manifest.get('format')!=attribute_glb.FORMAT:raise ValueError('Invalid botanical numeric sub-bundle')
+    proof=attribute_glb.verify(folder/'asset.glb',witness,cancelled=cancel)
+    if proof!=manifest['proof']:raise ValueError('Botanical mesh proof changed')
+    mapping=manifest['source']['mapping'];by_name={m['semantic']:m for m in mapping};lanes={f['semantic']:f['values'] for f in witness['fields']}
+    def row(semantic,index):return [lanes[lane][index][0] for lane in by_name[semantic]['lanes']]
+    if asset in {'wood','shoots'}:
+        if set(by_name)!={v[2] for v in BRANCH_FIELDS}:raise ValueError('Botanical branch mapping inventory changed')
+        indices=[]
+        for i in range(len(witness['positions'])):
+            v=row('wind.branch_index',i)[0]
+            if v!=int(v):raise ValueError('Noninteger encoded branch index')
+            indices.append(int(v))
+        expected=branch_fields(model,witness['positions'],indices)
+        for name,kind,semantic in BRANCH_FIELDS:
+            for i,value in enumerate(expected[name]):
+                if i%1024==0:cancel()
+                wanted=value if kind=='FLOAT_VECTOR' else [value]
+                if not attribute_glb.close(row(semantic,i),wanted,1e-7):raise ValueError('Encoded botanical semantic differs from hierarchy: '+semantic)
+    else:
+        if set(by_name)!={'template.vertex_index'}:raise ValueError('Leaf template mapping changed')
+        variant=int(asset.split('-')[1]);spec=foliage.leaf_mesh(foliage.variant_shape(population['recipe'],variant))
+        for i,p in enumerate(witness['positions']):
+            index=row('template.vertex_index',i)[0]
+            if index!=int(index) or not 0<=index<len(spec['vertices']) or not attribute_glb.close(p,spec['vertices'][int(index)],1e-7):raise ValueError('Leaf template differs from canonical prototype')
+    return {'proof':proof,'branch_indices':sorted(set(indices)) if asset in {'wood','shoots'} else None,'witness':witness,'mapping':mapping}
+
+
 def validate(root,*,cancelled=None):
     cancel=cancelled or (lambda:None);root=Path(root)
     if (root/'manifest.json').is_symlink():raise ValueError('Symlinked botanical manifest refused')
@@ -78,34 +108,7 @@ def validate(root,*,cancelled=None):
     if record.get('assets')!=expected_assets:raise ValueError('Botanical asset inventory differs from semantic population')
     expected_paths={'semantics.json'}|{a+'/'+name for a in expected_assets for name in ('asset.glb','manifest.json')}
     if {r['path'] for r in inventory}!=expected_paths:raise ValueError('Unexpected botanical bundle members')
-    proofs=[]
-    for asset in expected_assets:
-        cancel();folder=root/asset;manifest=read(folder/'manifest.json');witness=manifest['witness']
-        if manifest.get('format')!=attribute_glb.FORMAT:raise ValueError('Invalid botanical numeric sub-bundle')
-        proof=attribute_glb.verify(folder/'asset.glb',witness,cancelled=cancel)
-        if proof!=manifest['proof']:raise ValueError('Botanical mesh proof changed')
-        mapping=manifest['source']['mapping'];by_name={m['semantic']:m for m in mapping};lanes={f['semantic']:f['values'] for f in witness['fields']}
-        def row(semantic,index):return [lanes[lane][index][0] for lane in by_name[semantic]['lanes']]
-        if asset in {'wood','shoots'}:
-            if set(by_name)!={v[2] for v in BRANCH_FIELDS}:raise ValueError('Botanical branch mapping inventory changed')
-            indices=[]
-            for i in range(len(witness['positions'])):
-                v=row('wind.branch_index',i)[0]
-                if v!=int(v):raise ValueError('Noninteger encoded branch index')
-                indices.append(int(v))
-            expected=branch_fields(model,witness['positions'],indices)
-            for name,kind,semantic in BRANCH_FIELDS:
-                for i,value in enumerate(expected[name]):
-                    if i%1024==0:cancel()
-                    wanted=value if kind=='FLOAT_VECTOR' else [value]
-                    if not attribute_glb.close(row(semantic,i),wanted,1e-7):raise ValueError('Encoded botanical semantic differs from hierarchy: '+semantic)
-        else:
-            if set(by_name)!={'template.vertex_index'}:raise ValueError('Leaf template mapping changed')
-            variant=int(asset.split('-')[1]);spec=foliage.leaf_mesh(foliage.variant_shape(population['recipe'],variant))
-            for i,p in enumerate(witness['positions']):
-                index=row('template.vertex_index',i)[0]
-                if index!=int(index) or not 0<=index<len(spec['vertices']) or not attribute_glb.close(p,spec['vertices'][int(index)],1e-7):raise ValueError('Leaf template differs from canonical prototype')
-        proofs.append({'asset':asset,'proof':proof})
+    proofs=[{'asset':asset,'proof':verify_asset(root/asset,model,population,asset,cancelled=cancel)['proof']} for asset in expected_assets]
     return {'format':FORMAT,'assets':proofs,'branches':len(model['branches']),'leaf_instances':len(population['leaves']) if population else 0,
             'shared_leaf_templates':population['recipe']['variants'] if population and population['leaves'] else 0,
             'semantic_sha256':botany.digest(data),'scope':data['scope']}

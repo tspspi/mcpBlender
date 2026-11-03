@@ -380,7 +380,7 @@ class BridgeServer:
                 reads.update({"inspect_texture_atlas","build_texture_atlas"})
                 reads.update({"inspect_botanical_wind","sample_botanical_wind","export_botanical_wind"})
                 reads.update({"inspect_botanical_wind_preview_source","inspect_botanical_wind_preview"})
-                reads.update({'inspect_mesh_attributes','inspect_attribute_export','export_attribute_bundle','validate_attribute_bundle','inspect_botanical_export','export_botanical_bundle','validate_botanical_bundle','inspect_botanical_lod_source','inspect_botanical_lods'})
+                reads.update({'inspect_mesh_attributes','inspect_attribute_export','export_attribute_bundle','validate_attribute_bundle','inspect_botanical_export','export_botanical_bundle','validate_botanical_bundle','inspect_botanical_lod_source','inspect_botanical_lods','export_botanical_lods','validate_botanical_lod_bundle'})
                 reads.update({"shader_node_catalog", "inspect_shader_graph"})
                 reads.update({"geometry_node_catalog", "inspect_geometry_graph"})
                 reads.update({"inspect_physics", "validate_rigid_bake", "sample_rigid_bodies"})

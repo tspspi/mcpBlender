@@ -4,6 +4,48 @@
 
 
 
+## Modular leaf geometry and shared foliage — 2026-11-03
+
+Blender 5.0.1 native checks verify deterministic leaf attachment, shared Geometry
+Nodes prototypes, material reuse, editable root placement, growth regeneration,
+variant-count replacement, save/reopen, external mesh-reference refusal, exact
+native-ID rollback at final handoff, explicit derived-edit consent and safe owned
+removal with damaged canonical foliage. Standalone leaf cancellation removes its
+new IDs. Linked material input patches refuse instead of setting unused defaults.
+The native lifecycle fixture passes with 448 leaf instances and three prototypes.
+
+The structured MCP fixture passed **1 test in 95.56 seconds** with arbitrary Python
+execution disabled. It creates a standalone leaf and a 14m woody tree, attaches
+thousands of leaves, pages semantic attachments, edits thin-leaf optics, renders
+Cycles tree/leaf views, saves/reopens, and removes foliage while keeping the valid
+woody master. Evidence is in the locally retained foliage fixture directory.
+
+A separate native Cycles backlighting fixture passed **1 test in 4.10 seconds**.
+It holds camera/light/geometry fixed and independently changes translucency and
+backface handling. Image mean RGB increases from approximately 0.00054 to 0.16814
+between opaque and translucent settings while mean alpha stays 0.17870. Explicit
+backface transparency reduces mean alpha to approximately 0.00039 (the petiole
+remains). These are functional image statistics, not optical calibration. The
+translucent image and structured leaf/tree previews were opened and inspected.
+
+Existing three-seed woody-tree rendering/regeneration plus server/authentication,
+portable botany and foliage checks passed **15 tests in 120.17 seconds**, with the
+existing Starlette/AnyIO deprecation warning. This is focused regression, not a
+new full-project qualification.
+
+Focused botanical/foliage ownership, addon dependency isolation and capability
+checks passed **5 tests in 38.34 seconds**. Portable leaf/core invariants passed
+**7 tests in 15.20 seconds**. Bundled design/render skill validation passed.
+
+The generated crown is visibly sparse: this milestone does not qualify the final
+mature-oak appearance or projected coverage. Secondary veins, textured/baked
+foliage/bark, leaf cards/atlases, unioned branch junctions, vegetation wind, seasonal
+variation, additional species, vegetation LOD/impostors, engine shading and export
+attribute preservation remain open. Blade area is summed surface area, not canopy
+coverage; expanded triangles are a geometry estimate, not a GPU/memory guarantee.
+The native material separates double-sidedness from an artistic thin-surface mix;
+it has no alpha mask, thickness calibration or interchange shader equivalence.
+
 ## Botanical model core and owned woody masters — 2026-11-03
 
 Final schema/native/contracts checks passed **7 tests in 28.10 seconds**, adding

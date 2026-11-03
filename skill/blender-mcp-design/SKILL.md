@@ -337,8 +337,8 @@ For a species-aware woody foundation, use botanical_species_catalog and
 plan_botanical_tree (async by default), then create_botanical_tree with the same
 recipe/model_sha256 as expected_model and a new collection. This differs from the
 stylized VEGETATION preset: the canonical model is a seeded branch/bud graph in
-local metres, with native wood/BarkUV and semantic attributes. It has no actual
-foliage, wind, atlas/impostor or completed vegetation delivery yet. Inspect the
+local metres, with native wood/BarkUV and semantic attributes. Optional foliage uses shared leaf prototypes; wind, atlas/impostor and completed
+vegetation delivery remain open. Inspect the
 bare structure before choosing its next representation; a branch count is not
 leaf coverage or biological/structural qualification.
 
@@ -351,3 +351,14 @@ are repeatable; topology changes do not guarantee arbitrary edit correspondence.
 export_botanical_model writes canonical metre/Z-up JSON, not mesh placement or
 verified GLB wind attributes. Preserve that model with the editable project;
 remove_botanical_tree retains materials and refuses ambiguous native ownership.
+
+For modular leaves use plan_leaf_template, then create_leaf_template with the same
+shape and expected_leaf guard. For tree foliage, inspect_botanical_tree and
+plan_botanical_foliage, then configure_botanical_foliage with expected_tree and
+expected_foliage. These layout tools default async. Adjust shoot/node density and
+leaf geometry under explicit leaf/expanded-triangle budgets. Native Geometry Nodes
+instances preserve shared prototypes; no automatic realization or wind animation.
+list_botanical_leaves pages attachment metadata. Growth regeneration preserves the
+foliage recipe/material; owned removal includes its native dependencies. Manually
+edited derived data needs explicit discard consent; canonical edits refuse rebuild.
+See USER_MANUAL.md for lifecycle and optics boundaries.

@@ -160,3 +160,11 @@ Guarded cleanup defaults dry-run and protects successful/live/referenced/unknown
 files. EXR header/channel checks do not certify pixels or every renderer; inspect
 a small PNG preview before spending time on a larger batch. Video encoding and
 external dependency freezing remain separate workflows.
+
+Managed botanical leaves have separate front/back colors and a thin-surface
+translucent mix. Use inspect_foliage_material and configure_foliage_material with
+a fresh expected_material guard. Patches affect all users. Double-sidedness is
+independent of translucency; colors require opaque alpha. Linked target inputs
+refuse default patches. Check both leaf close-ups and tree views, including
+backlighting. This artistic native shader is not physical thickness, alpha-card
+shading or qualified glTF/runtime equivalence. Wind and atlases remain separate.

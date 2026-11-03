@@ -1136,8 +1136,9 @@ operation IDs, request-ID deduplication and broker reconnection apply.
 
 The botanical workflow is separate from the stylized `VEGETATION` Geometry Nodes
 preset. Its first profile, `QUERCUS_ROBUR`, creates a woody structure and semantic
-terminal buds. It does not yet create leaf meshes, foliage optics, wind motion,
-vegetation-specific LODs or a completed realistic oak asset.
+terminal buds. Optional instanced foliage adds editable lobed leaves and thin-leaf
+optics. Wind motion, vegetation-specific LODs and a completed realistic oak asset
+remain separate work.
 
 `botanical_species_catalog` reports profiles/defaults and references. The
 standalone `mcpblender.botany` module generates and validates versioned JSON using
@@ -1250,6 +1251,80 @@ adapter manifest. Native numeric attribute retention through GLB, foliage densit
 wind deformation, collision/LOD/impostor quality and general species/organ growth
 remain separate milestones. Keep the canonical model alongside the editable
 `.blend` when developing those downstream representations.
+
+## Modular leaves and instanced botanical foliage
+
+`plan_leaf_template` accepts a `leaf` shape: length/width/petiole in metres,
+`lobes`, `lobe_depth`, `curl`, `fold`, `vein_ridge` and `rows`. The result includes
+`leaf_sha256`, normalized shape, UV-ready geometry counts and summed blade area.
+`create_leaf_template` uses that same shape, `expected_leaf` and a new `name`
+(maximum 40 UTF-8 bytes) to create an editable native mesh and thin-leaf material.
+The blade has a raised midrib, not a secondary vein network or scanned texture.
+Rows increase when necessary to resolve the selected lobe count.
+
+For a managed botanical tree, call `plan_botanical_foliage` with `collection`
+and an optional `foliage` recipe. Defaults use six shoots per terminal bud,
+ten attachment nodes, three shared prototypes and alternate leaves. Example:
+
+```json
+{
+  "collection": "Oak",
+  "foliage": {
+    "seed": 1,
+    "shoots_per_bud": 4,
+    "attachment_nodes": 8,
+    "arrangement": "ALTERNATE",
+    "shoot_length": 0.65,
+    "spread": 0.7,
+    "inclination": 0.25,
+    "size_variation": 0.2,
+    "variants": 3,
+    "max_leaves": 100000,
+    "max_expanded_triangles": 8000000,
+    "leaf": {"length": 0.12, "width": 0.065, "lobes": 5}
+  }
+}
+```
+
+Obtain a fresh `tree_sha256` from `inspect_botanical_tree`, then call
+`configure_botanical_foliage` with the same collection/recipe and both
+`expected_tree` and the plan's `foliage_sha256` as `expected_foliage`.
+Planning/configuration/removal default to asynchronous operations. Use `wait=true`
+or operation polling. Leaf and expanded-triangle limits are checked before
+allocating the attachment table. They are geometry budgets, not memory guarantees,
+projected crown coverage, GPU performance or draw-call estimates.
+
+Each leaf is attached to a modeled shoot beginning at a semantic terminal bud.
+ALTERNATE is the oak-oriented default; OPPOSITE and WHORLED are artistic alternatives.
+The native population uses a point mesh, an owned Geometry Nodes group and an
+unlinked collection of shared prototypes. It does not realize instances. Point
+attributes include `leaf_rotation`, `leaf_scale`, `leaf_variant`, `bot_branch_index`,
+`leaf_index`, `leaf_phase` and `leaf_flutter`. Phase/flutter are future motion inputs;
+no wind motion is generated. `list_botanical_leaves` reconstructs deterministic
+IDs, branch/shoot references and transforms with bounded `offset`/`limit` paging.
+The canonical foliage Text stores the versioned recipe and deterministic hashes;
+it is separate from the branch/bud JSON exported by `export_botanical_model`.
+Save the editable `.blend` to preserve the complete native foliage component.
+
+Tree growth regeneration preserves the foliage recipe and existing leaf material.
+Foliage reconfiguration stages a complete replacement, preserving root placement
+and bark. Manual derived edits require `discard_derived_edits=true`; inspect and
+plan again first. Canonical JSON edits, external native references and unsupported
+controls refuse replacement. Cancellation before final handoff preserves original
+native IDs. `remove_botanical_foliage` stages the woody-only tree; tree removal
+also removes owned foliage points, shoots, prototypes, groups and Text. Reusable
+materials remain. Whole-tree owned deletion can remove a damaged canonical model
+when no external ownership references block it.
+
+`inspect_foliage_material` reports actual front/back/transmission colors, roughness,
+`translucent_mix`, `double_sided`, users and `material_sha256`.
+`configure_foliage_material` requires that guard as `expected_material` plus changed
+settings. Colors are RGBA with alpha fixed to one. Patches affect all material users.
+Linked target inputs refuse direct default-value edits. Double-sidedness is controlled
+separately from the artistic diffuse/translucent mix; explicit backface transparency
+also operates in Cycles. This native shader is not calibrated physical thickness,
+an alpha-card shader or a promise of equivalent glTF/runtime shading. Alpha atlases,
+baked vein/bark maps, seasonal optics and vegetation-specific delivery remain open.
 
 ## Structured Geometry Nodes
 

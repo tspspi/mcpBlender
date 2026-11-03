@@ -22,6 +22,7 @@ from . import animation_curves
 from . import drivers
 from . import nla
 from . import botanical_trees
+from . import botanical_foliage
 from . import render_batches
 from . import compositing
 from . import lod_adoption
@@ -62,6 +63,7 @@ COMMANDS.update(skin_weights.COMMANDS)
 COMMANDS.update(rest_edit.COMMANDS)
 COMMANDS.update(lods.COMMANDS)
 COMMANDS.update(botanical_trees.COMMANDS)
+COMMANDS.update(botanical_foliage.COMMANDS)
 COMMANDS.update(render_batches.COMMANDS)
 COMMANDS.update(compositing.COMMANDS)
 COMMANDS.update(lod_adoption.COMMANDS)
@@ -97,6 +99,7 @@ def dispatch(command, p):
     if command in {"export_lod_chain","export_asset_package"}:
         from .export_recovery import run
         return run(command,p)
+    if command in botanical_foliage.COMMANDS:return botanical_foliage.dispatch(command,p)
     if command in botanical_trees.COMMANDS:return botanical_trees.dispatch(command,p)
     if command=='render_camera_batch':return render_batches.launch(p)
     if command in compositing.COMMANDS:

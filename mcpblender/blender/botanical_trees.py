@@ -132,6 +132,9 @@ def create(p):
               'members':[{'role':role,'object':o.name,'mesh_sha256':botany.digest(realization.mesh_record(o.data))} for role,o in (('WOOD',wood),('BUDS',buds))],
               'geometry':{'radial_sides':p['radial_sides'],'bark_tile_length':p['bark_tile_length'],'bark_material':mat.name,'junctions':'OVERLAPPING_SLEEVES','units':'METRE_LOCAL'},
               'blender_version':bpy.app.version_string}
+        if p.get('foliage'):
+            from .botanical_foliage import create_component
+            meta['foliage']=create_component(name,collection,root,model,p['foliage'],mat,p.get('_foliage_material'))
         collection[META]=json.dumps(meta,sort_keys=True,allow_nan=False)
         bpy.context.view_layer.update();report_progress({'phase':'verified botanical master','branches':len(model['branches'])});check_cancelled()
         result=inspect({'collection':name})
@@ -153,11 +156,15 @@ def inventory(p):
     root=bpy.data.objects.get(meta.get('root'));text=col.get(MODEL);members=[bpy.data.objects.get(m['object']) for m in meta['members']]
     if not root or root.type!='EMPTY' or not isinstance(text,bpy.types.Text) or text.name!=meta['model_text'] or any(not o or o.type!='MESH' for o in members):raise ValueError('Botanical owned IDs are missing/changed')
     owned={col,root,text,*members,*(o.data for o in members)};users=bpy.data.user_map();links=parents(col);blockers=[];issues=[]
-    if col.children or set(col.objects)!={root,*members}:blockers.append('Botanical collection membership changed')
-    if any(o.parent!=root or len(o.users_collection)!=1 for o in members) or len(root.users_collection)!=1 or set(root.children)!=set(members):blockers.append('Botanical hierarchy/links changed')
+    foliage_report=None;fol_roles={};fol_model_error=None
+    if meta.get('foliage'):
+        from .botanical_foliage import component
+        fol_roles,fol_issues,fol_blockers,fol_model_error=component(col,root,meta['foliage']);owned.update(fol_roles.values());issues.extend(fol_issues);blockers.extend(fol_blockers);foliage_report=meta['foliage']
+    if set(col.children)!=({fol_roles['fc']} if fol_roles else set()) or set(col.objects)!={root,*members}:blockers.append('Botanical collection membership changed')
+    if any(o.parent!=root or len(o.users_collection)!=1 for o in members) or len(root.users_collection)!=1 or set(root.children)!=set(members)|({fol_roles['po'],fol_roles['so']} if fol_roles else set()):blockers.append('Botanical hierarchy/links changed')
     for item in owned:
         if item.library or item.override_library or item.use_fake_user:blockers.append('Botanical ownership is linked/overridden/persistent: '+item.name)
-        external=[u for u in users.get(item,set()) if u not in owned and not (item==col and (u in links or isinstance(u,bpy.types.Scene))) and not (item in {root,*members} and isinstance(u,bpy.types.Scene))]
+        external=[u for u in users.get(item,set()) if u not in owned and not (item==col and (u in links or isinstance(u,bpy.types.Scene))) and not (isinstance(item,(bpy.types.Object,bpy.types.Collection)) and isinstance(u,bpy.types.Scene))]
         if external:blockers.append('External native reference: '+item.name)
     if any(c.library or c.override_library for c in links):blockers.append('Botanical parent collection is not editable')
     records=[]
@@ -176,15 +183,15 @@ def inventory(p):
         if botany.digest(model)!=meta['model_sha256']:raise ValueError('Canonical botanical model was edited')
     except (ValueError,TypeError,KeyError) as exc:model_error=str(exc);issues.append(model_error)
     if root.rigid_body or root.rigid_body_constraint:blockers.append('Root physics prevents owned removal')
-    root_blockers=[]
+    root_blockers=[fol_model_error] if fol_model_error else []
     if root.instance_type!='NONE' or root.constraints or root.animation_data or root.rigid_body or root.rigid_body_constraint:root_blockers.append('Root instancing/animation/constraints/physics prevent replacement')
     state={'scene_unit_scale':bpy.context.scene.unit_settings.scale_length,'meta':meta,'root':assemblies.record(root),'native_ids':sorted((type(i).__name__,i.name,i.as_pointer()) for i in owned),
-           'records':records,'local_hidden':[(o.name,o.hide_get() if bpy.context.view_layer.objects.get(o.name)==o else None) for o in [root,*members]],'model_content_sha256':botany.digest(content),'users':sorted((item.name,[(type(u).__name__,u.name) for u in sorted(users.get(item,set()),key=lambda u:(type(u).__name__,u.name))]) for item in owned),
+           'foliage':foliage_report,'records':records,'local_hidden':[(o.name,o.hide_get() if bpy.context.view_layer.objects.get(o.name)==o else None) for o in [root,*members]],'model_content_sha256':botany.digest(content),'users':sorted((item.name,[(type(u).__name__,u.name) for u in sorted(users.get(item,set()),key=lambda u:(type(u).__name__,u.name))]) for item in owned),
            'collection_flags':{'hide_viewport':col.hide_viewport,'hide_render':col.hide_render},'blockers':sorted(set(blockers)),'issues':sorted(set(issues))}
     report={'collection':col.name,'id':meta['id'],'root':root.name,'model_text':text.name,'model_sha256':meta['model_sha256'],'tree_sha256':botany.digest(state),
             'valid':not issues and not blockers,'issues':sorted(set(issues)),'ownership_blockers':sorted(set(blockers)),'replacement_blockers':root_blockers,
             'can_remove':not blockers,'can_regenerate':not blockers and not root_blockers and not issues,'model_error':model_error,
-            'geometry':meta['geometry'],'root_world_matrix':lods.matrix(root.matrix_world),'scene_unit_scale':bpy.context.scene.unit_settings.scale_length,'members':[{'role':e['role'],'object':o.name,'mesh':r['record']} for e,o,r in zip(meta['members'],members,records)],
+            'foliage':foliage_report,'geometry':meta['geometry'],'root_world_matrix':lods.matrix(root.matrix_world),'scene_unit_scale':bpy.context.scene.unit_settings.scale_length,'members':[{'role':e['role'],'object':o.name,'mesh':r['record']} for e,o,r in zip(meta['members'],members,records)],
             'metrics':botany.metrics(model) if model is not None and not model_error else None,'recipe':model['recipe'] if model is not None and not model_error else None,
             'scope':'Owned woody mesh and semantic bud points; materials remain shared. Sleeve junctions intersect but are not welded/unioned. Attributes are native semantic inputs, not qualified wind animation/export packing.'}
     return col,root,members,text,owned,links,model,report
@@ -209,19 +216,43 @@ def regenerate(p):
     col,root,objects,text,owned,links,model,state=guarded(p)
     if state['replacement_blockers'] or state['model_error']:raise ValueError('Cannot regenerate root controls or edited/invalid canonical model')
     if state['issues'] and not p['discard_derived_edits']:raise ValueError('Derived edits require discard_derived_edits=true explicitly')
-    before=set(bpy.data.user_map());roles=[col,root,*objects,text,*(o.data for o in objects)];old_names=[o.name for o in roles];staged_roles=[];success=False
+    old_meta=json.loads(col[META]);old_fol=old_meta.get('foliage')
+    from . import botanical_foliage as fol
+    def role_map(c,r,obs,t,metadata):
+        result=dict(zip(('c','r','w','b','t','wm','bm'),[c,r,*obs,t,*(o.data for o in obs)]))
+        if metadata.get('foliage'):result.update({'f_'+k:v for k,v in fol.resolve_roles(metadata['foliage']).items()})
+        return result
+    old_roles=role_map(col,root,objects,text,old_meta);roles=list(old_roles.values());old_names=[o.name for o in roles]
+    before=set(bpy.data.user_map());staged_roles=[];success=False
     selected=list(bpy.context.selected_objects);active=bpy.context.view_layer.objects.active
     try:
-        private='BotanicalStage_'+uuid.uuid4().hex[:16];fresh=create(p|{'collection':private,'bark_material':p.get('bark_material') or state['geometry']['bark_material']})
-        new_col,new_root,new_objects,new_text,_,_,_,_=inventory({'collection':private});staged_roles=[new_col,new_root,*new_objects,new_text,*(o.data for o in new_objects)]
+        private='BotanicalStage_'+uuid.uuid4().hex[:16]
+        foliage_cfg=p.get('foliage',old_fol['recipe'] if old_fol else False)
+        fresh=create(p|{'collection':private,'bark_material':p.get('bark_material') or state['geometry']['bark_material'],
+                        'foliage':foliage_cfg,'_foliage_material':bpy.data.materials.get(old_fol['material']) if old_fol and foliage_cfg else None})
+        new_col,new_root,new_objects,new_text,_,_,_,_=inventory({'collection':private});new_roles=role_map(new_col,new_root,new_objects,new_text,json.loads(new_col[META]));staged_roles=list(new_roles.values())
         if p['preserve_placement']:
             new_root.parent=root.parent;new_root.parent_type=root.parent_type;new_root.parent_bone=root.parent_bone;new_root.parent_vertices=tuple(root.parent_vertices)
             new_root.matrix_parent_inverse=root.matrix_parent_inverse.copy();new_root.matrix_basis=root.matrix_basis.copy()
         if inspect({'collection':col.name})['tree_sha256']!=p['expected_tree']:raise ValueError('Original botanical tree changed during staging')
         check_cancelled()
         for i,item in enumerate(roles):item.name='BotanicalOld_'+uuid.uuid4().hex[:16]+str(i)
-        for item,name in zip(staged_roles,old_names):item.name=name
-        meta=json.loads(new_col[META]);meta['root']=new_root.name;meta['model_text']=new_text.name
+        name_map={}
+        for key,item in new_roles.items():
+            public=old_names[roles.index(old_roles[key])] if key in old_roles else item.name.replace(private,p['collection'],1)
+            previous=item.name;item.name=public
+            if item.name!=public:raise ValueError('Botanical component public-name collision')
+            name_map[previous]=item.name
+        def remap(value):
+            if isinstance(value,dict):return {k:remap(v) for k,v in value.items()}
+            if isinstance(value,list):return [remap(v) for v in value]
+            return name_map.get(value,value) if isinstance(value,str) else value
+        staged_meta=json.loads(new_col[META])
+        if staged_meta.get('foliage'):
+            mat=bpy.data.materials[staged_meta['foliage']['material']]
+            if mat not in before and mat.name.startswith(private):
+                previous=mat.name;mat.name=p['collection']+'_LeafSurface';name_map[previous]=mat.name
+        meta=remap(staged_meta);meta['root']=new_root.name;meta['model_text']=new_text.name
         for entry,obj in zip(meta['members'],new_objects):entry['object']=obj.name
         meta['replaces']=state['id'];new_col[META]=json.dumps(meta,sort_keys=True,allow_nan=False)
         for parent in parents(new_col):parent.children.unlink(new_col)
@@ -233,9 +264,11 @@ def regenerate(p):
         for old,new in zip([root,*objects],[new_root,*new_objects]):
             if bpy.context.view_layer.objects.get(old.name)==old and bpy.context.view_layer.objects.get(new.name)==new:new.hide_set(old.hide_get())
         if p['preserve_placement'] and any(abs(root.matrix_world[i][j]-new_root.matrix_world[i][j])>1e-6 for i in range(4) for j in range(4)):raise ValueError('Botanical root placement could not be preserved')
+        if meta.get('foliage'):
+            meta['foliage']['content_sha256']=fol.component_signature(fol.resolve_roles(meta['foliage']));new_col[META]=json.dumps(meta,sort_keys=True,allow_nan=False)
         result=inspect({'collection':new_col.name})
         if not result['valid']:raise ValueError('Replacement botanical tree failed validation')
-        replacements=dict(zip([root,*objects],[new_root,*new_objects]))
+        replacements={value:new_roles[key] for key,value in old_roles.items() if key in new_roles and isinstance(value,bpy.types.Object)}
         for obj in selected:
             target=replacements.get(obj,obj)
             if target.visible_get() and not target.hide_select:target.select_set(True)

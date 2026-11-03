@@ -428,3 +428,11 @@ Originals remain independent. To refresh authored levels, inspect both adoption
 and management again and use `readopt_lod_chain` with both guards. Ordinary
 `rebuild_lod_chain` automatically reduces to comparable budgets and does not
 recreate hand-authored topology. Inputs cannot belong to the replaced chain.
+
+For an animation frame sequence across named cameras while editing continues,
+prefer top-level render_camera_batch with frame_start/end/step and a fresh
+inspect_render_pipeline guard. Poll its original operation; broker restart and
+editor shutdown preserve handed-off workers. This produces PNG/optional multilayer
+EXR, not encoded video. It uses a frozen packed-resource source snapshot; later
+scene edits do not affect that job. See the render skill/manual for file-job
+recovery and cleanup after an uncertain launch; never replay solely on timeout.

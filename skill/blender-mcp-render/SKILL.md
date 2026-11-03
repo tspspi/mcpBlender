@@ -139,3 +139,24 @@ unchanged: before proxy generation, inspect `inspect_render_visibility` and use
 its guard with `configure_render_visibility` to disable source visible_shadow. These flags do not
 transfer through GLB or provide Eevee/engine shadow integration. Alpha foliage
 coverage needs visual qualification; a triangle budget alone does not prove it.
+
+For a camera/frame batch that leaves the editor available, use top-level
+`render_camera_batch` with fresh pipeline expected_settings, a new directory,
+cameras/frame range and PNG or OPEN_EXR_MULTILAYER formats. It requires snapshot,
+library-write and application-start permission. Poll/cancel the original durable
+operation; no second launch is needed when observation times out. The snapshot
+hash binds actual scene content; later edits do not update it. Packed resources
+are required, external fluid/volume/cache inputs refuse, and worker script
+execution is disabled. Compositing is preserved; VSE and crop borders are disabled.
+Two workers per bridge and explicit CPU threads/bytes/timeout bound admission.
+Broker restart/editor shutdown preserve a handed-off render. Native snapshot
+save/load are still blocking, and watchdog byte limits are not disk quotas.
+
+Use inspect_render_job/validate_render_job without Blender for status and file
+proof. After a dead worker, recover_render_job with a fresh job_sha256 reconciles
+complete files or records interruption without replay. Inspect the directory after
+an uncertain launch/handoff; an interrupted operation does not prove no child ran.
+Guarded cleanup defaults dry-run and protects successful/live/referenced/unknown
+files. EXR header/channel checks do not certify pixels or every renderer; inspect
+a small PNG preview before spending time on a larger batch. Video encoding and
+external dependency freezing remain separate workflows.

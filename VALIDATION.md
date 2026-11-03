@@ -2,6 +2,100 @@
 
 
 
+
+## Independent camera/frame workers and EXR delivery — 2026-11-03
+
+The final render core suite passed **8 tests in 64.36 seconds**, after recording
+snapshot-stage cancellation accurately and issuing a bound cancellation request
+if a caught failure occurs after child launch. It includes the packed textured
+animation/camera fixture, two-worker admission, restart/cancellation, editor
+shutdown/renderer SIGKILL, native dirty-input refusal and file/broker contracts.
+
+```sh
+MCPBLENDER_TEST_BLENDER=1 MCPBLENDER_RENDER_EVIDENCE_DIR=/tmp/mb-render-20261103 python3 -m pytest -q tests/test_render_batches.py tests/test_render_native.py tests/test_render_jobs.py tests/test_render_contracts.py --tb=short --maxfail=1
+```
+
+Final packed-texture refinement passed **5 worker/compositor/add-on tests in
+76.08 seconds**: animated camera output retains packed checker pixels, shader
+paths, frame/camera/filename and compositor settings. A native input guard plus
+file/contracts checks passed **5 tests in 9.25 seconds**, proving unpacked and
+pixel-dirty images refuse before directory creation or native ID changes. The
+wider broker/storage/retention/export-recovery/named-action regression passed
+**42 tests in 112.03 seconds**, with the existing Starlette/AnyIO warning.
+
+```sh
+MCPBLENDER_TEST_BLENDER=1 python3 -m pytest -q tests/test_render_jobs.py tests/test_render_contracts.py tests/test_operations.py tests/test_server.py tests/test_capabilities.py tests/test_storage.py tests/test_export_jobs.py tests/test_retention.py tests/test_action_integration.py --tb=short --maxfail=1
+```
+
+The initial camera-batch lifecycle fixture passed **3 tests in 47.32 seconds**.
+The expanded animated/composited camera-batch, connected compositor and extracted
+add-on regression passed **5 tests in 76.37 seconds**. A focused broker/file/
+contracts/authentication regression passed **16 tests in 18.68 seconds**, with
+the existing Starlette/AnyIO warning. Earlier capability/storage/add-on coverage
+passed **21 tests in 27.39 seconds**. Final fixture refinements and wider recovery
+checks are recorded above.
+
+```sh
+MCPBLENDER_TEST_BLENDER=1 MCPBLENDER_RENDER_EVIDENCE_DIR=/tmp/mb-render-20261103 python3 -m pytest -q tests/test_render_batches.py tests/test_compositing.py tests/test_export_job_native.py::test_addon_imports_recovery_without_frontend_dependencies --tb=short --maxfail=1
+python3 -m pytest -q tests/test_render_jobs.py tests/test_render_contracts.py tests/test_operations.py tests/test_server.py --tb=short --maxfail=1
+```
+
+The real MCP fixture disables arbitrary Python tools. It authors a packed textured PBR asset,
+object animation, two cameras, depth/normal passes and an exposure compositor.
+A new camera/frame batch snapshots that source and produces eight PNG/EXR files
+for two cameras and two frames. Frame images differ under authored motion.
+Independent parsing verifies PNG16 dimensions, scanline multipart EXR32 headers
+and Combined/depth/normal channels, source/output hashes and exact camera/frame
+associations. A separate Blender library inspection proves the source contains
+the original asset and excludes an object created after handoff. The editing
+instance retains its filename, frame, camera and compositor settings while that
+new object is added. The resulting PNGs were opened for functional inspection;
+64px previews are not final visual-quality or radiometric qualification.
+
+Two long workers run concurrently; a third launch refuses without creating its
+output directory. The original operation remains running in the broker while
+structured edits complete. Restarting the broker preserves the same render;
+normal cancellation stops its owned child and leaves a guarded partial bundle.
+Successful output cleanup refuses. A further real batch continues after the
+editing application is shut down. SIGKILL of that test-owned render worker marks
+the operation interrupted; file-only inspection/recovery/cleanup work without
+restarting Blender and never replay the rendering.
+
+File-only tests cover owner separation, file hashes and camera associations,
+unknown/symlink refusal, writer-lock exclusion, stale guards, successful-output
+protection, interrupted-file reconciliation, explicit referenced-output protection
+and anchored cleanup. A broker fixture exercises delegation acknowledgement
+idempotency, editor queue release, registration of a replacement editor after
+restart, original request-ID deduplication and retry after a transient observation
+failure while its writer lock remains held. Render file validation also checks
+cooperative hashing cancellation. Native worker/slot locks establish liveness;
+production recovery/cancellation never blindly signal saved PIDs.
+
+The qualified runtime is FreeBSD Blender 5.0.1 with Cycles CPU. Limits are two
+independent workers per bridge, explicit CPU threads and up to 1000 camera/frame
+samples. The source requires packed/self-contained render resources. Source
+snapshot save/load are native blocking boundaries, and watchdog byte/free-space
+checks can overshoot between polls; they are not filesystem quotas. The editor
+is available after snapshot and broker handoff, not during snapshot saving.
+There is a launch-to-broker-acknowledgement crash window: an interrupted original
+operation can coexist with a still-running file job; inspect rather than replay.
+The file marker records operation/owner binding and directory identity. Recovery
+reconciles files explicitly; it does not rewrite interrupted operation history.
+
+The worker disables script auto-execution, VSE and crop borders, retains snapshot
+compositing and renders full camera frames. External resource/cache freezing,
+fluid/volume caches, arbitrary script-dependent scenes, headless Eevee/GPU output,
+physics reproducibility, farm scheduling and video encoding are not qualified.
+The EXR reader verifies bounded scanline headers/parts/channels, not every pixel
+or deep/tiled images. Unused weak brush-library references from factory startup
+are editing metadata, not active render inputs.
+
+Evidence `/tmp/mb-render-20261103/camera-batch` includes source.blend, job/status/
+manifest/log provenance and PNG/EXR outputs; proof.json records the operation and
+independent validation. Bundled render/animation skills and user manual describe
+ownership, recovery, admission and profile limits. No package installation, venv,
+installed service or installed skill was changed.
+
 ## Blender 5 compositing, passes and color controls — 2026-11-03
 
 Final focused compositor/native/contracts checks passed **4 tests in 34.75

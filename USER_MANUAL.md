@@ -524,8 +524,9 @@ denoising passes need the Cycles engine; inspect Render Layers outputs after the
 change. Enabling a flag does not guarantee every engine produces that pass.
 Pass changes refresh sockets and refuse disabling a pass consumed by an enabled
 managed scene compositor referencing that layer. Cancellation or validation failure
-restores the old flags. This controls native passes; separate multilayer EXR/pass
-file delivery, AOV/Cryptomatte setup and mask-index assignment are not included.
+restores the old flags. This controls native pass settings; the independent batch workflow below delivers
+optional multilayer EXRs. AOV/Cryptomatte setup and mask-index assignment remain
+separate.
 
 `configure_color_management` takes `expected_settings` and any of `display_device`,
 `view_transform`, `look`, `exposure`, `gamma`, `use_white_balance`,
@@ -537,6 +538,114 @@ an explicit look when required. Failure or cooperative cancellation restores the
 original scalar settings. Custom color curves and OCIO configuration-file editing
 remain separate. These operations change scene setup; ordinary render capture
 continues to restore its temporary resolution/path/engine/camera settings.
+
+## Independent render workers and camera batches
+
+`render_camera_batch` snapshots the current project, starts a separate owned
+Blender process and hands the original durable operation to the broker. The
+editing instance becomes available after snapshot/launch; the render operation
+remains running until its files are independently checked. Use ordinary
+`get_operation`/`wait_operation` and `cancel_operation`, not a second job-submission
+loop. Request-ID deduplication still applies. Do not replay a batch after a wait
+timeout. The operation's progress includes `render_job_id`, directory, worker PID
+(for diagnostics), camera/frame, completed render count, bytes and fresh storage.
+Native render stats are included when the renderer emits them.
+
+The tool requires snapshot, library-write and application-start permissions.
+Call `inspect_render_pipeline` first and carry `settings_sha256` as
+`expected_settings`. This guards pipeline settings, not all scene geometry. The
+saved `source.blend` SHA-256 is the authoritative binding of the scene actually
+rendered. Editing after the snapshot does not update that batch.
+
+```json
+{
+  "directory": "renders/asset-review-01",
+  "expected_settings": "<settings_sha256>",
+  "cameras": ["StudioCamera", "DetailCamera"],
+  "frame_start": 1,
+  "frame_end": 24,
+  "frame_step": 4,
+  "width": 640,
+  "height": 480,
+  "engine": "CYCLES",
+  "samples": 32,
+  "formats": ["PNG", "OPEN_EXR_MULTILAYER"],
+  "threads": 2,
+  "max_bytes": 4294967296,
+  "timeout_seconds": 3600
+}
+```
+
+The directory must be new. Batches support 1..16 distinct cameras and up to 1000
+camera/frame renders, with explicit frame steps, 16..4096px dimensions and 1..16
+CPU threads. Up to two workers can run per bridge; inherited OS slot locks keep
+the limit across broker/editor restarts. A third launch refuses before creating
+its output directory. There is no render farm or GPU scheduler. Cycles CPU is
+qualified; the Eevee request surface exists but headless graphics availability
+and output are not established by the Cycles fixture.
+
+Each camera/frame is rendered once. Optional formats are saved from that result:
+16-bit RGBA PNG and 32-bit multilayer EXR. Blender 5 uses the
+`MULTI_LAYER_IMAGE` media type and may write scanline multipart EXRs. The manifest
+records each file's camera/frame/format, dimensions, SHA-256 and EXR part/channel
+inventory. Filenames use camera/frame indexes (`outputs/c00_f0000.png`), while
+actual names and frame numbers remain in the manifest. Depth/normal and other
+native passes follow the snapshot's configured view layers. Compositing is
+preserved. VSE output and crop borders are disabled in the worker; this is a
+full-frame scene-camera batch, not sequencer rendering or video encoding.
+
+The initial source profile requires packed/self-contained render resources.
+Unpacked or pixel-dirty images (including generated images), unpacked fonts/sounds,
+linked libraries, movie clips, external mesh caches,
+fluid modifiers and volume objects refuse rather than silently reading mutable
+external inputs. Default weak brush-asset references are editing metadata and do
+not count as render resources. File-output/external-image compositor nodes refuse;
+active compositing must pass the supported graph checks. Script auto-execution
+is disabled in the worker. External-cache freezing, arbitrary script-dependent
+projects and solver/physics reproducibility need separate qualification. Source
+saving/loading remain native blocking boundaries.
+
+The worker is independent of the editing process and broker. Broker restart
+resumes observation of the same delegated operation; editor shutdown/replacement
+does not interrupt it. Cancellation writes a job-bound request, and the worker's
+own watchdog stops that process, including during tested native rendering. No
+stored PID is blindly signalled by production cleanup/recovery code. Timeouts,
+free-space/reserve checks and a byte watchdog preserve partial files on failure.
+The snapshot estimate is a geometry/image/pass heuristic; polling limits are not
+filesystem quotas and can overshoot between checks. Snapshot writing itself is
+not forcibly interruptible. A completed result must still fit `max_bytes`.
+
+File tools work with Blender closed:
+
+- `inspect_render_job` reports this MCP owner's job, writer lock, status, bounded
+  inventory/free storage and `job_sha256`.
+- `validate_render_job` re-reads source/output hashes, exact camera/frame/format
+  associations, PNG dimensions and EXR part/channel headers. It reports progress
+  and supports cancellation during file hashing. It does not decode every pixel,
+  certify visual quality or prove radiometric accuracy. Deep/tiled EXRs and more
+  than 32 parts/512 channels are outside the header profile.
+- `recover_render_job` requires `expected_job` and no live writer. It adopts a
+  complete valid manifest or marks partial output interrupted, without rendering
+  again. The original interrupted operation history remains interrupted; recovery
+  is a separate explicit file reconciliation.
+- `cleanup_render_job` defaults to `dry_run=true`. A fresh `expected_job` is
+  required to remove idle owned failed/cancelled partial bundles. Interrupted
+  inclusion requires `include_interrupted=true`. Successful bundles, live writers,
+  symlinks/unknown entries and current/queued structured references are protected.
+  Cleanup/recovery serialize with the writer lock and verify directory/file
+  identity. Arbitrary external Python references cannot be inferred.
+
+The directory retains its source snapshot, job/status metadata, worker log and
+manifest as provenance. It is an explicit deliverable, not an automatically
+expiring temporary output. There is a launch-to-broker-handoff crash window: if
+an editor dies after starting a child but before acknowledging delegation, the
+original operation can remain interrupted while the file job continues. Inspect
+the recorded directory; do not resubmit or guess that no rendering occurred.
+Snapshot-stage failures similarly leave an owned partial directory for inspection.
+
+Use this command as a top-level tracked operation. Named-action steps cannot
+implicitly delegate the enclosing action's completion; batch embedding is refused.
+Existing connected-instance render/animation/video tools retain their behavior.
 
 ## Named actions and local recipes
 

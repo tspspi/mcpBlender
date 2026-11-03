@@ -24,6 +24,7 @@ from pathlib import Path
 from .wire import MAX_MESSAGE, call, check_peer, encode, listen_private, private_directory
 from .network import COMMANDS as NETWORK_COMMANDS, private_summary, transfer
 from .export_jobs import COMMANDS as EXPORT_JOB_COMMANDS, execute as export_job_operation
+from . import render_jobs
 from .storage import snapshot, require_space
 from .retention import Retention
 
@@ -125,6 +126,7 @@ class Broker:
         self.supervisor = None
         self.children = []
         self.export_cleanup_paths = {}
+        self.render_pollers = set()
         self.journal.db.execute("UPDATE operations SET state='interrupted', finished_at=?, error=? "
                                "WHERE session_id='network' AND state IN ('queued','running')",
                                (time.time(), "Broker restarted during an external API operation; remote outcome may be unknown"))
@@ -142,6 +144,10 @@ class Broker:
                 try:
                     self.children = [child for child in self.children if child.poll() is None]
                     self.reconcile()
+                    for row in self.journal.db.execute("SELECT id FROM operations WHERE session_id='render' AND state='running'").fetchall():
+                        if row['id'] not in self.render_pollers:
+                            self.render_pollers.add(row['id'])
+                            threading.Thread(target=self.monitor_render,args=(row['id'],),daemon=True).start()
                     life = self.lifecycle
                     if life.get("desired_running") and life.get("shutdown_on_exit") and not process_alive(life["frontend_pid"]):
                         if not self.worker:
@@ -188,6 +194,49 @@ class Broker:
         self.supervisor = threading.Thread(target=self.supervise, daemon=True)
         self.supervisor.start()
 
+    def monitor_render(self, identifier):
+        try:
+            with self.journal.lock:
+                if self.stop_event.is_set():return
+                row=self.journal.row(identifier)
+                receipt=json.loads(self.journal.db.execute("SELECT value FROM metadata WHERE name=?",('render:'+identifier,)).fetchone()[0])['result']
+            root=receipt['directory'];owner=row['owner']
+            while not self.stop_event.wait(.2):
+                try:
+                    with self.journal.lock:
+                        if self.stop_event.is_set():return
+                        cancel=bool(self.journal.row(identifier)['cancel_requested'])
+                    if cancel:render_jobs.request_cancel(root,owner)
+                    record,value=render_jobs.status(root,owner);busy=render_jobs.live(root)
+                    policy=json.loads(row['storage']) if row.get('storage') else {}
+                    value=value|{'render_job_id':record['id'],'directory':root,'worker_pid':receipt['worker_pid'],'estimated_bytes':receipt['estimated_bytes'],'storage':snapshot(root,reserve_bytes=policy.get('reserve_bytes',256*1024**2))}
+                    if record['operation_id']!=identifier or record['id']!=receipt['render_job_id']:raise ValueError('Delegated render ownership mismatch')
+                    if not busy:
+                        state=value.get('state')
+                        result=render_jobs.validate(root,owner) if state=='succeeded' else None
+                        if state not in TERMINAL:state='interrupted'
+                        with self.journal.lock:
+                            if self.stop_event.is_set():return
+                            self.journal.db.execute("UPDATE operations SET state=?,result=?,error=?,finished_at=?,progress=? WHERE id=? AND state='running'",
+                                (state,json.dumps(result),None if state=='succeeded' else value.get('error',value.get('phase','Render worker departed')),time.time(),json.dumps(value),identifier))
+                            self.journal.db.commit()
+                        return
+                    with self.journal.lock:
+                        if self.stop_event.is_set():return
+                        self.journal.db.execute("UPDATE operations SET progress=? WHERE id=?",(json.dumps(value),identifier));self.journal.db.commit()
+                except Exception as exc:
+                    if self.stop_event.is_set():return
+                    try:writer_alive=render_jobs.live(root)
+                    except FileNotFoundError:writer_alive=False
+                    except OSError:writer_alive=None
+                    if writer_alive is not False:continue  # Observation failure is not process completion.
+                    with self.journal.lock:
+                        if self.stop_event.is_set():return
+                        self.journal.db.execute("UPDATE operations SET state='interrupted',error=?,finished_at=? WHERE id=? AND state='running'",(f'Render observation/validation failed: {type(exc).__name__}: {exc}; inspect the render job; no replay',time.time(),identifier));self.journal.db.commit()
+                    return
+        finally:
+            self.render_pollers.discard(identifier)
+
     def network_operation(self, identifier, command, params):
         def progress(value):
             with self.journal.lock:
@@ -202,6 +251,12 @@ class Broker:
 
         result, error, state = None, None, "succeeded"
         try:
+            if command=='cleanup_render_job':
+                with self.journal.lock:
+                    refs=[self.worker.get('filepath')] if self.worker else []
+                    for pending in self.journal.db.execute("SELECT id,params FROM operations WHERE state IN ('queued','running')").fetchall():
+                        if pending['id']!=identifier:refs.extend(operation_paths(json.loads(pending['params'])))
+                    self.export_cleanup_paths[identifier]=Path(params['directory']);params=params|{'_references':refs}
             if command=='cleanup_export_job':
                 from .export_jobs import inspect as inspect_export
                 info=inspect_export(params['directory'],params['_job_owner']);stage=Path(info['job_directory'])/info['record']['stage']
@@ -215,12 +270,12 @@ class Broker:
                     self.export_cleanup_paths[identifier]=stage
                     params=params|{'_references':refs}
 
-            result = export_job_operation(command,params,progress,cancelled) if command in EXPORT_JOB_COMMANDS else transfer(command, params, progress, cancelled)
+            result = render_jobs.execute(command,params,progress,cancelled) if command in render_jobs.COMMANDS else export_job_operation(command,params,progress,cancelled) if command in EXPORT_JOB_COMMANDS else transfer(command, params, progress, cancelled)
         except InterruptedError as exc:
             error, state = str(exc), "cancelled"
         except Exception as exc:
             # urllib errors may include signed URLs: record only the exception type.
-            error, state = (f"{type(exc).__name__}: {exc}" if command in EXPORT_JOB_COMMANDS else f"{type(exc).__name__}: external transfer failed"), "failed"
+            error, state = (f"{type(exc).__name__}: {exc}" if command in EXPORT_JOB_COMMANDS | render_jobs.COMMANDS else f"{type(exc).__name__}: external transfer failed"), "failed"
         with self.journal.lock:
             self.export_cleanup_paths.pop(identifier,None)
             self.journal.db.execute("UPDATE operations SET state=?, result=?, error=?, finished_at=? WHERE id=?",
@@ -261,7 +316,7 @@ class Broker:
             self.reconcile()
             db = self.journal.db
             if command == "status":
-                busy = db.execute("SELECT id FROM operations WHERE state='running' AND session_id!='network' ORDER BY submitted_at LIMIT 1").fetchone()
+                busy = db.execute("SELECT id FROM operations WHERE state='running' AND session_id NOT IN ('network','render') ORDER BY submitted_at LIMIT 1").fetchone()
                 return dict(self.worker or {}, protocol=2, connected=self.worker is not None,
                             broker_pid=os.getpid(), broker_epoch=self.epoch,
                             storage=snapshot(self.path.parent),
@@ -273,7 +328,7 @@ class Broker:
                 if self.worker and self.worker["session_id"] != status["session_id"]:
                     raise RuntimeError("A live Blender worker is already attached")
                 db.execute("UPDATE operations SET state='interrupted', finished_at=?, error=? "
-                           "WHERE session_id!=? AND session_id!='network' AND state IN ('queued','running')",
+                           "WHERE session_id!=? AND session_id NOT IN ('network','render') AND state IN ('queued','running')",
                            (time.time(), "Blender session changed; operation was not replayed", status["session_id"]))
                 self.worker = status | {"last_contact": time.time()}
                 db.execute("INSERT OR REPLACE INTO metadata VALUES ('worker',?)", (json.dumps(self.worker),))
@@ -311,24 +366,25 @@ class Broker:
                         raise ValueError("request_id was already used with different arguments")
                     return Journal.public(dict(previous))
                 # Filesystem recovery shares the durable background queue; it does not use HTTP.
-                network = body["command"] in NETWORK_COMMANDS | EXPORT_JOB_COMMANDS
+                journal_params=body['params'] if body['command'] in render_jobs.COMMANDS else private_summary(body['params']) if body['command'] in NETWORK_COMMANDS | EXPORT_JOB_COMMANDS else body['params']
+                network = body["command"] in NETWORK_COMMANDS | EXPORT_JOB_COMMANDS | render_jobs.COMMANDS
                 if not self.worker and not network:
                     raise RuntimeError("No Blender worker attached; start Blender explicitly")
                 if db.execute("SELECT count(*) FROM operations WHERE state IN ('queued','running')").fetchone()[0] >= 128:
                     raise RuntimeError("Operation queue is full")
                 identifier = uuid.uuid4().hex
-                if params.get("storage") and body["command"] not in EXPORT_JOB_COMMANDS:
+                if params.get("storage") and body["command"] not in EXPORT_JOB_COMMANDS | render_jobs.COMMANDS:
                     require_space(**params["storage"])
                 db.execute("SAVEPOINT submit_operation")
                 try:
                     db.execute("INSERT INTO operations (id,owner,request_id,digest,command,params,session_id,state,submitted_at) "
                                "VALUES (?,?,?,?,?,?,?,'queued',?)",
                                (identifier, owner, request_id, digest, body["command"],
-                                json.dumps(private_summary(body["params"]) if network else body["params"]),
+                                json.dumps(journal_params),
                                 "network" if network else self.worker["session_id"], time.time()))
                     if network:
                         db.execute("UPDATE operations SET params=?, state='running', started_at=? WHERE id=?",
-                                   (json.dumps(private_summary(body["params"])), time.time(), identifier))
+                                   (json.dumps(journal_params), time.time(), identifier))
                     if params.get("storage"):
                         db.execute("UPDATE operations SET storage=? WHERE id=?", (json.dumps(params["storage"]), identifier))
                     if params.get("library_root"):
@@ -367,13 +423,13 @@ class Broker:
                         self.lifecycle["checkpoint_path"] = params["status"]["checkpoint_path"]
                         self.persist_lifecycle()
                 if command == "claim":
-                    busy = db.execute("SELECT * FROM operations WHERE state='running' AND session_id!='network'").fetchone()
+                    busy = db.execute("SELECT * FROM operations WHERE state='running' AND session_id NOT IN ('network','render')").fetchone()
                     if busy:
                         if params.get("claim_id") and busy["claim_id"] == params["claim_id"]:
                             return {"operation": {"operation_id": busy["id"], "owner":busy["owner"], "command": busy["command"], "params": json.loads(busy["params"]),
                                                   "storage": json.loads(busy["storage"]) if busy["storage"] else {}}}
                         return {"operation": None}
-                    row = db.execute("SELECT * FROM operations WHERE state='queued' AND session_id!='network' ORDER BY submitted_at,id LIMIT 1").fetchone()
+                    row = db.execute("SELECT * FROM operations WHERE state='queued' AND session_id NOT IN ('network','render') ORDER BY submitted_at,id LIMIT 1").fetchone()
                     if row is None:
                         return {"operation": None}
                     db.execute("UPDATE operations SET state='running', started_at=?, claim_id=? WHERE id=?", (time.time(), params.get("claim_id"), row["id"]))
@@ -388,6 +444,11 @@ class Broker:
                     return {"operation": {"operation_id": row["id"], "owner":row["owner"], "command": row["command"], "params": json.loads(row["params"]),
                                           "storage": json.loads(row["storage"]) if row["storage"] else {}}}
                 row = self.journal.row(params["operation_id"])
+                delegated=db.execute("SELECT value FROM metadata WHERE name=?",('render:'+row['id'],)).fetchone() if command=='complete' else None
+                if delegated:
+                    saved=json.loads(delegated[0])
+                    if saved['session_id']==params['session_id'] and saved['result']==params.get('result'):
+                        return {'cancel_requested':bool(row['cancel_requested'])}
                 if command == "complete" and row["session_id"] == self.worker["session_id"] and row["state"] in TERMINAL:
                     if row["state"] == params["state"] and json.loads(row["result"]) == params.get("result"):
                         return {"cancel_requested": bool(row["cancel_requested"])}
@@ -399,6 +460,14 @@ class Broker:
                     state = params["state"]
                     if state not in TERMINAL:
                         raise ValueError("Invalid terminal state")
+                    receipt=params.get('result')
+                    if row['command']=='render_camera_batch' and state=='succeeded' and isinstance(receipt,dict) and receipt.get('_external_render'):
+                        binding=render_jobs.record(receipt['directory'],row['owner'])
+                        if binding['operation_id']!=row['id'] or binding['id']!=receipt['render_job_id']:raise ValueError('Render delegation binding mismatch')
+                        db.execute("INSERT OR REPLACE INTO metadata VALUES (?,?)",('render:'+row['id'],json.dumps({'session_id':params['session_id'],'result':receipt})))
+                        db.execute("UPDATE operations SET session_id='render',progress=? WHERE id=?",(json.dumps({'phase':'independent render worker launched','render_job_id':binding['id'],'directory':receipt['directory'],'worker_pid':receipt['worker_pid'],'estimated_bytes':receipt['estimated_bytes']}),row['id']))
+                        db.commit()
+                        return {'cancel_requested':bool(row['cancel_requested'])}
                     db.execute("UPDATE operations SET state=?, result=?, error=?, finished_at=? WHERE id=?",
                                (state, json.dumps(params.get("result")), params.get("error"), time.time(), row["id"]))
                     if row["owner"] == "lifecycle" and row["command"] == "shutdown_blender" and state != "succeeded":
@@ -408,7 +477,7 @@ class Broker:
                 db.commit()
                 return {"cancel_requested": bool(row["cancel_requested"])}
             if command in ("shutdown", "restart_broker"):
-                if command == "shutdown" and (self.worker or db.execute("SELECT count(*) FROM operations WHERE session_id='network' AND state='running'").fetchone()[0]):
+                if command == "shutdown" and (self.worker or db.execute("SELECT count(*) FROM operations WHERE session_id IN ('network','render') AND state='running'").fetchone()[0]):
                     raise RuntimeError("Stop the test-owned Blender process before shutting down its broker")
                 if self.shutdown:
                     threading.Thread(target=self.shutdown, daemon=True).start()

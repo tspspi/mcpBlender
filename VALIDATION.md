@@ -1,6 +1,78 @@
 # Local validation: 0.2.0
 
 
+
+## Blender 5 compositing, passes and color controls — 2026-11-03
+
+Final focused compositor/native/contracts checks passed **4 tests in 34.75
+seconds**, including exact settings-guard restoration after a consumed-pass refusal
+and color preflight cleanup before live application. Existing rendered shader,
+textured-building/animation/VSE/API and named-action/recovery workflows passed
+**10 tests in 184.28 seconds** (including the compositor fixture). This covers
+broker restart without replay and application-exit/checkpoint recovery through
+the existing action suite; it does not simulate compositor handoff process death.
+
+```sh
+MCPBLENDER_TEST_BLENDER=1 MCPBLENDER_COMPOSITOR_EVIDENCE_DIR=/tmp/mb-compositor-20261103 python3 -m pytest -q tests/test_compositing.py tests/test_shaders.py tests/test_building_workflow.py tests/test_action_integration.py --tb=short --maxfail=1
+MCPBLENDER_TEST_BLENDER=1 MCPBLENDER_COMPOSITOR_EVIDENCE_DIR=/tmp/mb-compositor-20261103 python3 -m pytest -q tests/test_compositor_native.py tests/test_compositor_contracts.py tests/test_compositing.py --tb=short --maxfail=1
+```
+
+The focused real-Blender/native/contracts/policy/archive regression passed
+**16 tests in 50.11 seconds**, with the existing Starlette/AnyIO warning. An
+expanded native check then passed **1 test in 4.54 seconds**, adding inspection
+and unrelated scalar editing on an animated scene without leaking copied IDs.
+
+```sh
+MCPBLENDER_TEST_BLENDER=1 MCPBLENDER_COMPOSITOR_EVIDENCE_DIR=/tmp/mb-compositor-20261103 python3 -m pytest -q tests/test_compositor_native.py tests/test_compositor_contracts.py tests/test_compositing.py tests/test_capabilities.py tests/test_server.py tests/test_storage.py tests/test_export_job_native.py::test_addon_imports_recovery_without_frontend_dependencies --tb=short --maxfail=1
+```
+
+The structured fixture disables arbitrary Python tools. It discovers all 30
+allowlisted installed node types, including native menu choices and two-component
+sockets, creates a material/asset/preview stage, configures Cycles passes and
+Standard display rendering, stages and binds an exposure compositor, then replaces
+it and compares actual PNG RGB sums. One stop of compositor exposure produces a
+measurable increase (greater than 12 percent in encoded RGB sum for this fixture).
+This is functional output evidence, not a radiometric accuracy measurement.
+
+It refuses stale graph guards and a missing socket without changing the bound
+graph, preflights an invalid color transform without partial exposure edits,
+composites normalized depth, refuses disabling its consumed depth pass and renders
+a denoise/glare/blur pipeline using Cycles auxiliary data. The project is saved,
+reopened and rendered again with retained settings and compositor binding. Tests
+check storage availability through the existing server surface. The 96px exposure,
+depth and effects images were opened and visually inspected; these are functional
+previews rather than final-quality look development.
+
+The native fixture verifies exact native ID inventories after catalog/inspector
+scratch work, invalid graph/socket/cycle preflight, cancellation while staging and
+after graph-name/user handoff, and cancellation after scalar/pass/binding changes.
+Shared two-scene graphs require explicit shared editing; successful replacement
+remaps both bindings. Nested graph users refuse. Native mute edits invalidate the
+guard. Keyed color settings and animated compositor groups refuse replacement;
+conservative imported scene-action paths through the compositor pointer also
+refuse. Scratch color preflight on an animated scene leaves original IDs intact.
+Disabling an imported graph is allowed without claiming editing ownership.
+
+Installed FreeBSD Blender 5.0.1 is the qualification scope. The profile uses Image
+output node groups, not legacy Composite nodes. Render Layers bindings remain
+fixed to their authored scene/layer when shared. Unsupported, large or animated
+graphs have no complete content fingerprint. Color guards cover scalar settings,
+not custom curves, animation or external OCIO file contents. Dynamic enum menus
+are discovered through native RNA validation because dynamic enum_items metadata
+is empty in this build. No custom OCIO installation or package changes occurred.
+
+Not all exposed nodes/modes have rendered fixtures. There is no external-image,
+file-output or nested-group authoring, multilayer EXR/pass delivery, AOV/Cryptomatte
+setup, custom color-curve editing, automatic mask-index assignment, separate render
+worker or batch-camera qualification here. A pass flag alone does not establish
+support in every renderer. Native graph deletion/rendering remain noninterruptible;
+cooperative rollback is qualified, process-crash handoff rollback is not.
+
+Evidence `/tmp/mb-compositor-20261103` contains the editable `composited.blend`,
+exposure/depth/effects/reopened PNGs and pipeline/pixel-sum proof JSON. The bundled
+render skill validator passed. No venv, dependency/package installation, installed
+service or installed skill was changed.
+
 ## External/manual LOD adoption — 2026-11-03
 
 The extracted add-on also imported successfully with frontend dependencies

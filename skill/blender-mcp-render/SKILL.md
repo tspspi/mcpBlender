@@ -59,8 +59,29 @@ Check `fully_in_frame`, then judge the rendered image. Fit covers the current
 frame only; refit after aspect or pose changes. Orthographic setup uses
 `configure_camera` with `projection="ORTHO"`.
 
-Use `execute_code`, when permitted, for unsupported nodes/groups, color management
-or settings not yet exposed by structured tools. `bpy` is available; assign structured output
+For compositing, start with `inspect_render_pipeline` and
+`compositor_node_catalog`. Blender 5 uses a managed Image-output group; build it
+with `configure_compositor_graph`, then bind it using `configure_compositing`
+with fresh settings and graph guards. `CompositorNodeRLayers` binds the current
+scene and selected view layer; sharing a graph preserves that source binding.
+Use installed socket identifiers/menu choices rather than legacy properties:
+glare Type can be `Fog Glow`, and blur Size is a two-component vector. Exactly
+one `NodeGroupOutput` must receive Image. File-output/nested/external-image nodes
+are excluded. To revise the whole graph, inspect it and supply replace=true plus
+expected_graph; multiple local scene users require allow_shared=true. Imported,
+animated or nested-user graphs are not replaced. Staged replacement rolls back
+cooperative failures before its final native deletion; crash rollback is unqualified.
+
+Use guarded `configure_render_passes` for depth, normals, component passes and
+Cycles denoising_data, then inspect Render Layers output availability. Disabling
+a consumed pass refuses and restores flags. `configure_color_management` exposes
+installed display/view/look, exposure/gamma and white balance; keyed/driven target
+settings refuse. settings_sha256 covers pipeline settings, not geometry or custom
+color curves. Pass flags do not deliver EXR files or certify engine support.
+Render a small preview and inspect actual pixels after changing the pipeline.
+
+Use `execute_code`, when permitted, for unsupported nodes/groups or settings not
+yet exposed by structured tools. `bpy` is available; assign structured output
 to `result`, and check `success` and traceback. Namespace variables do not persist
 across calls; scene data does. Native Blender output may be in the Blender log.
 

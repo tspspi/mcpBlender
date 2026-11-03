@@ -435,6 +435,109 @@ but smoke/fire renders are empty. Homogeneous mesh-volume rendering and shader
 round-trips pass; cached smoke/fire appearance is **not qualified on that build**.
 
 
+## Compositing, render passes and color management
+
+Structured compositor authoring uses the Blender 5 `compositing_node_group` API.
+Use `compositor_node_catalog` for the allowlisted node types, then request a
+`node_type` for installed socket identifiers, component counts, menu choices and
+editable properties. Several Blender 5 controls are menu sockets rather than
+legacy node properties. For example, glare `Type` accepts `Fog Glow`; blur `Size`
+is a two-component vector. Apply menu defaults before dependent input defaults.
+Identifiers resolve ambiguous display names; socket indexes are also accepted.
+
+`configure_compositor_graph` creates a persistent named `group` from `nodes` and
+`links`. Each node has a unique `name`, allowlisted `type`, optional `label`,
+`inputs` (`socket`/`value` pairs) and supported `properties`. Color/value constants
+accept `output_value`; color ramps accept ordered `ramp` stops. Exactly one
+`NodeGroupOutput` is required. Its Image socket is supplied automatically by the
+managed interface and must be linked. File-output, script, external-image and
+nested group nodes are outside this authoring profile.
+
+```json
+{
+  "group": "PreviewPost",
+  "nodes": [
+    {"name": "Layers", "type": "CompositorNodeRLayers"},
+    {"name": "Exposure", "type": "CompositorNodeExposure",
+     "inputs": [{"socket": "Exposure", "value": 0.5}]},
+    {"name": "Output", "type": "NodeGroupOutput"}
+  ],
+  "links": [
+    {"from_node": "Layers", "from_socket": "Image",
+     "to_node": "Exposure", "to_socket": "Image"},
+    {"from_node": "Exposure", "from_socket": "Image",
+     "to_node": "Output", "to_socket": "Image"}
+  ]
+}
+```
+
+Supported nodes include denoise, glare, blur, color balance, exposure,
+brightness/contrast, hue/saturation, alpha-over/set-alpha, masks, transforms,
+scaling, depth combination, channel separation/combination, lens distortion and
+numeric/vector math, mixing and ramps. Not every node/mode has a rendered fixture;
+use a small preview to inspect the result. Socket/type/range checks, missing socket
+references or Image output links, cycles and disabled-pass links are validated
+before publication.
+Limits are 128 nodes and 256 links. Numeric/vector defaults must fit native limits;
+menu strings must be installed choices. Implicit Blender socket conversions are
+permitted when the native link is valid.
+
+A Render Layers node binds explicitly to the scene current at graph creation.
+Its optional `view_layer` defaults to the current view layer. Inspection reports
+that source scene/layer. Sharing the graph with another scene preserves this
+binding; it does not reinterpret the source as whichever scene later renders.
+
+`inspect_compositor_graph` reports nodes, socket defaults/availability, links,
+interface and native users. `graph_sha256` guards complete supported unanimated
+graphs; large, unsupported or animated graphs have no complete fingerprint.
+Unmanaged/imported graphs are inspect-only. Replacement requires `replace=true`
+and a fresh `expected_graph`. Multiple scene users require `allow_shared=true`.
+Nested/non-scene or linked/overridden users block replacement. Direct native edits,
+including mute or property changes, invalidate the guard. Tree animation and
+scene-owned animation through the compositor pointer prevent replacement.
+
+Replacement stages a complete new graph, validates it, then remaps local scene
+bindings and hands over the public name. Ordinary failure/cooperative cancellation
+before final deletion restores original IDs, names and bindings. The final native
+deletion is noninterruptible; process-crash rollback at handoff is not qualified.
+New named groups persist with fake users; staging failures remove their scratch
+data. Creating a graph does not attach it or render an image automatically.
+
+Call `inspect_render_pipeline` for current scene binding, engine, view-layer pass
+flags and scalar color settings. Its `settings_sha256` covers those settings,
+not scene geometry, custom color curves, animation or external OCIO file contents.
+`color_choices` reports installed display/view transforms and looks for the current
+view. Look choices can change after choosing another view transform.
+
+`configure_compositing` takes `expected_settings`, optional `group` and its fresh
+`expected_graph`, plus `enabled` (default true). Enabling requires a valid managed
+local unanimated graph. Without `group`, the existing binding remains; this also
+allows disabling an imported compositor. `render_still`, `render_animation` and
+existing preview workflows use the bound scene compositor through native rendering.
+The structured tools add no secondary file-output nodes or untracked output paths.
+
+`configure_render_passes` takes `expected_settings`, optional `view_layer` and a
+`passes` patch. Available keys include `z`, `normal`, `position`, `vector`, `uv`,
+`mist`, object/material indices, emission/environment, diffuse/glossy/transmission
+components and `denoising_data`. Combined output remains enabled. Cycles auxiliary
+denoising passes need the Cycles engine; inspect Render Layers outputs after the
+change. Enabling a flag does not guarantee every engine produces that pass.
+Pass changes refresh sockets and refuse disabling a pass consumed by an enabled
+managed scene compositor referencing that layer. Cancellation or validation failure
+restores the old flags. This controls native passes; separate multilayer EXR/pass
+file delivery, AOV/Cryptomatte setup and mask-index assignment are not included.
+
+`configure_color_management` takes `expected_settings` and any of `display_device`,
+`view_transform`, `look`, `exposure`, `gamma`, `use_white_balance`,
+`white_balance_temperature` and `white_balance_tint`. Values are preflighted on an
+owned scene copy against the installed configuration before applying the patch.
+Targeted keyed/driven settings are refused. Display/view/look are applied in that
+order; native dependent defaults may change when a display/view changes. Supply
+an explicit look when required. Failure or cooperative cancellation restores the
+original scalar settings. Custom color curves and OCIO configuration-file editing
+remain separate. These operations change scene setup; ordinary render capture
+continues to restore its temporary resolution/path/engine/camera settings.
+
 ## Named actions and local recipes
 
 The built-in `preview_setup` action accepts `objects` (mesh names), an optional

@@ -21,6 +21,7 @@ from . import constraints
 from . import animation_curves
 from . import drivers
 from . import nla
+from . import compositing
 from . import lod_adoption
 from . import lod_management
 from . import lods
@@ -58,6 +59,7 @@ COMMANDS.update(retarget.COMMANDS)
 COMMANDS.update(skin_weights.COMMANDS)
 COMMANDS.update(rest_edit.COMMANDS)
 COMMANDS.update(lods.COMMANDS)
+COMMANDS.update(compositing.COMMANDS)
 COMMANDS.update(lod_adoption.COMMANDS)
 COMMANDS.update(lod_management.COMMANDS)
 COMMANDS.update(assemblies.COMMANDS)
@@ -91,6 +93,8 @@ def dispatch(command, p):
     if command in {"export_lod_chain","export_asset_package"}:
         from .export_recovery import run
         return run(command,p)
+    if command in compositing.COMMANDS:
+        return compositing.dispatch(command,p)
     if command in lod_adoption.COMMANDS:
         return lod_adoption.dispatch(command,p)
     if command in lod_management.COMMANDS:

@@ -22,9 +22,8 @@ def test_workflow_inventory_does_not_claim_unregistered_commands():
     assert support["simulation_baking"]["support"] == "structured_partial"
     assert support["particles"]["support"] == "structured_partial"
     assert support["fluids"]["support"] == "structured_partial"
-    for name in ("compositing",):
-        assert support[name]["support"] == "python_only"
-        assert support[name]["structured_commands"] == []
+    assert support["compositing"]["support"] == "structured_partial"
+    assert "configure_compositor_graph" in support["compositing"]["structured_commands"]
     # A missing worker command must never be advertised through a static mapping.
     assert workflow_support(set())["mesh_modeling"]["structured_commands"] == []
 

@@ -26,6 +26,11 @@ def source(p):
     cfg={k:p[k] for k in ('collection','max_instances','max_corners')};cfg['wind']=info['wind']
     info={'format':schema.FORMAT,'wind':info,'options':cfg,'leaf_instances':count,'prototypes':population['recipe']['variants'] if count else 0,'corners':corners,
           'source_guard':values[-1]['tree_sha256'],'estimated_geometry_bytes':corners*200}
+    if p.get('material_mode')=='PARAMETERS':
+        from . import vegetation_materials
+        objects={'wood':values[2][0]}
+        if count:objects['shoots']=roles['so'];objects.update({f'leaf-{i}':roles['lo'+str(i)] for i in range(population['recipe']['variants'])})
+        info['materials']=vegetation_materials.contract(objects)
     info['export_sha256']=botany.digest(info)
     return values,population,roles,info
 
@@ -90,7 +95,7 @@ def export(p):
     if plan['export_sha256']!=p['expected_export']:raise ValueError('Botanical export fingerprint is stale; inspect again')
     destination=Path(p['directory'])
     if destination.exists():raise FileExistsError(destination)
-    data=schema.semantics(values[-2],population,plan['wind']);encoded=(json.dumps(data,sort_keys=True,allow_nan=False)+'\n').encode()
+    data=schema.semantics(values[-2],population,plan['wind'],plan.get('materials'));encoded=(json.dumps(data,sort_keys=True,allow_nan=False)+'\n').encode()
     estimate=len(encoded)*2+plan['estimated_geometry_bytes']*3+16*1024**2
     if len(encoded)>p['max_bytes']:raise ValueError('Botanical semantic data exceeds max_bytes')
     policy=_bridge.active.get('storage',{}) if _bridge and _bridge.active else {}
@@ -112,6 +117,10 @@ def export(p):
         if botanical_trees.inspect({'collection':p['collection']})['tree_sha256']!=plan['source_guard']:raise ValueError('Botanical source changed during export')
         record={'export_sha256':plan['export_sha256'],'format':schema.FORMAT,'source':plan,'assets':assets,'files':schema.files(stage),'native_instance_readback':native,
                 'material_limits':'Native materials exported through Blender glTF; thin-leaf backlighting/vein shader fidelity is not certified. Keep the editable source and bake PBR separately.'}
+        if plan.get('materials'):
+            from mcpblender import vegetation_materials as material_schema
+            record['material_delivery']={a:material_schema.delivery(stage/a/'asset.glb',plan['materials'],a) for a in assets}
+            if source(p)[-1]['export_sha256']!=p['expected_export']:raise ValueError('Vegetation materials changed during export')
         serialized=(json.dumps(record,sort_keys=True,allow_nan=False)+'\n').encode()
         if sum(r['bytes'] for r in record['files'])+len(serialized)>p['max_bytes']:raise ValueError('Botanical manifest exceeds max_bytes')
         storage=require_space(destination,len(serialized),reserve_bytes=policy.get('reserve_bytes',256*1024**2),estimate_kind='serialized_botanical_manifest_bytes')

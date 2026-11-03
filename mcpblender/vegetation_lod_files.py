@@ -72,5 +72,10 @@ def validate(root,*,cancelled=None,progress=None):
         cancel();assets.append(asset);result=common.verify_asset(root/asset,model,population,asset,cancelled=cancel);placement(result['witness'],True);proofs.append({'asset':asset,'proof':result['proof']})
     if record.get('assets')!=assets or {r['path'] for r in inventory}!={'semantics.json'}|{a+'/'+n for a in assets for n in ('asset.glb','manifest.json')}:raise ValueError('Unexpected/missing LOD bundle assets')
     if data['coordinates']!=common.semantics(model,population,data['wind'])['coordinates']:raise ValueError('LOD coordinate contract changed')
+    if data.get('materials'):
+        from . import vegetation_materials
+        vegetation_materials.validate(data['materials'])
+        if record.get('materials_sha256')!=data['materials']['materials_sha256']:raise ValueError('LOD material source binding changed')
+        if record.get('material_delivery')!={a:vegetation_materials.delivery(root/a/'asset.glb',data['materials'],a) for a in assets}:raise ValueError('Encoded LOD material delivery changed')
     return {'format':FORMAT,'levels':reports,'shared_leaf_templates':len(templates),'assets':proofs,'placement_mode':data['placement_mode'],
             'semantic_sha256':botany.digest(data),'scope':'Independent mesh/field/UV/metre placement, canonical hierarchy/selection/instance correspondence. No engine shader, animated LOD/optical or GPU runtime qualification.'}

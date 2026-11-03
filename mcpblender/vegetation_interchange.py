@@ -23,14 +23,17 @@ def branch_fields(model,positions,indices):
     return result
 
 
-def semantics(model,population,info):
-    return {'format':FORMAT,'model':model,'foliage':population,'wind':info,
+def semantics(model,population,info,materials=None):
+    result={'format':FORMAT,'model':model,'foliage':population,'wind':info,
             'coordinates':{'canonical':'right-handed Z-up metres','mesh_vectors':'raw canonical root-local metre vectors; no glTF axis conversion in custom lanes',
              'mesh_geometry':'GLB +Y-up local positions; GLB world transforms include metre normalization',
              'instances':'leaf position/root-local metre, rotation XYZ radians, positive scalar scale, zero-based template variant; apply wind.placement after local instance transform',
              'axis_anchor':'first segment attachment of the branch axis','segment_pivot':'individual segment start; this is the hierarchical solver pivot',
              'leaf_flutter':'rigid template local X rotation after branch attachment rotation; phase/flutter are per-instance, not per-template'},
             'scope':'Shared static template GLBs plus branch-field GLBs and full semantic hierarchy/leaf attachment table. No engine shader, EXT_mesh_gpu_instancing, continuous native animation or optical equivalence.'}
+
+    if materials is not None:result['materials']=materials
+    return result
 
 
 def files(root):
@@ -103,11 +106,17 @@ def validate(root,*,cancelled=None):
     if population:
         expected=foliage.generate(model,population['recipe'],cancelled=cancel)
         if botany.digest(population)!=botany.digest(expected):raise ValueError('Foliage instance attachments differ from the canonical seeded layout')
-    if data!=semantics(model,population,info):raise ValueError('Botanical semantic coordinate contract changed')
+    if data!=semantics(model,population,info,data.get('materials')):raise ValueError('Botanical semantic coordinate contract changed')
     expected_assets=['wood']+(['shoots']+[f'leaf-{i}' for i in range(population['recipe']['variants'])] if population and population['leaves'] else [])
     if record.get('assets')!=expected_assets:raise ValueError('Botanical asset inventory differs from semantic population')
     expected_paths={'semantics.json'}|{a+'/'+name for a in expected_assets for name in ('asset.glb','manifest.json')}
     if {r['path'] for r in inventory}!=expected_paths:raise ValueError('Unexpected botanical bundle members')
+    if data.get('materials'):
+        from . import vegetation_materials
+        vegetation_materials.validate(data['materials'])
+        if source.get('materials')!=data['materials']:raise ValueError('Material contract differs from botanical export binding')
+        delivery={a:vegetation_materials.delivery(root/a/'asset.glb',data['materials'],a) for a in expected_assets}
+        if record.get('material_delivery')!=delivery:raise ValueError('Encoded botanical material delivery changed')
     proofs=[{'asset':asset,'proof':verify_asset(root/asset,model,population,asset,cancelled=cancel)['proof']} for asset in expected_assets]
     return {'format':FORMAT,'assets':proofs,'branches':len(model['branches']),'leaf_instances':len(population['leaves']) if population else 0,
             'shared_leaf_templates':population['recipe']['variants'] if population and population['leaves'] else 0,

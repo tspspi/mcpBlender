@@ -1,5 +1,5 @@
 """Typed engine-independent wind inspection, pose sampling and semantic export."""
-from typing import Annotated
+from typing import Annotated,Literal
 from pydantic import Field,FiniteFloat,model_validator
 from .config import Model
 from .botanical_contracts import Tree
@@ -89,6 +89,7 @@ COMMANDS={
 }
 
 class BotanicalExportPlan(Plan):
+    material_mode: Literal['NONE','PARAMETERS'] = 'NONE'
     max_instances: int = Field(default=30000,strict=True,ge=0,le=100000)
     max_corners: int = Field(default=500000,strict=True,ge=1,le=1000000)
 

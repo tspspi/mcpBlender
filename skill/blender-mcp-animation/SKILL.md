@@ -472,3 +472,14 @@ Inspect the profile for expected_lods; SOURCE placement omits preview offsets,
 DISPLAYED retains them. validate_botanical_lod_bundle revalidates independently
 of Blender sources. These tools default async. Animated LOD playback and receiving
 engine shaders still need separate qualification; see USER_MANUAL.md.
+
+For vegetation material delivery, inspect_vegetation_materials on the tree or LOD
+profile. Review missing_detail_uv, linked/procedural bake requirements and separate
+opaque/double-sided/front-back/backlighting fields. Tree parameter delivery uses
+material_mode=PARAMETERS in both inspect_botanical_export and export_botanical_bundle;
+the export guard includes materials. LOD export requires that mode plus the fresh
+expected_materials fingerprint, independently of expected_lods. File validators
+check actual encoded material/texture inventories; their base RGBA8 estimate
+excludes mipmaps and runtime allocations. No maps or physical thickness are created.
+Use the existing isolated FRONT_PBR bake workflow for portable maps; source
+parameters do not establish optical parity. See USER_MANUAL.md for the contract.

@@ -32,6 +32,7 @@ from . import attribute_export
 from . import vegetation_export
 from . import vegetation_lods
 from . import vegetation_lod_export
+from . import vegetation_materials
 from . import botanical_surfaces
 from . import render_batches
 from . import compositing
@@ -83,6 +84,7 @@ COMMANDS.update(attribute_export.COMMANDS)
 COMMANDS.update(vegetation_export.COMMANDS)
 COMMANDS.update(vegetation_lods.COMMANDS)
 COMMANDS.update(vegetation_lod_export.COMMANDS)
+COMMANDS.update(vegetation_materials.COMMANDS)
 COMMANDS.update(botanical_surfaces.COMMANDS)
 COMMANDS.update(render_batches.COMMANDS)
 COMMANDS.update(compositing.COMMANDS)
@@ -125,6 +127,7 @@ def dispatch(command, p):
     if command in texture_atlas.COMMANDS:return texture_atlas.dispatch(command,p)
     if command in botanical_wind.COMMANDS:return botanical_wind.dispatch(command,p)
     if command in wind_preview.COMMANDS:return wind_preview.dispatch(command,p)
+    if command in vegetation_materials.COMMANDS:return vegetation_materials.dispatch(command,p)
     if command in vegetation_lod_export.COMMANDS:return vegetation_lod_export.dispatch(command,p)
     if command in vegetation_lods.COMMANDS:return vegetation_lods.dispatch(command,p)
     if command in vegetation_export.COMMANDS:return vegetation_export.dispatch(command,p)

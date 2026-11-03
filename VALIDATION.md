@@ -1,5 +1,43 @@
 # Local validation: 0.2.0
 
+## Vegetation source material contracts and encoded inventories — 2026-11-03
+
+Read-only `inspect_vegetation_materials` and opt-in parameter delivery are qualified
+locally on FreeBSD with Blender 5.0.1. A five-test focused gate passed in 50.71s:
+native material/bundle checks, structured MCP LOD export, source-contract rejection
+and read-only discovery, and dependency-light add-on import. Both botanical and
+LOD exports retained source IDs/geometry guards. Source color changes invalidated
+the botanical export guard; stale LOD material fingerprints refused independently
+of the geometry guard. The MCP workflow used no arbitrary execution tool, removed
+the original tree before export, reopened the saved profile, independently validated
+the files and checked the export journal's material and operation binding.
+
+The native fixture distinguished opaque managed leaf geometry from separate
+front/back colors and artistic backlighting, with null physical thickness/map
+claims. Procedural OAK_BARK/OAK_LEAF details retained their guards and reported
+required baking; missing BarkUV on shared-material shoots was reported explicitly.
+A packed 32x32 direct base-color image with named UV provenance survived GLB export
+and independent byte/dimension/hash inspection. Encoded material JSON and all
+referenced texture UV channels were inventoried. Rehashed semantic tampering that
+claimed a masked source alpha mode refused. Pure contract checks also rejected
+fabricated maps, physical thickness, optical parity and invalid input dimensions.
+
+One earlier mixed run hit the existing temporary broker startup timeout after the
+native checks passed. Only its exact late test broker was stopped; a fresh isolated
+startup and the full focused rerun succeeded. Production service configuration and
+timeouts were unchanged. This is local functional evidence, not long-duration
+broker reliability qualification.
+
+The source parameter contract does not generate maps or certify native glTF shader
+fidelity. Managed thin-leaf FRONT_PBR conversion still requires an explicit bake
+request with its recorded optical omissions. Owned vegetation bake-copy UV
+preparation/adoption, texture budget enforcement beyond bundle byte limits, physical
+thickness/transmission calibration, optical/shadow/GPU parity, cards/impostors and
+animated receiving-engine LOD behavior remain open. The RGBA8 estimate covers base
+images only, excluding mipmaps/driver compression/runtime allocations. Existing
+parameter-free bundles remain supported. No package installs, venvs, deployed
+runtime changes or pushes were performed.
+
 ## Durable numeric/botanical/vegetation LOD export recovery — 2026-11-03
 
 Public MCP dispatch now routes numeric-field, botanical-wind and vegetation-LOD

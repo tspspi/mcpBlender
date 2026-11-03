@@ -59,6 +59,13 @@ COMMANDS={
 }
 
 class Export(Edit):
+    material_mode: Literal['NONE','PARAMETERS'] = 'NONE'
+    expected_materials: Digest|None = None
+    @model_validator(mode='after')
+    def material_guard(self):
+        if self.material_mode=='PARAMETERS' and self.expected_materials is None:raise ValueError('PARAMETERS delivery needs expected_materials from inspect_vegetation_materials')
+        if self.material_mode=='NONE' and self.expected_materials is not None:raise ValueError('expected_materials requires PARAMETERS delivery')
+        return self
     directory: str = Field(min_length=1)
     placement: Literal['SOURCE','DISPLAYED'] = 'SOURCE'
     max_bytes: int = Field(default=512*1024**2,strict=True,ge=1024,le=512*1024**2)

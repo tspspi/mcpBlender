@@ -3658,6 +3658,51 @@ combined engine scenes, optical/shadow/GPU behavior and cards/impostors/collisio
 are not certified by these file proofs. Keep the editable source and use the
 existing bake/atlas workflow for portable PBR material delivery.
 
+## Vegetation material source contracts
+
+`inspect_vegetation_materials` accepts exactly one of `collection` (a valid
+botanical tree), `lod_collection` (an independent native LOD profile), or a
+`materials` list. It reads supported frozen Principled/managed thin-leaf graphs
+without changing the scene. The result includes `materials_sha256` and a versioned
+`contract` with source material slots, used slots, UV names, front input values or
+linked-input provenance, procedural bark/leaf detail and bake requirements.
+Missing UVs required by managed procedural detail are reported per asset. A
+material-only inspection has no mesh UV inventory.
+
+Opaque leaf geometry, double-sided rendering, separate front/back base colors and
+artistic diffuse backlighting have separate fields. Artistic backlighting is not
+calibrated physical transmission. Thickness and generated-map fields remain null;
+these tools do not invent alpha cutoffs, thickness maps or optical equivalence.
+Direct packed image inputs with explicit named UVs carry image hashes, dimensions,
+color space and output bindings. Procedural inputs remain marked for baking.
+Animated, unsupported or unfrozen graphs refuse under the existing bake inspection
+rules. Managed detail must retain its content guard; linked optical constants or
+changed managed opaque/culling settings refuse parameter delivery.
+
+Material metadata is opt-in. For a tree, pass `material_mode="PARAMETERS"` to
+`inspect_botanical_export` and repeat it on `export_botanical_bundle` with the
+returned `expected_export`. That guard includes the material contract. For LODs,
+inspect `inspect_vegetation_materials(lod_collection=...)`, then supply
+`material_mode="PARAMETERS"` and its `expected_materials` alongside `expected_lods`
+to `export_botanical_lods`. Material edits require a fresh material guard even if
+the LOD geometry guard stays unchanged. The export journal binds this material
+fingerprint too. The default `material_mode="NONE"` retains the existing workflow.
+
+Parameter-mode bundles store the source contract in their semantic document and
+an actual decoded GLB material/texture inventory for every component. Standalone
+validation checks those records against source slot names, encoded material JSON,
+texture UV channels and embedded PNG/JPEG dimensions, bytes and hashes. The
+reported RGBA8 base-image byte estimate excludes mipmaps, driver compression and
+runtime allocation. Shared template storage is retained; images may still be
+repeated between separate GLBs. Source guards are checked again before publication.
+
+This is parameter delivery and file correspondence, not procedural shader
+conversion or a rendered-fidelity test. Keep the editable source. Portable maps
+still use the isolated texture-bake workflow with explicit `FRONT_PBR` for managed
+thin leaves, suitable nonoverlapping target UVs and its recorded optical omissions.
+Preparing owned vegetation copies with those bake UVs and integrating the results
+into these bundles remain separate work.
+
 ## Blender to Godot
 
 Use Blender for modeling, materials, UVs, rigging and animation; export selected

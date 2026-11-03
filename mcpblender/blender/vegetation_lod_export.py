@@ -31,6 +31,11 @@ def export(p):
     col,owned,meta,state=vegetation_lods.inspect(p)
     if p['expected_lods']!=state['lods_sha256']:raise ValueError('Botanical LOD fingerprint is stale')
     if not state['valid']:raise ValueError('Botanical LOD export requires valid unchanged owned content')
+    materials=None
+    if p.get('material_mode')=='PARAMETERS':
+        from . import vegetation_materials
+        materials=vegetation_materials.contract(vegetation_materials.lod_objects(col,meta))
+        if materials['materials_sha256']!=p.get('expected_materials'):raise ValueError('Vegetation material fingerprint is stale; inspect materials again')
     destination=Path(p['directory'])
     if destination.exists():raise FileExistsError(destination)
     text=col.get(vegetation_lods.TEXT)
@@ -48,6 +53,7 @@ def export(p):
     semantic={'format':files.FORMAT,'model':model,'foliage':population,'selection':selection,'source_radial_sides':sides,
               'source_wind':source_wind,'wind':delivery_wind,'placement_mode':p['placement'],'displayed_placement':shown,'levels':descriptors,'templates':templates,
               'coordinates':common.semantics(model,population,delivery_wind)['coordinates']}
+    if materials is not None:semantic['materials']=materials
     encoded=(json.dumps(semantic,sort_keys=True,allow_nan=False)+'\n').encode()
     if len(encoded)>p['max_bytes']:raise ValueError('LOD semantics exceed max_bytes')
     estimate=len(encoded)*2+sum(len(bpy.data.objects[n].data.loops)*256 for level in meta['levels'] for n in level['objects'][:2])+16*1024**2
@@ -70,6 +76,11 @@ def export(p):
         if vegetation_lods.inspect(p)[-1]['lods_sha256']!=p['expected_lods']:raise ValueError('Native LOD profile changed during export')
         record={'placement_mode':p['placement'],'format':files.FORMAT,'profile_guard':p['expected_lods'],'assets':assets,'files':common.files(stage),
                 'native_creation_readback':meta['verification'],'material_limits':'Native shared materials passed through glTF. Backlighting/vein/alpha/texture fidelity is not qualified; bake PBR separately.'}
+        if materials is not None:
+            from mcpblender import vegetation_materials as material_schema
+            record['materials_sha256']=materials['materials_sha256']
+            record['material_delivery']={a:material_schema.delivery(stage/a/'asset.glb',materials,a) for a in assets}
+            if vegetation_materials.contract(vegetation_materials.lod_objects(col,meta))['contract_sha256']!=materials['contract_sha256']:raise ValueError('Vegetation material contract changed during export')
         serialized=(json.dumps(record,sort_keys=True,allow_nan=False)+'\n').encode()
         if len(serialized)+sum(row['bytes'] for row in record['files'])>p['max_bytes']:raise ValueError('LOD manifest exceeds max_bytes')
         storage=require_space(destination,len(serialized),reserve_bytes=policy.get('reserve_bytes',256*1024**2),estimate_kind='serialized_vegetation_lod_manifest_bytes')

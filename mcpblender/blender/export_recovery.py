@@ -13,7 +13,7 @@ def run(command,p):
     elif command=='export_botanical_bundle':
         kind='BOTANICAL';binding={'export_sha256':p['expected_export']};assets=[];function=vegetation_export.export
     elif command=='export_botanical_lods':
-        kind='VEGETATION_LOD';binding={'profile_guard':p['expected_lods'],'placement_mode':p['placement']};assets=[];function=vegetation_lod_export.export
+        kind='VEGETATION_LOD';binding={'profile_guard':p['expected_lods'],'placement_mode':p['placement'],'materials_sha256':p.get('expected_materials')};assets=[];function=vegetation_lod_export.export
     elif command=='export_asset_package':
         kind='PACKAGE';binding={'source_sha256':p['expected_source']};assets=[a['id'] for a in p['assets']];function=asset_packages.export
     else:

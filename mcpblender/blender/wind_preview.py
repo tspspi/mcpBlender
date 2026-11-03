@@ -99,7 +99,7 @@ def leaf_graph(obj,collection):
     return group
 
 
-def signature(owned):
+def signature(owned,metadata_key=META):
     records=[]
     for value in sorted(owned,key=lambda v:(v.bl_rna.identifier,v.name)):
         if isinstance(value,bpy.types.Mesh):data=realization.mesh_record(value)
@@ -112,7 +112,7 @@ def signature(owned):
                   'physics':{k:assemblies.props(getattr(value,k)) for k in ('rigid_body','rigid_body_constraint','soft_body') if getattr(value,k,None)},
                   'materials':[(s.link,s.material.name if s.material else None) for s in value.material_slots],
                   'modifiers':[(m.name,m.type,assemblies.props(m),assemblies.pointers(m),assemblies.idprops(m)) for m in value.modifiers]}
-        elif isinstance(value,bpy.types.Collection):data={'objects':sorted(o.name for o in value.objects),'children':sorted(c.name for c in value.children),'hide_viewport':value.hide_viewport,'hide_render':value.hide_render,'instance_offset':list(value.instance_offset),'custom':{k:v for k,v in assemblies.idprops(value).items() if k!=META}}
+        elif isinstance(value,bpy.types.Collection):data={'objects':sorted(o.name for o in value.objects),'children':sorted(c.name for c in value.children),'hide_viewport':value.hide_viewport,'hide_render':value.hide_render,'instance_offset':list(value.instance_offset),'custom':{k:v for k,v in assemblies.idprops(value).items() if k!=metadata_key}}
         elif isinstance(value,bpy.types.Text):data={'content':botany.digest(value.as_string()),'use_module':value.use_module}
         else:data=assemblies.record(value)
         records.append((value.bl_rna.identifier,value.name,data))

@@ -446,3 +446,15 @@ from whole-axis anchors; read the recorded coordinate contract. Buds remain
 semantic points. No UV channel is used for wind. Keep the editable .blend and bake
 PBR separately; native shader optics, continuous motion, engine import and
 vegetation LODs remain unqualified. Native rest-instance checks precede publication.
+
+For near/mid tree LODs, inspect_botanical_lod_source with explicit descending leaf
+budgets/radial sides and nondecreasing branch-radius thresholds. Inspect losses
+before create_botanical_lods with expected_plan and a fresh lod_collection.
+Planning/creation default async; poll or use wait=true. Failed quality gates refuse;
+native wood quality is checked additionally during creation. Fixed-view pixel
+coverage can miss subpixel leaves; render levels with the same camera and restore
+any temporary source visibility changes. inspect_botanical_lods returns lods_sha256
+for activate_botanical_lod/remove_botanical_lods. Full LOD0 and reduced levels
+share copied templates, retain canonical wind IDs/parents and survive source
+removal. LOD GLB packaging, cards/impostors, collision, optical/shadow/runtime
+qualification and animated LOD playback remain separate. See USER_MANUAL.md.

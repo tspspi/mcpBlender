@@ -85,6 +85,24 @@ def build_layout(model,cfg):
     check_cancelled();return foliage.generate(model,cfg,progress=report_progress,cancelled=cancel)
 
 
+def instance_population(name,population,points,prototypes,layout,source_indices=None):
+    """Build shared native rest instances; callers own staged rollback/IDs."""
+    for key,kind,values in (
+      ('leaf_rotation','FLOAT_VECTOR',[v['rotation'] for v in layout['leaves']]),('leaf_scale','FLOAT_VECTOR',[(v['scale'],)*3 for v in layout['leaves']]),
+      ('leaf_variant','INT',[v['variant'] for v in layout['leaves']]),('bot_branch_index','INT',[v['parent_branch_index'] for v in layout['leaves']]),
+      ('leaf_index','INT',source_indices if source_indices is not None else list(range(len(layout['leaves'])))),('leaf_phase','FLOAT',[v['phase'] for v in layout['leaves']]),('leaf_flutter','FLOAT',[v['flutter'] for v in layout['leaves']])):attribute(points,key,kind,values)
+    group=bpy.data.node_groups.new(name+'_LeafInstances','GeometryNodeTree')
+    group.interface.new_socket(name='Geometry',in_out='INPUT',socket_type='NodeSocketGeometry');group.interface.new_socket(name='Geometry',in_out='OUTPUT',socket_type='NodeSocketGeometry')
+    nodes=group.nodes;links=group.links;source=nodes.new('NodeGroupInput');output=nodes.new('NodeGroupOutput');collection=nodes.new('GeometryNodeCollectionInfo')
+    collection.inputs['Collection'].default_value=prototypes;collection.inputs['Separate Children'].default_value=True;collection.inputs['Reset Children'].default_value=True
+    instance=nodes.new('GeometryNodeInstanceOnPoints');instance.inputs['Pick Instance'].default_value=True
+    links.new(source.outputs['Geometry'],instance.inputs['Points']);links.new(collection.outputs['Instances'],instance.inputs['Instance']);links.new(instance.outputs['Instances'],output.inputs['Geometry'])
+    for key,target,kind in (('leaf_rotation','Rotation','FLOAT_VECTOR'),('leaf_scale','Scale','FLOAT_VECTOR'),('leaf_variant','Instance Index','INT')):
+        node=nodes.new('GeometryNodeInputNamedAttribute');node.data_type=kind;node.inputs['Name'].default_value=key;links.new(node.outputs['Attribute'],instance.inputs[target])
+    modifier=population.modifiers.new('Botanical Leaf Instances','NODES');modifier.node_group=group
+    return group
+
+
 def create_component(name,col,root,model,cfg,bark,old_material=None):
     from .bridge import check_cancelled,report_progress
     layout=build_layout(model,cfg);p=layout['recipe'];roles={}
@@ -98,19 +116,7 @@ def create_component(name,col,root,model,cfg,bark,old_material=None):
         shape=foliage.variant_shape(p,i)
         mesh=own('lm'+str(i),leaf_mesh(name+'_LeafMesh'+str(i),shape,leafmat,bark))
         obj=own('lo'+str(i),bpy.data.objects.new(name+'_Leaf'+str(i),mesh));prototypes.objects.link(obj)
-    for key,kind,values in (
-      ('leaf_rotation','FLOAT_VECTOR',[v['rotation'] for v in layout['leaves']]),('leaf_scale','FLOAT_VECTOR',[(v['scale'],)*3 for v in layout['leaves']]),
-      ('leaf_variant','INT',[v['variant'] for v in layout['leaves']]),('bot_branch_index','INT',[v['parent_branch_index'] for v in layout['leaves']]),
-      ('leaf_index','INT',list(range(len(layout['leaves'])))),('leaf_phase','FLOAT',[v['phase'] for v in layout['leaves']]),('leaf_flutter','FLOAT',[v['flutter'] for v in layout['leaves']])):attribute(points,key,kind,values)
-    group=own('gn',bpy.data.node_groups.new(name+'_LeafInstances','GeometryNodeTree'))
-    group.interface.new_socket(name='Geometry',in_out='INPUT',socket_type='NodeSocketGeometry');group.interface.new_socket(name='Geometry',in_out='OUTPUT',socket_type='NodeSocketGeometry')
-    nodes=group.nodes;links=group.links;source=nodes.new('NodeGroupInput');output=nodes.new('NodeGroupOutput');collection=nodes.new('GeometryNodeCollectionInfo')
-    collection.inputs['Collection'].default_value=prototypes;collection.inputs['Separate Children'].default_value=True;collection.inputs['Reset Children'].default_value=True
-    instance=nodes.new('GeometryNodeInstanceOnPoints');instance.inputs['Pick Instance'].default_value=True
-    links.new(source.outputs['Geometry'],instance.inputs['Points']);links.new(collection.outputs['Instances'],instance.inputs['Instance']);links.new(instance.outputs['Instances'],output.inputs['Geometry'])
-    for key,target,kind in (('leaf_rotation','Rotation','FLOAT_VECTOR'),('leaf_scale','Scale','FLOAT_VECTOR'),('leaf_variant','Instance Index','INT')):
-        node=nodes.new('GeometryNodeInputNamedAttribute');node.data_type=kind;node.inputs['Name'].default_value=key;links.new(node.outputs['Attribute'],instance.inputs[target])
-    modifier=population.modifiers.new('Botanical Leaf Instances','NODES');modifier.node_group=group
+    own('gn',instance_population(name,population,points,prototypes,layout))
     # Shared prototypes stay unlinked from scene; shoot stems use a small mesh.
     verts=[];faces=[];branch_ids=[];lookup={v['id']:i for i,v in enumerate(model['branches'])}
     for i,shoot in enumerate(layout['shoots']):

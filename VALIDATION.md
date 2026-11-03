@@ -1,5 +1,77 @@
 # Local validation: 0.2.0
 
+## Coverage-scored native vegetation LODs — 2026-11-03
+
+New plan/create/inspect/activate/remove tools build independent full LOD0 plus
+one to four near/mid levels. A deterministic lazy greedy selector scores opaque
+blade pixels and source boundary pixels in fixed root-local views. Selections
+are nested; leaf IDs/orientation/scale/phase/flutter remain unchanged. Major wood
+and every selected leaf's attachment ancestors remain; lower radial counts rebuild
+wood with original branch indices, rather than interpolating discrete IDs.
+Shoots retain only required attachments. All levels share one copied prototype
+collection. Canonical model/foliage/selection/wind Text persists across save/reopen.
+
+The initial workflow/native/pure and existing native wind regression passed
+**7 tests in 150.80 seconds**, including the existing large native wind population
+probe after the shared rest-instance builder refactor. Policy/contracts, masks,
+capability and dependency-free add-on gate passed **6 tests in 24.04 seconds**.
+Final isolated-render/source-visibility-restoration and native lifecycle gates
+passed **2 tests in 36.50 seconds**. Later mask-estimate/policy checks passed
+**3 tests in 8.47 seconds**; final early-memory/combined-work bounds, actual branch
+pruning and lifecycle gate passed **1 test in 9.01 seconds**. Skill/whitespace
+checks pass. These focused gates are not a fresh full-project suite.
+
+Pure mask unions match the existing independent foliage coverage analyzer for
+source and selected subsets. Leaf selections repeat exactly and remain nested;
+branch ancestry closes over all attachment parents. Triangle totals include wood,
+shoots and expanded leaf instances. Zero-loss requests with one retained leaf
+fail quality; insufficient projection/mask/gain budgets refuse. Native creation
+additionally projects actual woody triangles in the same crown window, bounding
+missing coverage/boundary and excess occupied area. That gate is explicitly
+pending in the initial plan; a leaf-only plan does not certify native wood.
+
+The structured fixture disables arbitrary Python execution and uses a sparse 5m,
+37-branch, 140-leaf source. Its 140/70/35-leaf levels share only three prototypes.
+LOD0 has 772 wood + 336 shoot + 27,440 expanded leaf triangles = 28,548 triangles.
+The reduced totals are 14,620 and 7,608. FRONT/SIDE/TOP leaf pixel losses are
+approximately .0323/.0667/.2267 at 70 leaves and .4194/.2000/.5067 at 35 leaves.
+The .25 default rejects the second level; the fixture explicitly raises its loss
+budgets to .55 before creation. Native wood coverage loss stays below .093 in all
+three views. Every leaf instance in every level matches its retained rest pose;
+maximum fixture position error was about 9.54e-7m and normalized linear component
+error about 3.50e-7. Three fixed-camera 320x256 Cycles images were rendered/opened
+and inspected. Temporary source/Cube render visibility is restored before saving;
+the original tree guard remains unchanged. The source is intentionally sparse,
+not the final mature-oak foliage or realism reference.
+
+A centimetre-scene fixture adds rotation, uniform physical scale and display
+offset. Cancellation during the first native level and immediately before
+handoff restores the exact native ID set/source guard. Native wood/shoot triangle
+counts equal the plan. Activation, save/reopen, independent survival after source
+removal, shared-outside-mesh-user refusal, foreign-member refusal and guarded
+cleanup all pass. A deliberately aggressive two-leaf stress level prunes wood
+from 37 to nine branches while preserving the exact original branch-index set
+and parent ancestry. This stress level permits full pixel loss explicitly; it
+is a semantics/lifecycle test, not an acceptable visual delivery profile.
+
+Projection admission includes source/rebuilt native wood as well as leaves.
+Mask admission happens before full attachment generation; its host-specific
+Python integer/container estimate covers mask payload only, not heap/native/peak
+RAM. Default budgets are 60 million projections, 256 MiB mask payload and two
+million gain evaluations. Work/cancellation remain bounded and progress is tracked.
+Native ownership/content/user guards cover staged IDs and shared references;
+materials are retained/shared, without optical qualification. Existing wind
+preview signatures retain their prior default behavior.
+
+Evidence is local under `/tmp/mb-vegetation-lod-20261103` (.blend, three PNGs,
+plan/readback proof). This qualifies static native near/mid representations in
+fixed opaque geometry views, not alpha/translucency, perspective/shadows, real
+render performance, authored managed-tree UV2, native animated LOD playback,
+LOD GLB/wind packaging, cards/impostors or collision. Crown windows do not cover
+all trunk-base geometry, and pixel centers can miss subpixel blades; inspect
+higher resolution and renders. Hard-crash staging recovery remains unqualified.
+No packages, venvs, installed runtime/service changes or pushes occurred.
+
 ## Botanical wind interchange and shared templates — 2026-11-03
 
 New inspect/export/validate botanical bundle tools bind canonical wind settings,

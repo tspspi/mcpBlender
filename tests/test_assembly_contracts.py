@@ -2,7 +2,7 @@
 import asyncio
 import pytest
 from fastmcp import Client
-from mcpblender.assembly_contracts import Create,Place,SourceInspection,InstanceInspection
+from mcpblender.assembly_contracts import Create,Place,SourceInspection,InstanceInspection,Realize,RealizationInspection
 from mcpblender.config import Config
 from mcpblender.server import build_server
 
@@ -26,6 +26,12 @@ def test_readonly_assembly_discovery(tmp_path):
     async def run():
         async with Client(server) as client:
             names={t.name for t in await client.list_tools()}
-            assert {'inspect_asset_assembly_source','inspect_asset_assembly','inspect_asset_instance'}<=names
-            assert not {'create_asset_assembly','place_asset_instance','set_asset_assembly_editing','remove_asset_instance'}&names
+            assert {'inspect_asset_assembly_source','inspect_asset_assembly','inspect_asset_instance','inspect_asset_realization'}<=names
+            assert not {'create_asset_assembly','place_asset_instance','set_asset_assembly_editing','remove_asset_instance','realize_asset_instances'}&names
     asyncio.run(run())
+
+
+def test_realization_bounded_sources_and_paging():
+    assert Realize.model_validate({'instances':['One'],'collection':'Frozen','expected_source':'a'*64}).instances==['One']
+    for patch in ({'instances':[]},{'instances':['One','One']},{'instances':['One'],'leaf_limit':129}):
+        with pytest.raises(ValueError):RealizationInspection.model_validate(patch)

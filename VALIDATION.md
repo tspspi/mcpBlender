@@ -1,5 +1,45 @@
 # Local validation: 0.2.0
 
+## Static assembly realization and mesh delivery — 2026-11-03
+
+Combined structured/native and existing assembly/server/storage/capability gate:
+
+```sh
+MCPBLENDER_TEST_BLENDER=1 MCPBLENDER_REALIZATION_EVIDENCE_DIR=/tmp/mb-realization-20261103 python3 -m pytest -q tests/test_assembly_realization.py tests/test_assembly_realization_native.py tests/test_assembly_contracts.py tests/test_assemblies.py tests/test_assembly_native.py tests/test_capabilities.py tests/test_server.py tests/test_storage.py --tb=short --maxfail=1
+```
+
+Result: **19 passed in 81.48s**, with the existing Starlette/AnyIO deprecation
+warning. With arbitrary Python disabled, a textured procedural building prototype
+is placed twice and realized into independent static mesh objects. Source guards,
+leaf paging, queued storage feedback, UVs, per-leaf triangle counts, world bounds,
+no modifiers, and source instance fingerprint preservation are checked. The
+existing GLB exporter produces matching triangle counts, one embedded image and
+native-to-glTF position bounds. Native re-import gives two meshes with matching
+combined triangle counts and world bounds. Moving a source refuses the old guard;
+save/reopen retains the realized mesh bounds. Evidence contains a GLB, editable
+scene and proof JSON under the command's evidence directory.
+
+The native fixture checks nested placements, nonuniform mirrored/sheared affine
+transforms, exact transformed vertex correspondence, outward polygon normals,
+transformed custom corner normals, UV presence, named point attributes, shared
+material identity, source selection/active object preservation, frozen shape-key
+pose, and ordinary cancellation during creation and after scene publication with
+exact native ID-set restoration. The native fixture also checks un-realized
+Geometry Nodes instance leaves, their separate transformed bounds, and partial
+creation name-collision cleanup. Evaluated mesh copying explicitly removes owned
+orphan Key datablocks without changing source shape data. Geometry and controls
+remain in the editable
+prototype; changing its morph value does not alter the realized meshes.
+
+The workflow snapshots current viewport mesh geometry only. It does not preserve
+animation, rig structure or helpers in the realized output. Materials remain
+shared and shaders/image pixels/external dependencies are not baked. Arbitrary
+named attributes are preserved in native mesh data, not promised in GLB. This
+checks static delivery through the existing exporter, not a new validated
+multi-asset bundle or animated assembly exporter. Process-crash cleanup, external
+library loading, collision/shadow generation and botanical pipelines remain open.
+
+
 ## Reusable native asset assemblies — 2026-11-03
 
 Focused structured/native gate:

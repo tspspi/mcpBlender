@@ -75,8 +75,47 @@ records at 2,048 and mesh vertices at two million. Guards cover the documented
 current native state; image pixel buffers, external file contents and arbitrary
 Python dependencies are not frozen. Native write/append calls are not interruptible;
 cooperative cancellation and ordinary failure clean owned transfer data. External
-linked-library loading, realization/export, collision generation and independent
-instance simulation are not covered by these tools.
+linked-library loading, animated realization/export, collision generation and independent
+instance simulation are not covered by these prototype tools. Static mesh
+realization is described below.
+
+## Static assembly realization and mesh delivery
+
+Use `inspect_asset_realization` with `instances` naming managed placements. It
+snapshots nonempty visible evaluated mesh leaves, including nested placements and
+procedural mesh instances, and returns `source_sha256`, counts, world bounds and
+paged leaf records (`leaf_offset`/`leaf_limit`). Inspection cleans all temporary
+meshes. Pass the guard as `expected_source` to `realize_asset_instances`, with a
+fresh `collection` name, then wait for the queued operation.
+
+The result contains the created `objects` and per-leaf source provenance. Each is
+an independent static mesh with identity transform and geometry baked into world
+space. This preserves affine placement including shear and mirrors; face winding
+and transformed corner normals are handled explicitly. UVs, mesh attributes and
+material assignments follow the evaluated mesh. Materials remain shared with the
+prototype, so material edits affect both. Sources, selection and current frame
+remain intact. These are current-viewport snapshots: rig deformation, shape keys
+and modifiers are frozen into geometry; rigs, animation, lights and cameras are
+not copied. Geometry vector attributes retain their native values rather than
+being interpreted as world-space vectors. Shader coordinates, image pixels and
+external files are not baked or made independent. Bake textures separately when
+needed for material interchange.
+
+The created objects can be edited normally and passed to `export_objects_glb`
+with `animations=false`. Save the scene for editable delivery. GLB conversion
+uses the existing exporter and its material/attribute limitations; static
+realization does not promise preservation of arbitrary shaders or named attributes
+in GLB. Dedicated validated multi-asset bundles remain separate.
+
+The operation requires Object mode and finite invertible leaf transforms. Limits
+are 128 input placements, 2,048 realized mesh leaves, two million total vertices
+and eight million corners. Empty/armature/light/camera helpers are reported as
+ignored; other nonmesh geometry refuses realization until converted. Mirrored
+faces with repeated vertex indices are refused. Stale guards, name collisions,
+ordinary errors and cooperative cancellation clean owned objects, collections and
+meshes, including cancellation after linking the collection into the scene.
+Source placements are never removed. Storage feedback accompanies queued progress;
+this operation itself creates scene data rather than a new file.
 
 ## Blender startup and attachment
 

@@ -257,6 +257,16 @@ animation. Enable `set_asset_assembly_editing` to edit its mapped components usi
 structured tools; disable it afterward and reinspect guards. Existing placements
 update together; sources remain intact. `inspect_asset_instance` gives current
 viewport leaves/bounds; camera framing and preview setup accept managed placements.
-Save the scene for editable delivery. No independent instance timing, external
-library loading or realized/exported assembly delivery is implied; consult
+Save the scene for editable delivery. No independent instance timing or external
+library loading is implied. Static realization is described below; consult
 USER_MANUAL.md for ownership, dependency and guard limits.
+
+For static assembly delivery, `inspect_asset_realization` takes managed placement
+names in `instances`. Carry `source_sha256` as `expected_source` into
+`realize_asset_instances` with a fresh collection name; wait for completion.
+The returned `objects` are independent current-viewport mesh snapshots in world
+space, suitable for `export_objects_glb` with `animations=false`. Sources remain
+editable. This freezes the current pose and modifiers; materials remain shared.
+Shader coordinates, external files and arbitrary attributes are not automatically
+baked into portable GLB equivalents. Compare exported/re-imported geometry and
+review materials; use texture baking when necessary.

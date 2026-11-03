@@ -388,5 +388,7 @@ structured tools; disable it afterward and reinspect guards. Existing placements
 update together; sources remain intact. `inspect_asset_instance` gives current
 viewport leaves/bounds; camera framing and preview setup accept managed placements.
 Save the scene for editable delivery. No independent instance timing, external
-library loading or realized/exported assembly delivery is implied; consult
-USER_MANUAL.md for ownership, dependency and guard limits.
+library loading or animated assembly export is implied. Static current-pose
+mesh realization is available through `inspect_asset_realization` and
+`realize_asset_instances`; this freezes animation and keeps materials shared.
+Consult USER_MANUAL.md for ownership, dependency and guard limits.

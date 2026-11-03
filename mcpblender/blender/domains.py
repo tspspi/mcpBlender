@@ -22,6 +22,7 @@ from . import animation_curves
 from . import drivers
 from . import nla
 from . import lods
+from . import assembly_realization
 from . import assemblies
 from . import rest_edit
 from . import skin_weights
@@ -54,6 +55,7 @@ COMMANDS.update(skin_weights.COMMANDS)
 COMMANDS.update(rest_edit.COMMANDS)
 COMMANDS.update(lods.COMMANDS)
 COMMANDS.update(assemblies.COMMANDS)
+COMMANDS.update(assembly_realization.COMMANDS)
 
 
 def strips(editor):
@@ -78,6 +80,8 @@ def curves(action, slot):
 
 
 def dispatch(command, p):
+    if command in assembly_realization.COMMANDS:
+        return assembly_realization.dispatch(command,p)
     if command in assemblies.COMMANDS:
         return assemblies.dispatch(command,p)
     if command in lods.COMMANDS:

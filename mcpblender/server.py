@@ -153,7 +153,7 @@ class State:
             paths.append(params["path"])
         if command == "vse_add_strip":
             paths.extend(params["paths"])
-        if command in {"validate_lod_export", "validate_asset_package", "inspect_export_job", "recover_export_job", "cleanup_export_job", "inspect_render_job", "validate_render_job", "recover_render_job", "cleanup_render_job"}:
+        if command in {"validate_attribute_bundle", "validate_botanical_bundle", "validate_botanical_lod_bundle", "validate_lod_export", "validate_asset_package", "inspect_export_job", "recover_export_job", "cleanup_export_job", "inspect_render_job", "validate_render_job", "recover_render_job", "cleanup_render_job"}:
             paths.append(params["directory"])
         if command == "configure_material" and params.get("image_path"):
             paths.append(params["image_path"])

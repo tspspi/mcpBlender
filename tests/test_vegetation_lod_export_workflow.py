@@ -23,6 +23,9 @@ def test_structured_lod_export_and_standalone_validation(assets_live):
             profile=await wait(client,'create_botanical_lods',**args,expected_plan=plan['plan_sha256'],lod_collection='Lods',display_offset_m=[8,0,0])
             await tool(client,'remove_botanical_tree',collection='Source',expected_tree=tree['tree_sha256'])
             result=await wait(client,'export_botanical_lods',lod_collection='Lods',expected_lods=profile['lods_sha256'],directory='lod-bundle')
+            journal=await tool(client,'inspect_export_job',directory='lod-bundle')
+            assert journal['record']['kind']=='VEGETATION_LOD' and journal['record']['state']=='published'
+            assert journal['record']['operation_id']==result['operation_id'] and journal['target_is_original_stage']
             assert result['proof']['placement_mode']=='SOURCE' and len(result['proof']['assets'])==9
             assert result['proof']['shared_leaf_templates']==3
             assert [x['expanded_triangles'] for x in result['proof']['levels']]==[28548,14620,7608]

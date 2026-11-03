@@ -3465,9 +3465,10 @@ and 512 MiB output are supported. `max_bytes` defaults to 256 MiB. The initial
 space estimate covers witness/geometry and excludes unknown embedded image size;
 progress reports free storage and the final manifest check uses actual sizes.
 
-Existing output paths are refused. Cooperative failures remove only owned staging
-files and native copies. Final two-file publication is not crash-atomic; a hard
-crash can leave a staging/partial output directory requiring operator inspection.
+Existing output paths are refused. Public MCP exports register durable staging
+and atomically rename the complete verified directory into place. Interrupted
+staging remains inspectable/recoverable through the shared export-job tools below;
+owned native copies are removed on cooperative failure.
 This generic format does not yet populate complete botanical branch hierarchy,
 leaf orientation/flutter or a wind runtime shader. Preserve the canonical wind
 semantic JSON alongside later vegetation deliveries.
@@ -3529,11 +3530,10 @@ unknown embedded material image sizes; per-component progress and free-storage
 checks continue through verification. Native glTF calls are not interruptible;
 cancellation is cooperative between native calls and during bounded decoding.
 
-Existing directories are refused. Cooperative failure removes only owned native
-copies/staging data and preserves the source, selection and frame. Publication
-moves several component folders/files into an exclusively reserved directory;
-it is not hard-crash atomic. A crash can leave a hidden staging or partial output
-directory requiring inspection. Native thin-leaf/bark graphs are passed through
+Existing directories are refused. Cooperative failure removes owned native copies
+and preserves the source, selection and frame. Public MCP exports retain durable
+owned staging for guarded recovery/cleanup, and publish the complete verified
+directory with one atomic rename. Use the shared export-job tools below. Native thin-leaf/bark graphs are passed through
 Blender's glTF exporter; optical/backlighting/vein fidelity is not certified.
 Bake PBR with the existing texture workflow when needed. Vegetation LODs,
 continuous wind, engine shaders and the final mature-oak reference remain separate.
@@ -3646,12 +3646,11 @@ The existing numeric sub-bundle field/corner bounds and canonical plan work/mask
 limits still apply. Initial space estimates cover geometry/semantics and exclude
 unknown embedded material images; per-component progress and final free-space
 checks report storage. Existing paths refuse. Cooperative cancellation before
-publication removes owned staging/native copies and preserves the profile, its
-active level, frame and selection. Final publication moves multiple folders/files;
-it is not crash-atomic. If publication fails, a partial destination is preserved
-for inspection, including any unrelated files written there. Interrupted bundles
-need review; automatic recovery/retention integration for this format remains
-separate work.
+publication preserves the profile, active level, frame and selection and removes
+owned native copies. Public MCP exports retain journaled staging after interruption
+and publish the whole verified directory by one atomic rename. Recovery and guarded
+staging cleanup use the shared export-job tools below. Older unjournaled partial
+destinations remain operator-reviewed; they are never automatically adopted.
 
 Shared native materials pass through Blender's glTF exporter. PBR/texture-budget,
 backlighting/vein/alpha fidelity, authored managed-tree UV2, animated LOD playback,
@@ -3713,14 +3712,36 @@ It disables Draco availability for the operation and restores the original probe
 afterward. Fixed Blender versions are left alone. Installed Blender files are
 unchanged, and Draco-compressed assets are not supported by this workaround.
 
-## Interrupted LOD/package export recovery
+## Interrupted bundle export recovery
 
-Top-level `export_lod_chain` and `export_asset_package` now register a durable,
-owner-scoped export job before writing staging. This covers static, skin and morph
-LOD bundles and batch packages. A hidden sibling job directory contains a small
+Top-level `export_lod_chain`, `export_asset_package`, `export_attribute_bundle`,
+`export_botanical_bundle` and `export_botanical_lods` register a durable owner-scoped
+job before staging. This covers static/skin/morph LODs, packages, numeric fields,
+botanical wind bundles and shared-template vegetation LOD bundles. A hidden sibling job directory contains a small
 journal, a stable OS writer lock and a registered stage. The delivered output
 contains only its normal manifest/files; recovery metadata remains outside it.
-Nested LOD exports inside a package belong to the outer package job.
+Nested LOD/numeric exports belong to the outer package/botanical job, without
+starting another independent writer journal. Completed staging is published by a
+single directory rename. Recovery does not recreate scene edits or upgrade an
+interrupted broker operation to success.
+
+Registered incomplete/cancelled stages are retained rather than silently swept.
+Use recovery and guarded cleanup to manage their storage. Previously verified
+stages remain protected even if cancellation/publication failure changed the job
+state; explicit `discard_ready=true` is required to discard them. After an
+interrupted partial cleanup, recover again; failed revalidation invalidates the
+old verification checkpoint so the remaining owned files can be cleaned safely.
+Unknown files, symlinks and changed stage identity refuse recovery/cleanup. Known
+nested numeric staging is recognized, but cannot be published as complete output.
+Journaled verification emits progress/free-storage heartbeats and checks
+cancellation before publication. Recovery works without Blender or its sources.
+
+This is explicit guarded retention, not an automatic age-based sweep of export
+staging. Published assets are never retention candidates. The ordinary automatic
+render-output/history policy remains unchanged. Journals themselves are retained;
+older unjournaled staging and crashes before stage identity registration require
+operator review. Atomic rename/process-death tests do not establish power-loss
+persistence of every native-exported byte.
 
 Use `list_export_jobs` to discover journals belonging to the current owner under
 `directory="."` (the library root by default). The read-only scan has bounded

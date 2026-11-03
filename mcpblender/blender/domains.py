@@ -116,7 +116,7 @@ def curves(action, slot):
 
 
 def dispatch(command, p):
-    if command in {"export_lod_chain","export_asset_package"}:
+    if command in {"export_lod_chain","export_asset_package","export_attribute_bundle","export_botanical_bundle","export_botanical_lods"}:
         from .export_recovery import run
         return run(command,p)
     if command in botanical_surfaces.COMMANDS:return botanical_surfaces.dispatch(command,p)

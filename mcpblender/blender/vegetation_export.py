@@ -98,7 +98,8 @@ def export(p):
     storage=require_space(destination,estimate,reserve_bytes=policy.get('reserve_bytes',256*1024**2),estimate_kind='botanical_geometry_semantics_heuristic_excludes_material_images')
     report_progress({'phase':'checking canonical native leaf instances','storage':storage})
     native=native_instances(values,population,roles,plan);check_cancelled()
-    stage=Path(tempfile.mkdtemp(prefix='.mcpblender-botanical-',dir=destination.parent));assets=[]
+    job=p.get('_export_job');stage=job.stage if job else Path(tempfile.mkdtemp(prefix='.mcpblender-botanical-',dir=destination.parent));assets=[]
+    if job:stage.mkdir(mode=0o700);job.created()
     try:
         (stage/'semantics.json').write_bytes(encoded)
         jobs=[('wood',values[2][0])]+([('shoots',roles['so'])]+[(f'leaf-{i}',roles['lo'+str(i)]) for i in range(plan['prototypes'])] if plan['leaf_instances'] else [])
@@ -109,25 +110,30 @@ def export(p):
             if size>p['max_bytes']:raise ValueError('Botanical bundle exceeds max_bytes')
             report_progress({'phase':'exported botanical component','component':label,'completed':len(assets),'total':len(jobs),'bytes':size})
         if botanical_trees.inspect({'collection':p['collection']})['tree_sha256']!=plan['source_guard']:raise ValueError('Botanical source changed during export')
-        record={'format':schema.FORMAT,'source':plan,'assets':assets,'files':schema.files(stage),'native_instance_readback':native,
+        record={'export_sha256':plan['export_sha256'],'format':schema.FORMAT,'source':plan,'assets':assets,'files':schema.files(stage),'native_instance_readback':native,
                 'material_limits':'Native materials exported through Blender glTF; thin-leaf backlighting/vein shader fidelity is not certified. Keep the editable source and bake PBR separately.'}
         serialized=(json.dumps(record,sort_keys=True,allow_nan=False)+'\n').encode()
         if sum(r['bytes'] for r in record['files'])+len(serialized)>p['max_bytes']:raise ValueError('Botanical manifest exceeds max_bytes')
         storage=require_space(destination,len(serialized),reserve_bytes=policy.get('reserve_bytes',256*1024**2),estimate_kind='serialized_botanical_manifest_bytes')
         (stage/'manifest.json').write_bytes(serialized)
-        proof=schema.validate(stage,cancelled=check_cancelled)
+        proof=job.verify(check_cancelled,report_progress) if job else schema.validate(stage,cancelled=check_cancelled)
         report_progress({'phase':'verified botanical bundle before publication','storage':storage});check_cancelled()
-        destination.mkdir(mode=0o700)
-        try:
-            for path in list(stage.iterdir()):os.rename(path,destination/path.name)
-        except BaseException:
-            # Destination was exclusively reserved here, and contains only owned moves.
-            for path in destination.iterdir():
-                if path.is_dir():shutil.rmtree(path)
-                else:path.unlink()
-            destination.rmdir();raise
+        if job:
+            if destination.exists() or destination.is_symlink():raise FileExistsError(destination)
+            stage.rename(destination)
+        else:
+            destination.mkdir(mode=0o700)
+            try:
+                for path in list(stage.iterdir()):os.rename(path,destination/path.name)
+            except BaseException:
+                # Destination was exclusively reserved here, and contains only owned moves.
+                for path in destination.iterdir():
+                    if path.is_dir():shutil.rmtree(path)
+                    else:path.unlink()
+                destination.rmdir();raise
         return {'directory':str(destination),'export_sha256':plan['export_sha256'],'proof':proof,'native_instance_readback':native}
-    finally:shutil.rmtree(stage)
+    finally:
+        if not job:shutil.rmtree(stage)
 
 
 def dispatch(command,p):

@@ -55,7 +55,8 @@ def export(p):
     if _bridge and _bridge.active:_bridge.active['storage'].update(estimated_bytes=estimate,estimate_kind='lod_geometry_semantic_heuristic_excludes_embedded_material_images')
     storage=require_space(destination,estimate,reserve_bytes=policy.get('reserve_bytes',256*1024**2),estimate_kind='lod_geometry_semantic_heuristic_excludes_embedded_material_images')
     report_progress({'phase':'staging shared vegetation LOD bundle','storage':storage});check_cancelled()
-    stage=Path(tempfile.mkdtemp(prefix='.mcpblender-vegetation-lods-',dir=destination.parent));assets=[]
+    job=p.get('_export_job');stage=job.stage if job else Path(tempfile.mkdtemp(prefix='.mcpblender-vegetation-lods-',dir=destination.parent));assets=[]
+    if job:stage.mkdir(mode=0o700);job.created()
     try:
         (stage/'semantics.json').write_bytes(encoded)
         prototypes=col['mcpblender_leaf_sources'];prototype_objects=sorted(prototypes.objects,key=lambda o:o.name)
@@ -67,20 +68,25 @@ def export(p):
             if size>p['max_bytes']:raise ValueError('LOD bundle exceeds max_bytes')
             report_progress({'phase':'exported vegetation LOD component','component':asset,'completed':len(assets),'total':len(jobs),'bytes':size})
         if vegetation_lods.inspect(p)[-1]['lods_sha256']!=p['expected_lods']:raise ValueError('Native LOD profile changed during export')
-        record={'format':files.FORMAT,'profile_guard':p['expected_lods'],'assets':assets,'files':common.files(stage),
+        record={'placement_mode':p['placement'],'format':files.FORMAT,'profile_guard':p['expected_lods'],'assets':assets,'files':common.files(stage),
                 'native_creation_readback':meta['verification'],'material_limits':'Native shared materials passed through glTF. Backlighting/vein/alpha/texture fidelity is not qualified; bake PBR separately.'}
         serialized=(json.dumps(record,sort_keys=True,allow_nan=False)+'\n').encode()
         if len(serialized)+sum(row['bytes'] for row in record['files'])>p['max_bytes']:raise ValueError('LOD manifest exceeds max_bytes')
         storage=require_space(destination,len(serialized),reserve_bytes=policy.get('reserve_bytes',256*1024**2),estimate_kind='serialized_vegetation_lod_manifest_bytes')
         (stage/'manifest.json').write_bytes(serialized)
-        proof=files.validate(stage,cancelled=check_cancelled,progress=report_progress)
+        proof=job.verify(check_cancelled,report_progress) if job else files.validate(stage,cancelled=check_cancelled,progress=report_progress)
         report_progress({'phase':'verified vegetation LOD bundle before publication','storage':storage});check_cancelled()
-        destination.mkdir(mode=0o700)
-        # Publication failures leave the exclusive partial directory for review.
-        # Never sweep a destination another process may already be using.
-        for path in list(stage.iterdir()):os.rename(path,destination/path.name)
+        if job:
+            if destination.exists() or destination.is_symlink():raise FileExistsError(destination)
+            stage.rename(destination)
+        else:
+            destination.mkdir(mode=0o700)
+            # Publication failures leave the exclusive partial directory for review.
+            # Never sweep a destination another process may already be using.
+            for path in list(stage.iterdir()):os.rename(path,destination/path.name)
         return {'directory':str(destination),'proof':proof,'profile_guard':p['expected_lods'],'placement':p['placement']}
-    finally:shutil.rmtree(stage)
+    finally:
+        if not job:shutil.rmtree(stage)
 
 
 def dispatch(command,p):

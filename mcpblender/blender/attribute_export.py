@@ -73,7 +73,8 @@ def export(p):
     if _bridge and _bridge.active:_bridge.active['storage'].update(estimated_bytes=estimate,estimate_kind='field_witness_and_geometry_heuristic_excludes_material_images')
     storage=require_space(output,estimate,reserve_bytes=policy.get('reserve_bytes',256*1024**2),estimate_kind='field_witness_and_geometry_heuristic_excludes_material_images')
     report_progress({'phase':'staging verified attribute bundle','storage':storage});check_cancelled()
-    stage=Path(tempfile.mkdtemp(prefix='.mcpblender-fields-',dir=output.parent));mesh=None;copy=None
+    job=p.get('_export_job');stage=job.stage if job else Path(tempfile.mkdtemp(prefix='.mcpblender-fields-',dir=output.parent));mesh=None;copy=None
+    if job:stage.mkdir(mode=0o700);job.created()
     try:
         mesh=obj.data.copy();mesh.use_fake_user=False;copy=bpy.data.objects.new('MCP_FieldDelivery',mesh);bpy.context.scene.collection.objects.link(copy);copy.matrix_world=obj.matrix_world
         # Remove all underscore names on the disposable copy to prevent collisions.
@@ -90,21 +91,27 @@ def export(p):
         if len(serialized)+(stage/'asset.glb').stat().st_size>p['max_bytes']:raise ValueError('Attribute manifest/bundle exceeds max_bytes')
         storage=require_space(output,len(serialized),reserve_bytes=policy.get('reserve_bytes',256*1024**2),estimate_kind='serialized_attribute_manifest_bytes')
         (stage/'manifest.json').write_bytes(serialized)
+        if job:job.verify(check_cancelled,report_progress)
         report_progress({'phase':'verified attribute bundle before publication','storage':storage});check_cancelled()
-        # mkdir is an exclusive reservation, protecting preexisting/foreign paths.
-        output.mkdir(mode=0o700)
-        try:
-            os.replace(stage/'asset.glb',output/'asset.glb');os.replace(stage/'manifest.json',output/'manifest.json')
-        except BaseException:
-            for path in (output/'asset.glb',output/'manifest.json'):path.unlink(missing_ok=True)
-            output.rmdir();raise
+        if job:
+            if output.exists() or output.is_symlink():raise FileExistsError(output)
+            stage.rename(output)
+        else:
+            # mkdir is an exclusive reservation, protecting preexisting/foreign paths.
+            output.mkdir(mode=0o700)
+            try:
+                os.replace(stage/'asset.glb',output/'asset.glb');os.replace(stage/'manifest.json',output/'manifest.json')
+            except BaseException:
+                for path in (output/'asset.glb',output/'manifest.json'):path.unlink(missing_ok=True)
+                output.rmdir();raise
         return info|{'directory':str(output),'proof':proof,'bytes':len(serialized)+(output/'asset.glb').stat().st_size}
     finally:
         if copy:bpy.data.objects.remove(copy,do_unlink=True)
         if mesh and mesh.users==0:bpy.data.meshes.remove(mesh)
         # Only this invocation's private staging files are removable.
-        for name in ('asset.glb','manifest.json'):(stage/name).unlink(missing_ok=True)
-        stage.rmdir()
+        if not job:
+            for name in ('asset.glb','manifest.json'):(stage/name).unlink(missing_ok=True)
+            stage.rmdir()
 
 
 def validate(p):

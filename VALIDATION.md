@@ -1,5 +1,66 @@
 # Local validation: 0.2.0
 
+## Durable numeric/botanical/vegetation LOD export recovery — 2026-11-03
+
+Public MCP dispatch now routes numeric-field, botanical-wind and vegetation-LOD
+bundle exports through the existing owner-scoped export journal/writer lock.
+Nested numeric sub-bundles remain inside the outer job. Complete validated stages
+publish by one directory rename, preserving stage inode identity; recovery metadata
+stays outside delivered files. New profile namespaces recognize only expected
+asset names/files and bounded nested numeric staging. Unknown content/symlinks or
+changed identity refuse recovery/cleanup. Source/profile and placement bindings
+are validated before publication and again during file-only recovery.
+
+Initial dead-writer/new-profile plus existing job tests passed **13 tests in
+31.76 seconds**. Ordinary MCP numeric/botanical/LOD export and broker-only recovery
+regression passed **4 tests in 173.67 seconds**. The final combined partial/live/
+ready protections, broker-only cleanup, killed native writers, operation-ID binding
+and add-on gate passed **17 tests in 96.23 seconds**. Explicit broker restart with
+Blender startup disabled plus contract checks passed **4 tests in 12.11 seconds**.
+Final verification-heartbeat/cancellation and cleanup regression passed **13 tests
+in 1.07 seconds**. Skill and whitespace checks pass. These focused gates do not
+constitute a fresh full-project suite or export throughput measurement.
+
+Real Blender processes create complete botanical and shared-LOD bundles and exit
+abruptly at the prepublication boundary. Their OS writer locks release; the
+registered stages remain. Independent recovery without those Blender processes
+validates files, marks them ready and explicitly publishes the same directory
+inode, with replayed=false. Published output and validated ready stages refuse
+ordinary cleanup. Numeric exports also publish through the journal. A standalone
+actual custom-field GLB fixture recovers through MCP with auto_start=false,
+survives temporary broker restart and still reports no Blender worker connected.
+The same broker-only path previews and removes a recognized seven-byte incomplete
+botanical stage after reconciliation. Real MCP LOD export journals record the
+original operation ID and published stage identity.
+
+Separate child processes die with incomplete NUMERIC, BOTANICAL and VEGETATION_LOD
+stages. Known nested numeric staging is discoverable and cleanable after recovery,
+but cannot be published as complete output. Wrong-owner access refuses; a foreign
+file inside nested staging blocks recovery/cleanup and is preserved. Dry-run byte
+counts and guarded deletion pass. Native scene edits are never replayed and the
+original broker operation state is not rewritten to success by file recovery.
+
+Previously verified stages now remain protected even if cancellation or an I/O
+failure changed their state to cancelled/failed. Explicit discard_ready=true is
+needed to delete them. Interrupted cleanup first requires reconciliation; failed
+revalidation removes the stale verification checkpoint so remaining incomplete
+owned files can be cleaned with a fresh guard. This preserves the existing
+cancelled-cleanup regression. Verification sends progress/free-storage heartbeats
+and observes remote cancellation; a controlled-clock test cancels inside validation
+rather than waiting until final handoff. Public exporters check cancellation after
+durable verification and before rename, without duplicate full botanical/LOD
+validation. Existing ordinary and centimetre bundle validators remain compatible.
+
+This is explicit guarded staging retention, not automatic age-based export expiry.
+The existing automatic render-output/history policy is unchanged. Published assets,
+unknown directories and old unjournaled stages are not cleanup candidates; journal
+metadata is retained. Crashes before stage identity registration require operator
+review. Tests establish process-death/lock release and broker restart recovery,
+not physical power-loss persistence of every file or restoration of unsaved scene
+edits. Native glTF calls retain their coarse cancellation boundaries. New fixtures
+are reproducible temporary test data; earlier delivery/render evidence is unchanged.
+No packages, venvs, installed runtime/service changes or pushes occurred.
+
 ## Shared-template vegetation LOD GLB/wind bundles — 2026-11-03
 
 New export_botanical_lods/validate_botanical_lod_bundle tools package unchanged

@@ -30,9 +30,9 @@ class ListJobs(Model):
 
 
 COMMANDS={
- 'inspect_export_job':(Inspect,(),'Inspect the current MCP owner\'s durable LOD/package export job, live-writer lock, stage identity/inventory and free storage. Works without Blender; does not replay work.'),
+ 'inspect_export_job':(Inspect,(),'Inspect the current MCP owner\'s durable LOD/package/numeric/botanical export job, live-writer lock, stage identity/inventory and free storage. Works without Blender; does not replay work.'),
  'recover_export_job':(Recover,('allow_library_write',),'Reconcile an abandoned owned export without replaying Blender. Validate completed files, report ready or published output, optionally publish a validated stage. Requires a fresh job guard and no live writer; published/unrelated output is never overwritten.'),
- 'cleanup_export_job':(Cleanup,('allow_library_write',),'Preview/remove recognized owned interrupted export staging using a fresh guard, with symlink/inode/inventory checks and live-writer exclusion. Never deletes published output. Ready validated files require explicit discard_ready=true; dry_run defaults true.'),
+ 'cleanup_export_job':(Cleanup,('allow_library_write',),'Preview/remove recognized owned interrupted export staging using a fresh guard, with symlink/inode/inventory checks and live-writer exclusion. Never deletes published output. Ready or previously verified files require explicit discard_ready=true; dry_run defaults true.'),
 }
 
 COMMANDS['list_export_jobs']=(ListJobs,(),'Discover export journals belonging to this MCP owner under a library directory using a bounded read-only scan. Omits finished jobs by default, skips symlinks/foreign records and reports truncation. Does not clean or adopt unknown directories; works without Blender.')

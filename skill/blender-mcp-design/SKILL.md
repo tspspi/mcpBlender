@@ -318,14 +318,15 @@ shared/fake-user meshes and source materials/clips. Reinspect after edits/reopen
 ordinary chain/export guards are not management guards. External adoption and
 process-crash rollback remain separate; read USER_MANUAL.md for limits.
 
-After an interrupted LOD/package export, inspect `inspect_export_job` using the
+After an interrupted LOD/package/numeric/botanical export, inspect `inspect_export_job` using the
 original output directory. If it is unknown, start with bounded `list_export_jobs`
 and inspect a selected summary for its file inventory. These broker tools work
 with Blender closed. Carry the
 fresh job guard to `recover_export_job`; it validates files without replaying scene
 work. Ready staging can be explicitly published; incomplete staging can be previewed
 with `cleanup_export_job`, then deleted with dry_run=false and a fresh guard.
-Published output stays protected; discarding ready files needs discard_ready=true.
+Published output stays protected; discarding ready or previously verified files
+needs discard_ready=true.
 A live lock, foreign owner, unknown file or changed inode is a refusal, not a reason
 to force cleanup. Recover again after cancelled partial cleanup. Journals remain
 outside delivered bundles. See USER_MANUAL.md for boundary and reference limits.
@@ -466,5 +467,6 @@ canonical leaf/hierarchy mappings and encoded wind fields. Both export and
 validate_botanical_lod_bundle default async; poll or wait=true. The independent
 validator recomputes selections and checks decoded fields/UVs/counts/metres even
 after all native sources are removed. Save the .blend separately; file proofs do
-not certify native material optics or a runtime wind shader. Publication failures
-preserve partial destinations for review; do not delete unknown files to retry.
+not certify native material optics or a runtime wind shader. Public MCP exports now use durable export jobs and atomic directory publication.
+Inspect/recover/clean registered staging through the shared job tools; do not
+delete unknown files to retry. Older unjournaled partial outputs need review.

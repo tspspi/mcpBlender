@@ -13,6 +13,7 @@ import uuid
 from .storage import snapshot
 
 FORMAT='mcpblender-export-job-v1'
+KINDS={'LOD','PACKAGE','NUMERIC','BOTANICAL','VEGETATION_LOD'}
 STATES={'running','verified','ready','interrupted','failed','cancelled','published','cleaning','cleaned'}
 
 
@@ -34,7 +35,7 @@ def read_record(root):
         if not stat.S_ISREG(value.st_mode) or value.st_uid!=os.geteuid() or value.st_size>2*1024**2:raise ValueError('Invalid export job record')
         record=json.load(stream)
     if not isinstance(record,dict) or record.get('format')!=FORMAT or not isinstance(record.get('state'),str) or record['state'] not in STATES or not isinstance(record.get('id'),str) or not re.fullmatch('[0-9a-f]{32}',record['id']):raise ValueError('Invalid export job ownership/state')
-    if not isinstance(record.get('kind'),str) or record['kind'] not in {'LOD','PACKAGE'} or not isinstance(record.get('binding'),dict):raise ValueError('Invalid export job profile/binding')
+    if not isinstance(record.get('kind'),str) or record['kind'] not in KINDS or not isinstance(record.get('binding'),dict):raise ValueError('Invalid export job profile/binding')
     if record.get('stage')!='staging-'+record['id']:raise ValueError('Invalid export stage name')
     return record
 
@@ -84,6 +85,13 @@ def allowed(record,relative,is_directory):
     parts=relative.split('/')
     if record['kind']=='LOD':
         return not is_directory and len(parts)==1 and (parts[0]=='manifest.json' or re.fullmatch(r'level_0[0-7]\.glb',parts[0]))
+    if record['kind']=='NUMERIC':return not is_directory and len(parts)==1 and parts[0] in {'asset.glb','manifest.json'}
+    if record['kind'] in {'BOTANICAL','VEGETATION_LOD'}:
+        if len(parts)==1 and parts[0] in {'manifest.json','semantics.json'}:return not is_directory
+        asset=(re.fullmatch(r'wood|shoots|leaf-[0-3]',parts[0]) if record['kind']=='BOTANICAL' else re.fullmatch(r'lod-[0-4]-(wood|shoots)|leaf-[0-3]',parts[0]))
+        nested=re.fullmatch(r'\.mcpblender-fields-[a-z0-9_]{8}',parts[0])
+        if not asset and not nested:return False
+        return is_directory if len(parts)==1 else len(parts)==2 and not is_directory and parts[1] in {'asset.glb','manifest.json'}
     if record['kind']!='PACKAGE':return False
     if relative=='manifest.json':return not is_directory
     if parts[0] not in record.get('asset_ids',[]):return False
@@ -114,8 +122,20 @@ def inventory(root,record):
 def validate_output(path,record,check_cancelled=lambda:None):
     from .lod_files import validate as validate_lods
     from .package_files import validate as validate_package
-    check_cancelled()
-    result=validate_package(path,check_cancelled) if record['kind']=='PACKAGE' else validate_lods(path)
+    check_cancelled();inventory(path,record)
+    if record['kind'] in {'NUMERIC','BOTANICAL','VEGETATION_LOD'}:
+        if any(child.name.startswith('.mcpblender-fields-') for child in Path(path).iterdir()):raise ValueError('Incomplete nested numeric export staging remains')
+        if record['kind']=='NUMERIC':
+            from .attribute_glb import verify,FORMAT as NUMERIC_FORMAT
+            from .vegetation_interchange import read
+            manifest=read(Path(path)/'manifest.json')
+            if manifest.get('format')!=NUMERIC_FORMAT or manifest.get('asset')!='asset.glb':raise ValueError('Invalid numeric export manifest')
+            result=verify(path/'asset.glb',manifest['witness'],cancelled=check_cancelled)
+            if result!=manifest['proof']:raise ValueError('Numeric export proof changed')
+        else:
+            from . import vegetation_interchange,vegetation_lod_files
+            result=(vegetation_interchange.validate if record['kind']=='BOTANICAL' else vegetation_lod_files.validate)(path,cancelled=check_cancelled)
+    else:result=validate_package(path,check_cancelled) if record['kind']=='PACKAGE' else validate_lods(path)
     check_cancelled()
     manifest=json.loads((path/'manifest.json').read_text())
     if any(manifest.get(key)!=value for key,value in record['binding'].items()):raise ValueError('Export manifest source/animation binding differs from job')
@@ -169,10 +189,17 @@ class ExportJob:
             self.lock.__exit__(None,None,None);self.lock=None;raise
     def created(self):
         self.record['stage_identity']=identity(self.stage);write_record(self.root,self.record)
-    def verify(self):
+    def verify(self,check_cancelled=lambda:None,progress=None):
         if self.record.get('stage_identity')!=identity(self.stage):raise ValueError('Export stage ownership changed')
-        validate_output(self.stage,self.record)
+        last=[time.monotonic()]
+        def check():
+            check_cancelled()
+            if progress and time.monotonic()-last[0]>=1:
+                progress({'phase':'validating durable export stage'});last[0]=time.monotonic();check_cancelled()
+        result=validate_output(self.stage,self.record,check)
         self.record['state']='verified';self.record['verified_at']=time.time();write_record(self.root,self.record)
+        if progress:progress({'phase':'verified durable export before publication'});check_cancelled()
+        return result
     def __exit__(self,kind,error,traceback):
         try:
             if self.directory.exists() and self.record.get('stage_identity')==identity(self.directory):self.record['state']='published'
@@ -196,7 +223,7 @@ def recover(directory,owner,expected_job,*,publish=False,check_cancelled=lambda:
             try:validate_output(stage,record,check_cancelled)
             except (ValueError,OSError,KeyError) as exc:
                 if publish:raise ValueError('Incomplete/invalid export cannot be published: '+str(exc)) from exc
-                record['state']='interrupted';record['validation_error']=str(exc)
+                record['state']='interrupted';record['validation_error']=str(exc);record.pop('verified_at',None)
             else:
                 record['state']='ready'
                 if publish:
@@ -251,8 +278,8 @@ def cleanup(directory,owner,expected_job,*,dry_run=True,discard_ready=False,refe
         record=current['record'];stage=root/record['stage']
         if current['stage_error']:raise ValueError(current['stage_error'])
         if record['state']=='published' or current['target_is_original_stage']:raise ValueError('Published deliverables are protected from cleanup')
-        if record['state']=='ready' and not discard_ready:raise ValueError('Validated ready output is protected; explicitly set discard_ready=true')
         if record['state'] in {'running','cleaning'}:raise ValueError('Recover the interrupted export before cleanup')
+        if current['stage_exists'] and (record['state'] in {'ready','verified'} or record.get('verified_at') is not None) and not discard_ready:raise ValueError('Validated ready output is protected; explicitly set discard_ready=true')
         if any(Path(p).absolute().is_relative_to(stage) for p in references if p):raise ValueError('Current project references this export staging')
         rows=current['stage_files'];dirs=current['stage_directories']
         if not dry_run:

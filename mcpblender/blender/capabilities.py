@@ -2,6 +2,7 @@
 
 # Groups describe the typed surface, not all of Blender's functionality.
 WORKFLOWS = {
+    "botanical_modeling": ({"botanical_species_catalog", "plan_botanical_tree", "create_botanical_tree", "inspect_botanical_tree", "list_botanical_elements", "regenerate_botanical_tree", "remove_botanical_tree", "export_botanical_model"}, "Versioned standalone seeded oak-like scaffold/space-colonization branch and bud model, tapered native wood with bark UVs and semantic numeric attributes, metrics/JSON and guarded owned lifecycle. Artistic structure, not botanical/mechanical simulation. Foliage, unioned junctions, wind motion and vegetation export/LOD proof remain separate."),
     "mesh_modeling": ({"create_primitive", "create_mesh", "inspect_mesh", "inspect_mesh_elements",
                        "select_mesh_elements", "remove_mesh_selection", "extrude_mesh_faces",
                        "inset_mesh_faces", "loop_cut_mesh", "merge_mesh_vertices", "cleanup_mesh",

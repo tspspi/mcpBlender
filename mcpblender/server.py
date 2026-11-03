@@ -192,6 +192,9 @@ class State:
             extension = {"save_blend": ".blend", "open_blend": ".blend", "export_glb": ".glb", "export_objects_glb": ".glb", "inspect_glb_deformation": ".glb"}.get(command)
             if extension and Path(params["path"]).suffix.lower() != extension:
                 raise ValueError(f"File must end in {extension}")
+        if command=='export_botanical_model':
+            params['path']=str(self.library_path(params['path'],write=True))
+            if Path(params['path']).suffix.lower()!='.json':raise ValueError('Botanical model export must end in .json')
         if command in {"bake_rigid_bodies","bake_simulation"}:
             params["path"] = str(self.library_path(params["path"],write=True))
             if Path(params["path"]).suffix.lower() != ".blend":
@@ -427,7 +430,7 @@ def build_server(config: Config):
 
     def domain_tool(command):
         model, _, description = COMMANDS[command]
-        default_wait = command not in ("render_animation", "render_video", "render_animation_preview", "render_camera_batch", "download_asset", "upload_asset", "request_asset_api", "sample_rigid_bodies", "bake_rigid_bodies", "sample_simulation", "bake_simulation", "bake_fluid", "bake_textures", "sample_constraint_animation", "bake_constraint_animation", "configure_nla_strip", "remove_nla_strip", "move_nla_track", "configure_nla_playback", "retarget_animation", "set_skin_weights", "repair_skin_weights", "smooth_skin_weights", "mirror_skin_weights", "edit_armature_rest", "generate_lod_chain", "export_lod_chain", "sample_lod_chain", "inspect_glb_deformation", "create_asset_assembly", "realize_asset_instances", "generate_asset_proxies", "export_asset_package", "rebuild_lod_chain", "adopt_lod_chain", "readopt_lod_chain", "recover_export_job", "cleanup_export_job", "list_export_jobs")
+        default_wait = command not in ("create_botanical_tree", "regenerate_botanical_tree", "plan_botanical_tree", "render_animation", "render_video", "render_animation_preview", "render_camera_batch", "download_asset", "upload_asset", "request_asset_api", "sample_rigid_bodies", "bake_rigid_bodies", "sample_simulation", "bake_simulation", "bake_fluid", "bake_textures", "sample_constraint_animation", "bake_constraint_animation", "configure_nla_strip", "remove_nla_strip", "move_nla_track", "configure_nla_playback", "retarget_animation", "set_skin_weights", "repair_skin_weights", "smooth_skin_weights", "mirror_skin_weights", "edit_armature_rest", "generate_lod_chain", "export_lod_chain", "sample_lod_chain", "inspect_glb_deformation", "create_asset_assembly", "realize_asset_instances", "generate_asset_proxies", "export_asset_package", "rebuild_lod_chain", "adopt_lod_chain", "readopt_lod_chain", "recover_export_job", "cleanup_export_job", "list_export_jobs")
 
         async def operation(params=None, wait: bool = default_wait, request_id: str | None = None) -> dict:
             values = params.model_dump(exclude_none=True) if params is not None else {}
@@ -696,7 +699,7 @@ def build_http_app(server, state):
 def addon_zip(destination: Path):
     source = Path(__file__).parent
     with zipfile.ZipFile(destination, "x", zipfile.ZIP_DEFLATED) as archive:
-        for path in [*(source / name for name in ("__init__.py","wire.py","broker.py","retention.py","network.py","storage.py","fluid_files.py","texture_files.py","skin_math.py","uv_math.py","animation_graph.py","driver_graph.py","rest_math.py","lod_files.py","skin_glb.py","package_files.py","export_jobs.py","lod_recipe.py","render_jobs.py")), *sorted((source / "blender").glob("*.py"))]:
+        for path in [*(source / name for name in ("__init__.py","wire.py","broker.py","retention.py","network.py","storage.py","fluid_files.py","texture_files.py","skin_math.py","uv_math.py","animation_graph.py","driver_graph.py","rest_math.py","lod_files.py","skin_glb.py","package_files.py","export_jobs.py","lod_recipe.py","render_jobs.py","botany.py")), *sorted((source / "blender").glob("*.py"))]:
             archive.write(path, str(Path("mcpblender") / path.relative_to(source)))
 
 

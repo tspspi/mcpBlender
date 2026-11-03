@@ -1132,6 +1132,125 @@ materials and renders after editing. Mesh edits are limited to one million
 vertices/faces; native operations are not forcibly interruptible. Ordinary
 operation IDs, request-ID deduplication and broker reconnection apply.
 
+## Botanical branch models and woody masters
+
+The botanical workflow is separate from the stylized `VEGETATION` Geometry Nodes
+preset. Its first profile, `QUERCUS_ROBUR`, creates a woody structure and semantic
+terminal buds. It does not yet create leaf meshes, foliage optics, wind motion,
+vegetation-specific LODs or a completed realistic oak asset.
+
+`botanical_species_catalog` reports profiles/defaults and references. The
+standalone `mcpblender.botany` module generates and validates versioned JSON using
+only Python's standard library. Its art-directed scaffold defines trunk/primary
+limbs; crown growth uses nearest-attractor space competition, persistence, a light
+vector, gravity bias, local repulsion and seeded variation. These are geometric
+controls, not measured light transport or a calibrated biological growth solver.
+The broad rounded species envelope is informed by
+[Oregon State University's English oak description](https://landscapeplants.oregonstate.edu/plants/quercus-robur);
+the crown-filling approach follows the general idea of
+[Runions, Lane and Prusinkiewicz's space-colonization model](https://www.algorithmicbotany.org/papers/colonization.egwnp2007.html).
+
+Plan a tree with `plan_botanical_tree` and a `recipe`. Planning is asynchronous by
+default; use `wait=true` or poll its operation. It returns `model_sha256`, normalized
+recipe, crown envelope and structural metrics without creating native IDs.
+
+```json
+{
+  "recipe": {
+    "species": "QUERCUS_ROBUR",
+    "seed": 1,
+    "height": 14,
+    "crown_width": 13,
+    "crown_base": 0.23,
+    "trunk_radius": 0.36,
+    "primary_branches": 9,
+    "attractors": 640,
+    "node_budget": 1600,
+    "light_direction": [0, 0, 1],
+    "gravity": 0.08
+  }
+}
+```
+
+The same generator version/normalized recipe/seed reproduces identifiers and
+coordinates in the qualified environment. Branches have stable IDs, parent and
+axis IDs, order, birth step, approximate age, start/end, tapered radii, axis anchor,
+stiffness and phase. Terminal buds reference their supporting branch and direction.
+Surviving scaffold slots keep their IDs across parameter changes; topology changes
+can add/remove growth slots, so this is not arbitrary edit correspondence.
+The model declares local metres, right-handed Z-up and a trunk-base origin.
+`age_years`/stiffness are structural proxies; age is not a biological growth clock.
+Radii use descendant demand with a bounded pipe-style support allocation, not a
+mechanical strength rating. The requested height is centerline height; mesh radii
+can extend slightly beyond it. Crown dimensions guide growth and do not measure
+foliage coverage or guarantee complete envelope filling.
+
+Other recipe controls include iterations, segment length, persistence,
+light weight, avoidance, randomness, crown offset, pipe exponent and root flare.
+Height, width and radius are independent controls; supply compatible dimensions
+when changing growth stage. Limits include 4000 branch segments, 2048 attractors
+and 80 growth steps. An insufficient budget for the initial scaffold refuses.
+Metrics expose counts/orders/axes/buds, centerline bounds/height/width, total
+length, branch-angle statistics/histogram, woody asymmetry and reached attractors.
+They are not projected leaf area, photosynthesis, silhouette quality or collision
+measurements. Growth and meshing report progress and cooperative cancellation.
+
+`create_botanical_tree` takes the same recipe, `expected_model`, a new `collection`
+(up to 40 UTF-8 bytes), optional `location`, `radial_sides` (5..16),
+`bark_tile_length` in metres and optional existing `bark_material`. It creates an
+owned root, tapered wood mesh, hidden nonrendering bud-point mesh and canonical
+JSON Text datablock. Default bark is a reusable brown rough PBR material, not
+qualified bark texture detail. Initial root scale converts model metres to current
+scene units without changing scene unit settings; location uses native scene units.
+
+Wood uses parallel-transport-style cross-section frames, root flare/asymmetry,
+shared continuation rings, growth-aligned `BarkUV` and intersecting capped sleeves
+at lateral branches. Junctions are not welded/unioned or qualified for close-up
+watertight manufacturing. Point attributes include `bot_branch_index`,
+`bot_branch_order`, `bot_age`, `branch_anchor`, `branch_stiffness`, `branch_phase`
+and `bend_weight`. Branch indexes address the canonical model's branch array.
+The bud mesh supplies parent branch indexes and directions. These are native
+semantic inputs for future wind/foliage work, not an implemented wind animation or
+verified interchange packing. Only BarkUV is created; UV2 remains available.
+
+`inspect_botanical_tree` reports model/mesh validity, ownership and reference
+blockers, recipe, metrics, native geometry/attribute inventory, root matrix, scene
+unit scale and `tree_sha256`. This guard covers current native identity, contents,
+links and relevant state; obtain it again after editing or reopening. It is distinct
+from the pure model guard. `list_botanical_elements` pages `BRANCH` or `ORGAN`
+records with `offset`/`limit` (at most 128), avoiding a full graph in MCP responses.
+
+To revise growth, plan the changed recipe, inspect the current master, then call
+`regenerate_botanical_tree` with both `expected_model` and `expected_tree`. It
+stages and verifies a replacement before name handoff and final owned deletion.
+Static root parent/binding/placement, parent collection links and owned visibility
+are preserved by default; `preserve_placement=false` uses the new initial transform.
+Existing bark material is reused unless explicitly replaced. Materials remain
+shared; shader/image contents are not frozen by the tree guard.
+
+Manual derived mesh edits block regeneration unless
+`discard_derived_edits=true` explicitly authorizes replacing them. Edited/invalid
+canonical model Text still blocks regeneration under that flag. Root authored
+controls and external/shared native references refuse replacement. Cooperative
+failure before final deletion restores original IDs/names/selection and removes
+staging; process-crash rollback at handoff is not established. The final native
+batch deletion is noninterruptible.
+
+`remove_botanical_tree` takes a fresh `expected_tree`. It can remove unambiguously
+owned changed content, but refuses foreign membership, shared/externally referenced
+owned IDs, linked/overridden data and protected controls. Materials and outside
+parents/collections remain. The canonical Text is owned through a collection ID
+reference rather than an unreferenced fake-user copy.
+
+`export_botanical_model` writes guarded canonical JSON to a library `.json` path;
+existing output requires `overwrite=true`. It uses owned temporary staging and
+publishes without overwriting an unexpected existing target. This export contains
+local model semantics, not scene root placement, GLB geometry or a vegetation
+adapter manifest. Native numeric attribute retention through GLB, foliage density,
+wind deformation, collision/LOD/impostor quality and general species/organ growth
+remain separate milestones. Keep the canonical model alongside the editable
+`.blend` when developing those downstream representations.
+
 ## Structured Geometry Nodes
 
 These tools accept `params` and work with Python execution disabled. Use

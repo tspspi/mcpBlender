@@ -3,6 +3,85 @@
 
 
 
+
+## Botanical model core and owned woody masters — 2026-11-03
+
+Final schema/native/contracts checks passed **7 tests in 28.10 seconds**, adding
+explicit crown, species, axis/anchor/birth-step, growth-inventory and terminal-bud
+validation without changing generated geometry. Existing capabilities, server,
+storage, Geometry Nodes, assembly and LOD lifecycle regression passed **16 tests
+in 65.28 seconds**, with the existing Starlette/AnyIO warning.
+
+```sh
+MCPBLENDER_TEST_BLENDER=1 python3 -m pytest -q tests/test_botany.py tests/test_botanical_native.py tests/test_botanical_contracts.py --tb=short --maxfail=1
+MCPBLENDER_TEST_BLENDER=1 python3 -m pytest -q tests/test_capabilities.py tests/test_server.py tests/test_storage.py tests/test_geometry.py tests/test_assembly_native.py tests/test_lod_management_native.py --tb=short --maxfail=1
+```
+
+The final standalone/native/contracts/real-MCP/add-on suite passed **9 tests in
+137.46 seconds**. An expanded native export/ownership gate passed **1 test in
+17.03 seconds**, adding source-unit conversion and cancellation around unique
+semantic-output staging without touching a foreign conventional `.tmp` file.
+Earlier capability/server/storage/add-on coverage passed **17 tests in 45.25
+seconds**, with the existing Starlette/AnyIO warning.
+
+```sh
+MCPBLENDER_TEST_BLENDER=1 MCPBLENDER_BOTANICAL_EVIDENCE_DIR=/tmp/mb-botanical-20261103 python3 -m pytest -q tests/test_botany.py tests/test_botanical_contracts.py tests/test_botanical_native.py tests/test_botanical_trees.py tests/test_export_job_native.py::test_addon_imports_recovery_without_frontend_dependencies --tb=short --maxfail=1
+MCPBLENDER_TEST_BLENDER=1 python3 -m pytest -q tests/test_botanical_native.py --tb=short --maxfail=1
+```
+
+The pure standard-library core generates a versioned local-metre/Z-up graph with
+branch/axis identifiers, parentage/order, developmental age proxy, start/end
+radii, anchors/stiffness/phase and terminal bud attachments. Tests reproduce
+identical recipes/seeds, normalize integer/float recipes, distinguish seeds and
+verify actual crown-base/light-control geometry changes. Three default seeds
+produce bounded 14m centerlines with more than 500 segments and 100 buds each.
+Tests verify one rooted parent-before-child graph, junction continuity, decreasing
+age along parent paths, positive tapered radii and child cross-section budgets.
+Corrupted hierarchy/radii/version/phase/organs and insufficient scaffold budgets
+refuse. Growth stops at cooperative cancellation without native state.
+
+The real MCP fixture has arbitrary Python tools disabled. It creates three seeded
+woody masters, checks BarkUV and numeric semantic attributes, pages branch records,
+exports JSON and validates it in standalone system Python. It renders a woody
+preview, changes height/width/light/gravity through planned guarded regeneration,
+saves/reopens and renders the edited master. Removing one master preserves another.
+The previews were opened and inspected as bare woody structure; they do not qualify
+foliage, real oak appearance, close-up branch joins or light transport.
+
+Native lifecycle tests exercise foreign collection instances, shared mesh data,
+manual mesh edits requiring explicit discard, edited canonical semantics refusing
+even that opt-in, retained material identity and mesh data names, parent collection
+links, static root placement and visibility. Cancellation during meshing and at
+the final pre-deletion handoff restores exact native ID/name inventories and the
+original tree fingerprint. Model Text is owned through a native collection pointer;
+removal deletes that Text and exclusive meshes while retaining reusable materials
+and external parents/containers. A non-default scene unit scale confirms metre
+conversion without changing the scene scale setting.
+
+Semantic JSON export uses exclusive temporary staging, byte admission and a final
+link/replace. A cancellation before publication removes only owned staging; an
+unrelated `model.json.tmp` survives. Output JSON preserves canonical model identity,
+not scene placement or a verified geometry interchange mapping. Native branch-index
+attributes map to canonical branch records, but custom glTF retention is not tested.
+
+Qualification is installed FreeBSD Blender 5.0.1 and local Python 3.11. Stable IDs
+and coordinates are reproducible in that environment for a fixed generator/recipe;
+this is not a cross-platform floating-point or arbitrary-topology edit guarantee.
+Age/stiffness/pipe radii are structural artistic approximations. The scaffold and
+space-colonization crown use reference-informed shape controls, not a botanical
+or mechanical simulation. Crown envelope/attractor coverage are not leaf coverage.
+Lateral wood uses intersecting capped sleeves, not a watertight junction union.
+Default brown rough PBR and growth-aligned bark UVs are placeholders for later bark
+look development. Leaf organs/geometry/optics, wind deformation, foliage LODs,
+atlases/impostors, species generalization and vegetation package/export proof all
+remain open. Native commit deletion is noninterruptible and process-crash rollback
+at regeneration handoff is not qualified.
+
+Evidence `/tmp/mb-botanical-20261103` contains three canonical models, editable
+`oak-masters.blend`, before/after woody PNGs and planning/inspection proof JSON.
+The bundled design skill validator and `git diff --check` passed. No application
+rebuild, packages, venv, installed service or installed skills were changed.
+
 ## Independent camera/frame workers and EXR delivery — 2026-11-03
 
 The final render core suite passed **8 tests in 64.36 seconds**, after recording

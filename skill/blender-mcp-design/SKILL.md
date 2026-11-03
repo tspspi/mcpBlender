@@ -332,3 +332,22 @@ Originals remain independent. To refresh authored levels, inspect both adoption
 and management again and use `readopt_lod_chain` with both guards. Ordinary
 `rebuild_lod_chain` automatically reduces to comparable budgets and does not
 recreate hand-authored topology. Inputs cannot belong to the replaced chain.
+
+For a species-aware woody foundation, use botanical_species_catalog and
+plan_botanical_tree (async by default), then create_botanical_tree with the same
+recipe/model_sha256 as expected_model and a new collection. This differs from the
+stylized VEGETATION preset: the canonical model is a seeded branch/bud graph in
+local metres, with native wood/BarkUV and semantic attributes. It has no actual
+foliage, wind, atlas/impostor or completed vegetation delivery yet. Inspect the
+bare structure before choosing its next representation; a branch count is not
+leaf coverage or biological/structural qualification.
+
+Use inspect_botanical_tree for a fresh tree_sha256 and list_botanical_elements
+for bounded branch/bud records. Plan a revised recipe and use both guards with
+regenerate_botanical_tree. Manual derived edits require explicit discard opt-in;
+canonical Text edits and external/shared references refuse regeneration. Static
+root placement and existing bark materials remain by default. Source model IDs
+are repeatable; topology changes do not guarantee arbitrary edit correspondence.
+export_botanical_model writes canonical metre/Z-up JSON, not mesh placement or
+verified GLB wind attributes. Preserve that model with the editable project;
+remove_botanical_tree retains materials and refuses ambiguous native ownership.

@@ -1375,6 +1375,13 @@ graph itself is not a promise of equivalent GLB shading.
 `leaf_sha256`, normalized shape, UV-ready geometry counts and summed blade area.
 `create_leaf_template` uses that same shape, `expected_leaf` and a new `name`
 (maximum 40 UTF-8 bytes) to create an editable native mesh and thin-leaf material.
+The recipe and local generated mesh use metres. Creation sets object scale to
+`1 / scene.unit_settings.scale_length`, preserving physical size without changing
+project units. The response includes normalized `recipe`, `scene_unit_scale` and
+`world_bounds_m`. Existing objects are not retroactively resized, and changing the
+project's unit settings later does not trigger automatic leaf rescaling. Native
+physical size is qualified separately from export unit handling; nonmetre GLB
+normalization remains under audit.
 The blade has a raised midrib, not a secondary vein network or scanned texture.
 Rows increase when necessary to resolve the selected lobe count.
 

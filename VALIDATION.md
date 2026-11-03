@@ -4,6 +4,29 @@
 
 
 
+## Standalone leaf physical unit conversion — 2026-11-03
+
+Standalone leaf creation now converts its metre recipe using object scale,
+matching the existing botanical-root convention. It leaves scene settings intact
+and returns normalized recipe, scene unit scale and physical `world_bounds_m`.
+Local generated geometry remains in canonical metres. Existing user objects are
+not retroactively changed.
+
+The new native unit fixture plus existing foliage lifecycle/backlighting tests
+passed **3 tests in 46.81 seconds**. Independent vertex/matrix readback verifies
+a 0.104m blade-plus-petiole extent under metric scale .001, .01, 1 and 100, and
+imperial .3048. Shape-plan guards remain unchanged across these scales. A saved
+centimetre-scene leaf reopens at the same physical size; final cancellation restores
+exact native IDs and preserves scene scale. The default-unit thin-leaf PBR/card
+and capability regression passed **3 tests in 50.59 seconds**.
+
+A separate export probe exposed an existing general boundary issue: in the .01
+scene, native physical extent is approximately .104m, but the current GLB's
+independently decoded world extent is approximately 10.4. This native correction
+does not claim GLB scene-unit normalization. That export work is tracked separately
+before nonmetre delivery can be qualified; default-unit card results above/below
+are unaffected. No service/package/environment changes were made.
+
 ## Explicit thin-leaf front-PBR baking and alpha-card delivery — 2026-11-03
 
 `thin_foliage_mode` defaults to REFUSE for inspection/baking. Explicit FRONT_PBR
@@ -45,9 +68,9 @@ engine rendering, optimal mipmaps/overdraw or native optical equivalence.
 
 The fixtures use default scene units. Automatic fitting, multi-leaf/branch atlas
 packing, transmission/thickness/back-color maps, wind/LOD attributes and Godot
-validation remain open. The standalone leaf-template metre-to-scene-unit mapping
-also needs a separate nondefault-unit audit; the existing woody-root unit fixture
-does not prove that standalone conversion. This milestone does not claim it.
+validation remain open. The subsequent standalone leaf unit correction is documented above. General
+nonmetre export normalization remains a separate boundary audit; this adapter
+fixture itself uses default units.
 
 Default direct-Principled material signatures remain unchanged. A real bark PBR
 bundle created before this adapter (without adapter fields in its manifest or

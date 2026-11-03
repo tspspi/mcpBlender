@@ -191,7 +191,14 @@ def dispatch(command,p):
             leafmat=material(p['name']+'_Surface');bark=bpy.data.materials.new(p['name']+'_Petiole');bark.use_nodes=True;bark.diffuse_color=(.08,.12,.02,1)
             petiole=bark.node_tree.nodes.get('Principled BSDF');petiole.inputs['Base Color'].default_value=(.08,.12,.02,1);petiole.inputs['Roughness'].default_value=.8
             mesh=leaf_mesh(p['name']+'_Mesh',p['leaf'],leafmat,bark);obj=bpy.data.objects.new(p['name'],mesh);bpy.context.scene.collection.objects.link(obj)
-            obj['mcpblender_leaf_template']=json.dumps(p['leaf'],sort_keys=True);check_cancelled();success=True;return {'object':obj.name,'mesh':realization.mesh_record(mesh),'leaf_sha256':p['expected_leaf']}
+            unit_scale=bpy.context.scene.unit_settings.scale_length
+            if not math.isfinite(unit_scale) or unit_scale<=0:raise ValueError('Positive finite scene unit scale required')
+            obj.scale=(1/unit_scale,)*3
+            obj['mcpblender_leaf_template']=json.dumps(spec['recipe'],sort_keys=True)
+            bpy.context.view_layer.update();points=[obj.matrix_world@v.co for v in mesh.vertices]
+            result={'object':obj.name,'mesh':realization.mesh_record(mesh),'leaf_sha256':p['expected_leaf'],'recipe':spec['recipe'],
+                    'scene_unit_scale':unit_scale,'world_bounds_m':{k:[fn(v[i] for v in points)*unit_scale for i in range(3)] for k,fn in (('min',min),('max',max))}}
+            check_cancelled();success=True;return result
         finally:
             if not success:bpy.data.batch_remove(ids=tuple(set(bpy.data.user_map())-before))
     values=trees.inventory(p);state=values[-1];model=values[-2]

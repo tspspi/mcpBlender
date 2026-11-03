@@ -52,6 +52,25 @@ def test_adopt_shared_leaf_and_reduced_wood_maps(assets_live):
             assert (await tool(client,'inspect_botanical_lods',lod_collection='Lods'))['lods_sha256']==profile['lods_sha256']
             state=await wait(client,'adopt_vegetation_bakes',**args,expected_plan=plan['plan_sha256']);assert state['valid'],state
             assert set(state['baked_materials'])=={'lod-1-wood','leaf-0'}
+            # Revisions can reuse BakeUV without allocating another UV channel.
+            # Private source images/AO groups must be copied so the preparation
+            # does not create external users of profile-owned resources.
+            revargs={'lod_collection':'Lods','assets':['leaf-0'],'uv_strategy':'EXISTING'}
+            revplan=await tool(client,'inspect_vegetation_bake_source',**revargs)
+            assert revplan['private_images_copied']==5
+            revision=await wait(client,'prepare_vegetation_bake',**revargs,expected_plan=revplan['plan_sha256'],bake_collection='Revision')
+            assert revision['valid'] and revision['components']['leaf-0']['prepared_mesh']['uv']==revplan['assets']['leaf-0']['mesh']['uv']
+            assert (await tool(client,'inspect_botanical_lods',lod_collection='Lods'))['lods_sha256']==state['lods_sha256']
+            copy=(await client.call_tool('get_object_info',{'name':revision['components']['leaf-0']['name']})).data
+            old_bake=revision['components']['leaf-0']['initial_bake_sha256']
+            await tool(client,'configure_shader_node',material=copy['materials'][0],node={'name':'Surface','type':'ShaderNodeBsdfPrincipled','inputs':[{'socket':'IOR','value':1.7}]})
+            changed=await tool(client,'inspect_vegetation_bake',bake_collection='Revision');assert changed['content_changed']
+            with pytest.raises(ToolError,match='stale'):
+                await tool(client,'refresh_vegetation_bake',bake_collection='Revision',expected_preparation=revision['preparation_sha256'])
+            revision=await tool(client,'refresh_vegetation_bake',bake_collection='Revision',expected_preparation=changed['preparation_sha256'])
+            assert revision['valid'] and revision['revision']==1 and revision['components']['leaf-0']['initial_bake_sha256']!=old_bake
+            assert (await tool(client,'inspect_botanical_lods',lod_collection='Lods'))['lods_sha256']==state['lods_sha256']
+            await tool(client,'remove_vegetation_bake',bake_collection='Revision',expected_preparation=revision['preparation_sha256'])
             assert (await tool(client,'inspect_vegetation_bake',bake_collection='Bake'))['preparation_sha256']==preparation['preparation_sha256']
             # Remove the preparation and all external texture files. Owned packed
             # images, original UVs, wind fields and shared prototype identity survive.

@@ -11,8 +11,8 @@ from .assets import active_object,finished,require_static
 META='mcpblender_vegetation_bake'
 OWNER='mcpblender_vegetation_bake_owner'
 FORMAT='mcpblender-vegetation-bake-v1'
-TABLES={'Collection':'collections','Object':'objects','Mesh':'meshes','Material':'materials'}
-COMMANDS={'inspect_vegetation_bake_source','prepare_vegetation_bake','inspect_vegetation_bake','remove_vegetation_bake'}
+TABLES={'Collection':'collections','Object':'objects','Mesh':'meshes','Material':'materials','Image':'images','ShaderNodeTree':'node_groups'}
+COMMANDS={'inspect_vegetation_bake_source','prepare_vegetation_bake','inspect_vegetation_bake','remove_vegetation_bake','refresh_vegetation_bake'}
 
 
 def objects(p):
@@ -71,8 +71,10 @@ def plan(p):
         check_cancelled();require_static(obj);mesh=obj.data;uv.check_size(mesh)
         if obj.library or mesh.library or obj.override_library or mesh.override_library or obj.modifiers or mesh.shape_keys or mesh.animation_data or not mesh.polygons:raise ValueError('Preparation requires local static base meshes without modifiers or shape keys')
         if obj.parent:require_static(obj.parent)
-        if p['uv_map'] in mesh.uv_layers:raise ValueError('Target bake UV already exists on '+role+'; choose a new name')
-        if len(mesh.uv_layers)>=8:raise ValueError('Source has no free UV channel for '+role)
+        if p.get('uv_strategy','NEW')=='NEW':
+            if p['uv_map'] in mesh.uv_layers:raise ValueError('Target bake UV already exists on '+role+'; choose EXISTING or a new name')
+            if len(mesh.uv_layers)>=8:raise ValueError('Source has no free UV channel for '+role)
+        elif p['uv_map'] not in mesh.uv_layers:raise ValueError('Existing target bake UV missing on '+role)
         original,consumers=sampling(obj)
         missing=[r for r in consumers if r['missing']]
         if missing and p['missing_uv_policy']=='REFUSE':reasons.append(role+': source UVs missing; explicitly choose BAKE_LAYOUT to generate copy-only sampling coordinates')
@@ -80,10 +82,11 @@ def plan(p):
         witness=textures.mesh_signature(obj,mesh);witness['matrix']=[list(row) for row in static_matrix(obj)]
         rows[role]={'source_object':obj.name,'mesh':witness,'attributes':[v for v in assemblies.attribute_records(mesh) if not v['name'].startswith('.')],'original_render_uv':original,'uv_consumers':consumers}
     contract=vegetation_materials.contract(selected)
-    options={k:p[k] for k in ('uv_map','margin','missing_uv_policy','max_corners')}
+    options={k:p[k] for k in ('uv_map','margin','missing_uv_policy','max_corners')};options['uv_strategy']=p.get('uv_strategy','NEW')
+    images={n.image for obj in selected.values() for mat in obj.data.materials for n in mat.node_tree.nodes if n.type=='TEX_IMAGE' and n.image and n.image.get(vegetation_lods.OWNER)}
     result={'format':FORMAT,'source_guard':guard,'source_materials':contract,'assets':rows,'available_assets':list(available),'options':options,'corners':corners,
-            'estimated_copy_bytes':corners*128,'source_sampling_changes':changes,'can_prepare':not reasons,'unsupported_reasons':reasons,
-            'scope':'Owned static base meshes and private materials, preserved original UVs plus a smart-projected unit-tile bake map. No images, material adoption or optical equivalence.'}
+            'private_images_copied':len(images),'estimated_copy_bytes':corners*128+sum(i.size[0]*i.size[1]*4+(i.packed_file.size if i.packed_file else 0) for i in images),'source_sampling_changes':changes,'can_prepare':not reasons,'unsupported_reasons':reasons,
+            'scope':'Owned static base meshes and private materials, preserved original UVs and a new or reused verified bake map. No image baking, material adoption or optical equivalence.'}
     result['plan_sha256']=botany.digest(result)
     return selected,result
 
@@ -128,17 +131,17 @@ def inspect(p):
         if value is None or value.get(OWNER)!=meta['owner']:raise ValueError('Owned bake ID missing/renamed or owner changed')
         owned.add(value)
     if col not in owned or len(owned)!=len(meta['owned']):raise ValueError('Duplicate bake ownership')
-    users=bpy.data.user_map();blockers=[]
+    users=bpy.data.user_map();blockers=[];embedded={v.node_tree for v in owned if isinstance(v,bpy.types.Material) and v.node_tree}
     for value in owned:
         if value.library or value.override_library or value.use_fake_user:blockers.append('Linked/persistent owned ID: '+value.name)
         for user in users.get(value,set()):
-            if user in owned or value==col and isinstance(user,(bpy.types.Scene,bpy.types.Collection)) or isinstance(value,bpy.types.Object) and isinstance(user,bpy.types.Scene):continue
+            if user in owned or user in embedded or value==col and isinstance(user,(bpy.types.Scene,bpy.types.Collection)) or isinstance(value,bpy.types.Object) and isinstance(user,bpy.types.Scene):continue
             blockers.append('External reference: '+value.name)
         if isinstance(value,bpy.types.Collection) and any(v not in owned for v in [*value.objects,*value.children]):blockers.append('Foreign collection member: '+value.name)
     current=content(owned)
     guard=botany.digest({'meta':meta,'content':current,'users':sorted((v.bl_rna.identifier,v.name,sorted((u.bl_rna.identifier,u.name) for u in users.get(v,set()))) for v in owned)})
     return col,owned,meta,{'bake_collection':col.name,'preparation_sha256':guard,'valid':current==meta['content_sha256'] and not blockers,'content_changed':current!=meta['content_sha256'],
-            'ownership_blockers':sorted(set(blockers)),'components':meta['components'],'source':meta['source'],'source_sampling_changes':meta['source']['source_sampling_changes'],'scope':meta['source']['scope']}
+            'ownership_blockers':sorted(set(blockers)),'components':meta['components'],'source':meta['source'],'source_sampling_changes':meta['source']['source_sampling_changes'],'revision':meta.get('revision',0),'scope':meta['source']['scope']}
 
 
 def create(p):
@@ -147,7 +150,7 @@ def create(p):
     if source['plan_sha256']!=p['expected_plan']:raise ValueError('Vegetation bake source plan is stale')
     if not source['can_prepare']:raise ValueError('; '.join(source['unsupported_reasons']))
     if bpy.data.collections.get(p['bake_collection']):raise ValueError('Bake collection already exists')
-    owned=set();owner=uuid.uuid4().hex;success=False;components={}
+    owned=set();owner=uuid.uuid4().hex;success=False;components={};image_copies={};group_copies={}
     settings=bpy.context.scene.tool_settings;mode=tuple(settings.mesh_select_mode);sync=settings.use_uv_select_sync
     def own(value):owned.add(value);value[OWNER]=owner;value.use_fake_user=False;return value
     try:
@@ -163,15 +166,26 @@ def create(p):
             # source mesh's render coordinates without changing shared originals.
             materials={}
             for i,mat in enumerate(list(mesh.materials)):
-                if mat not in materials:materials[mat]=own(mat.copy())
+                if mat not in materials:
+                    copied=own(mat.copy());materials[mat]=copied
+                    for node in copied.node_tree.nodes:
+                        if node.type=='TEX_IMAGE' and node.image and node.image.get(vegetation_lods.OWNER):
+                            original=node.image
+                            if original not in image_copies:image_copies[original]=own(original.copy())
+                            node.image=image_copies[original]
+                        if node.type=='GROUP' and node.node_tree and node.node_tree.get(vegetation_lods.OWNER):
+                            original=node.node_tree
+                            if original not in group_copies:group_copies[original]=own(original.copy())
+                            node.node_tree=group_copies[original]
                 mesh.materials[i]=materials[mat]
-            layer=mesh.uv_layers.new(name=p['uv_map']);mesh.uv_layers.active=layer
+            layer=mesh.uv_layers.get(p['uv_map']) if p.get('uv_strategy','NEW')=='EXISTING' else mesh.uv_layers.new(name=p['uv_map']);mesh.uv_layers.active=layer
             for mat in materials.values():pin(mat,source['assets'][role]['original_render_uv'],p['uv_map'],p['missing_uv_policy'],mesh)
-            with active_object(target):
-                settings.mesh_select_mode=(False,False,True);settings.use_uv_select_sync=False
-                finished(bpy.ops.object.mode_set(mode='EDIT'));finished(bpy.ops.mesh.select_all(action='SELECT'))
-                finished(bpy.ops.uv.smart_project(angle_limit=math.radians(66),island_margin=p['margin'],correct_aspect=False,scale_to_bounds=True))
-                finished(bpy.ops.object.mode_set(mode='OBJECT'))
+            if p.get('uv_strategy','NEW')=='NEW':
+                with active_object(target):
+                    settings.mesh_select_mode=(False,False,True);settings.use_uv_select_sync=False
+                    finished(bpy.ops.object.mode_set(mode='EDIT'));finished(bpy.ops.mesh.select_all(action='SELECT'))
+                    finished(bpy.ops.uv.smart_project(angle_limit=math.radians(66),island_margin=p['margin'],correct_aspect=False,scale_to_bounds=True))
+                    finished(bpy.ops.object.mode_set(mode='OBJECT'))
             # Edit-mode operators rebuild CustomData; reacquire the RNA layer
             # instead of writing through a pre-edit UV wrapper.
             layer=mesh.uv_layers[p['uv_map']]
@@ -193,10 +207,10 @@ def create(p):
             info=textures.inspect(inputs)
             if not info['complete']:raise ValueError('Prepared bake UVs did not qualify: '+'; '.join(info['unsupported_reasons']))
             target.hide_render=True
-            components[role]={'name':target.name,'source_object':obj.name,'inspect_texture_bake':inputs,'initial_bake_sha256':info['bake_sha256'],'material_adapters':info['material_adapters']}
+            components[role]={'name':target.name,'source_object':obj.name,'inspect_texture_bake':inputs,'initial_bake_sha256':info['bake_sha256'],'material_adapters':info['material_adapters'],'prepared_mesh':copied,'prepared_attributes':[v for v in attributes.values() if not v['name'].startswith('.')]}
         check_cancelled()
         if plan(p)[-1]['plan_sha256']!=p['expected_plan']:raise ValueError('Source changed during bake preparation')
-        meta={'format':FORMAT,'owner':owner,'source':source,'components':components,'owned':[{'type':v.bl_rna.identifier,'name':v.name} for v in sorted(owned,key=lambda v:(v.bl_rna.identifier,v.name))]}
+        meta={'format':FORMAT,'revision':0,'owner':owner,'source':source,'components':components,'owned':[{'type':v.bl_rna.identifier,'name':v.name} for v in sorted(owned,key=lambda v:(v.bl_rna.identifier,v.name))]}
         meta['content_sha256']=content(owned);col[META]=json.dumps(meta,sort_keys=True,allow_nan=False)
         result=inspect({'bake_collection':col.name})[-1]
         if not result['valid']:raise ValueError('Created bake preparation failed owned content verification')
@@ -205,6 +219,34 @@ def create(p):
         settings.mesh_select_mode=mode;settings.use_uv_select_sync=sync
         if not success and owned:bpy.data.batch_remove(ids=tuple(owned))
         bpy.context.view_layer.update()
+
+
+def refresh(p):
+    from .bridge import check_cancelled
+    bpy.context.view_layer.update();col,owned,meta,state=inspect(p)
+    if state['preparation_sha256']!=p['expected_preparation']:raise ValueError('Bake preparation guard is stale')
+    if state['ownership_blockers']:raise ValueError('; '.join(state['ownership_blockers']))
+    if meta.get('revision',0)>=1024:raise ValueError('Recreate preparation after 1024 source revisions')
+    updated={}
+    for role,row in meta['components'].items():
+        check_cancelled();obj=bpy.data.objects[row['name']]
+        if 'prepared_mesh' not in row or 'prepared_attributes' not in row:raise ValueError('Recreate this older preparation to refresh material sources')
+        if any(m not in owned for m in obj.data.materials):raise ValueError('Preparation needs its original private material slots')
+        actual=textures.mesh_signature(obj,obj.data);actual['matrix']=[list(r) for r in static_matrix(obj)]
+        if botany.digest(actual)!=botany.digest(row['prepared_mesh']):raise ValueError('Refresh cannot accept geometry, UV, normal, material-index or placement edits')
+        attrs=[v for v in assemblies.attribute_records(obj.data) if not v['name'].startswith('.')]
+        if botany.digest(attrs)!=botany.digest(row['prepared_attributes']):raise ValueError('Refresh cannot accept numeric attribute edits')
+        info=textures.inspect(row['inspect_texture_bake'])
+        if not info['complete']:raise ValueError('Refreshed material source is unsupported: '+'; '.join(info['unsupported_reasons']))
+        updated[role]=dict(row)|{'initial_bake_sha256':info['bake_sha256'],'material_adapters':info['material_adapters']}
+    check_cancelled();previous=col[META]
+    try:
+        meta['components']=updated;meta['revision']=meta.get('revision',0)+1;meta['content_sha256']=content(owned);col[META]=json.dumps(meta,sort_keys=True,allow_nan=False)
+        result=inspect(p)[-1]
+        if not result['valid']:raise ValueError('Refreshed preparation failed native verification')
+        return result
+    except BaseException:
+        col[META]=previous;raise
 
 
 def remove(p):
@@ -219,5 +261,6 @@ def remove(p):
 def dispatch(command,p):
     if command=='inspect_vegetation_bake_source':return plan(p)[-1]
     if command=='prepare_vegetation_bake':return create(p)
+    if command=='refresh_vegetation_bake':return refresh(p)
     if command=='remove_vegetation_bake':return remove(p)
     return inspect(p)[-1]

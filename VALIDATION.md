@@ -1,5 +1,34 @@
 # Local validation: 0.2.0
 
+## Reusable vegetation bake UVs and shader-source refresh — 2026-11-03
+
+A four-test focused gate passed in 54.86s on local FreeBSD/Blender 5.0.1: the
+code-disabled adoption workflow with revision preparation checks, native bake
+preparation, and source policy/discovery checks. The adopted leaf's five packed
+images and AO group were privately copied into a new preparation, reusing its
+two existing UV channels without changing their hashes or adding a third. The
+original LOD guard stayed unchanged during preparation, source edits, refresh
+and copy cleanup. A structured IOR edit invalidated the preparation; a stale
+refresh guard refused, and a fresh guard accepted the material source, incremented
+its revision and changed the initial bake fingerprint. Existing original-source
+adoption/export/removal and the native cancellation/rollback checks still passed.
+
+An additional native refresh-refusal regression passed in 9.51s. A separate
+native probe used the retained real adopted .blend, preparing both
+leaf and reduced wood roles with ten independent packed images. Source LOD guard
+and UV count were preserved; supported source edits refreshed while UV changes
+refused. New preparations store complete component mesh and public-attribute
+witnesses. Refresh cannot accept geometry, normals, original/bake UVs, numeric
+fields, material-index or placement changes. Legacy preparations lacking those
+witnesses must be recreated. Private source image/AO clones are distinguished
+from existing unowned source images, which remain shared and are not deleted.
+
+These controls qualify preparation and source revisions, not replacement of maps
+already adopted into the LOD profile. Projection/atlas revision adoption, texture
+quality, physical optics and runtime/mipmap/GPU budgets remain separate. Refresh
+has guarded metadata rollback; it does not undo the user's earlier shader edits.
+No packages, virtual environments, installed-runtime changes or pushes occurred.
+
 ## Guarded vegetation PBR map adoption — 2026-11-03
 
 The combined local FreeBSD/Blender 5.0.1 gate passed nine tests in 96.68s:

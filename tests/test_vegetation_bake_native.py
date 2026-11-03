@@ -38,6 +38,15 @@ selected=list(bpy.context.selected_objects);active=bpy.context.view_layer.object
 state=prep.create(args|{'expected_plan':plan['plan_sha256'],'bake_collection':'Bake'})
 assert state['valid'] and len(state['components'])==5,state
 assert selected==list(bpy.context.selected_objects) and active==bpy.context.view_layer.objects.active
+# Refresh accepts supported material sources, never hidden mesh/UV edits.
+copy=bpy.data.objects[state['components']['leaf-0']['name']];layer=copy.data.uv_layers['BakeUV'];original_uv=tuple(layer.data[0].uv)
+original_guard=state['preparation_sha256'];layer.data[0].uv.x+=.01
+changed=prep.inspect({'bake_collection':'Bake'})[-1];assert changed['content_changed']
+try:prep.refresh({'bake_collection':'Bake','expected_preparation':changed['preparation_sha256']})
+except ValueError as e:assert 'Refresh cannot accept' in str(e)
+else:raise AssertionError('Geometry/UV edit accepted as shader refresh')
+layer.data[0].uv=original_uv
+assert prep.inspect({'bake_collection':'Bake'})[-1]['preparation_sha256']==original_guard
 assert original=={role:textures.mesh_signature(o,o.data) for role,o in objects.items()}
 assert all(textures.material_signature(m,thin_foliage_mode='FRONT_PBR')==sig for m,sig in mats.items())
 for role,row in state['components'].items():

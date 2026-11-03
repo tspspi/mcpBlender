@@ -219,3 +219,12 @@ required for leaf approximations. Adopt with its expected_plan. Packed owned map
 and prepared UVs then survive preparation/file removal and save/reopen. Original
 wind fields/UVs remain intact. Adopted roles currently refuse replacement. LOD
 export automatically carries material/loss/UV witnesses; this is not optical parity.
+
+For revisions on an already textured LOD, prepare with uv_strategy=EXISTING and
+its BakeUV to retain the layout and channel count. Private source images/AO groups
+are independently copied. After structured edits to prepared private shaders,
+inspect_vegetation_bake returns a changed-content guard; refresh_vegetation_bake
+accepts supported material/frame edits with that expected_preparation and returns
+a new initial bake fingerprint. It refuses frozen geometry/UV/attribute/placement
+changes; older preparations need recreation. Refresh updates the bake source,
+not the LOD's adopted maps. Keep the original source and re-bake with fresh guards.

@@ -3711,13 +3711,17 @@ roles such as `wood`, `shoots`, `leaf-0`, or `lod-1-wood`; omit it to inspect al
 The plan records source geometry/material/UV witnesses, available roles, per-node
 UV consumers, corner and estimated-copy-memory budgets, and `plan_sha256`.
 It requires valid local static base meshes without modifiers or shape keys and a
-fresh target `uv_map` name (default `BakeUV`). Original UVs are retained; the target
-uses an additional channel and does not reserve UV2 for any other purpose.
+target `uv_map` name (default `BakeUV`). The default `uv_strategy="NEW"` requires
+a fresh name and adds a smart-projected channel. Explicit `uv_strategy="EXISTING"`
+requires that named map on every selected source and reuses its coordinates
+without unwrapping or adding a channel. The existing baker still requires a
+nondegenerate, nonoverlapping unit-tile layout. Original UVs are retained; neither
+strategy reserves UV2 for another purpose.
 
 Pass the same options, `expected_plan` and a fresh `bake_collection` to
 `prepare_vegetation_bake`. This defaults to a tracked asynchronous operation.
 Poll the original operation. Preparation creates independent mesh/material copies,
-smart-projects the new map, and requires the existing baker's complete clear
+smart-projects a new map or retains the chosen existing map, and requires the existing baker's complete clear
 overlap check, nondegenerate islands and unit-tile bounds to pass. It preserves
 geometry, numeric attributes, original UV coordinates and physical placement.
 The full affine placement, including inherited shear, is retained under an
@@ -3767,6 +3771,35 @@ silently used as an unchanged preparation. Baked file bundles remain independent
 Use the guarded adoption workflow below to transfer verified maps and prepared
 UVs into native LOD profiles. Keep the prepared .blend and baked assets when
 additional revisions are needed.
+
+### Revise prepared shader sources
+
+New preparations store a frozen mesh/attribute/UV/placement witness for every
+component. Edit their private materials with the structured shader tools, then
+call `inspect_vegetation_bake`. Supported graph/property changes mark the
+preparation as changed. Call `refresh_vegetation_bake` with its current
+`expected_preparation` to accept those source edits. A stale guard refuses. The
+operation requires unchanged geometry, normals, UVs, material indices, numeric
+attributes and physical placement, and material slots must stay within the
+preparation's private material ownership. It does not absorb arbitrary mesh edits
+or new external users. Unsupported/unfrozen shaders still refuse under bake rules.
+
+Refresh increments `revision` and updates each component's initial bake fingerprint
+and optical adapter metadata. It also supports rebasing a static preparation to a
+new frame. Bake again with fresh inspection results; previous output bundles do
+not become outputs of the new source snapshot. The original tree/LOD source
+witness and its materials remain unchanged. Older preparations without frozen
+component witnesses must be recreated before refresh.
+
+When preparing an already textured LOD, choose EXISTING with its BakeUV to avoid
+consuming more UV channels. Images and inert AO groups privately owned by that
+LOD are cloned into the new preparation, so it creates no external users of the
+LOD's private resources. The source profile's guard remains unchanged. Other
+unowned source images retain their existing shared behavior. Estimated copy bytes
+include cloned packed-image bytes and their base RGBA8 memory; this is a memory
+heuristic, not a disk write. Private clones follow preparation ownership, source
+hashing, save/reopen and guarded cleanup. Refresh alone does not replace maps on
+the source LOD; map replacement remains a separate guarded adoption action.
 
 ## Adopt vegetation PBR bakes into native LODs
 

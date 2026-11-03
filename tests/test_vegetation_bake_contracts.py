@@ -13,6 +13,8 @@ def test_source_selection_and_limits():
     with pytest.raises(ValueError):Source(collection='Tree',assets=['wood','wood'])
     with pytest.raises(ValueError):Source(collection='Tree',margin=0)
     assert Source(collection='Tree').missing_uv_policy=='REFUSE'
+    assert Source(collection='Tree').uv_strategy=='NEW'
+    with pytest.raises(ValueError):Source(collection='Tree',uv_strategy='OVERWRITE')
 
 
 def test_readonly_discovery(tmp_path):
@@ -22,5 +24,5 @@ def test_readonly_discovery(tmp_path):
         async with Client(server) as client:
             names={t.name for t in await client.list_tools()}
             assert {'inspect_vegetation_bake_source','inspect_vegetation_bake'}<=names
-            assert not {'prepare_vegetation_bake','remove_vegetation_bake'}&names
+            assert not {'prepare_vegetation_bake','remove_vegetation_bake','refresh_vegetation_bake'}&names
     asyncio.run(run())

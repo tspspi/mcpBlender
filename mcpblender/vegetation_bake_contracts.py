@@ -11,6 +11,7 @@ class Source(Model):
     lod_collection: SafeName | None = None
     assets: list[Name] | None = Field(default=None,min_length=1,max_length=16)
     uv_map: Name = 'BakeUV'
+    uv_strategy: Literal['NEW','EXISTING'] = 'NEW'
     margin: FiniteFloat = Field(default=.02,ge=.001,le=.1)
     missing_uv_policy: Literal['REFUSE','BAKE_LAYOUT'] = 'REFUSE'
     max_corners: int = Field(default=100000,strict=True,ge=1,le=500000)
@@ -36,8 +37,9 @@ class Remove(Read):
 
 COMMANDS={
  'inspect_vegetation_bake_source':(Source,(),'Plan source-preserving owned vegetation bake copies with independent materials and nonoverlapping BakeUV. Reports implicit sampling pins, missing named UVs, budgets and a plan guard. BAKE_LAYOUT explicitly permits generated missing source UVs, changing copy sampling only.'),
- 'prepare_vegetation_bake':(Create,('allow_scene_edit',),'Prepare guarded independent wood/shoot/shared-template meshes with unique target bake UVs. Preserve original geometry, attributes, UVs and source shader sampling; explicitly opted-in missing UVs use the new layout. Returns existing inspect_texture_bake inputs, not baked images.'),
+ 'prepare_vegetation_bake':(Create,('allow_scene_edit',),'Prepare guarded independent wood/shoot/shared-template meshes with new or explicitly reused target bake UVs. Preserve original geometry, attributes, UVs and source shader sampling; explicitly opted-in missing UVs use the new layout. Returns existing inspect_texture_bake inputs, not baked images.'),
  'inspect_vegetation_bake':(Read,(),'Inspect owned vegetation bake preparation content, source witness, per-component bake inputs and guarded cleanup blockers independently of the source.'),
+ 'refresh_vegetation_bake':(Remove,('allow_scene_edit',),'Guardedly accept supported material/frame edits on owned bake copies as the next bake source. Require frozen mesh, attributes, UVs, placement and private material slots; update bake fingerprints and revision. Does not accept mesh edits or change the original source.'),
  'remove_vegetation_bake':(Remove,('allow_scene_edit',),'Remove only guarded unambiguously owned vegetation bake copies and their private materials. Refuse foreign collection members and external references; baked file bundles are independent.'),
 }
 

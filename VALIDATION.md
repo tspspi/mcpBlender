@@ -1,5 +1,49 @@
 # Local validation: 0.2.0
 
+## Guarded numeric mesh attributes — 2026-11-03
+
+Structured create/update/ramp/remove commands now edit custom POINT/EDGE/FACE/
+CORNER FLOAT, INT32, BOOLEAN, vector3 and linear RGBA fields. Base-storage guards
+cover geometry/topology, all attribute records, selectors and mesh sharing;
+evaluated readback uses a distinct representation and cannot authorize base edits.
+Native storage is read back before successful handoff. Internal/topology/UV fields
+are protected. Cooperative rollback restores in-place values/selectors or removes
+only the staged isolated mesh. Names and memory/work dimensions are bounded.
+
+The initial focused workflow/native/contract/geometry/capability/addon gate passed
+**9 tests in 38.48 seconds**. Subsequent native verification including explicit
+shared-copy cancellation passed **1 test in 4.34 seconds**. The final structured
+render/reopen fixture with an independent pixel check passed **1 test in 18.56
+seconds**. The design skill validates and whitespace checks pass. These focused
+checks do not constitute a fresh full-project suite.
+
+Native checks cover all five storage types and four domains, Boolean sparse
+patches, preserved UV/LightmapUV bytes and existing color/UV selectors, stale and
+protected-field refusal, create/set/remove cancellation with exact ID inventories,
+shared-data refusal/explicit isolation/cancellation, and single-user shape-key
+coordinates/Key/action/armature modifier identity. Shared shape-key isolation
+refuses without creating IDs. Removing an attribute during rollback may recreate
+its native handle/order while preserving its named content and semantic guard.
+
+With arbitrary Python execution disabled, the MCP fixture makes an eight-point
+Z ramp, reads it through GeometryNodeInputNamedAttribute, stores it on INSTANCE,
+then realizes eight small cube instances. Evaluated readback has 64 point values,
+32 zero and 32 one; the eight-point base field and guard stay unchanged. A native
+ShaderNodeAttribute Factor output drives base color. The 192x192 Cycles render
+shows a white top and darkening sides; independent decoded pixel comparison
+rejects a uniformly black result. The project saves/reopens with the same guard.
+The first visual probe found coincident startup/fixture cubes; moving the fixture
+clear fixed the test scene. Local evidence: `/tmp/mb-attributes-20261103`.
+
+This qualifies evaluated **mesh** readback after realization, not arbitrary
+unrealized INSTANCE-component inspection. FLOAT_COLOR is nonnegative linear RGBA;
+other native layouts are inventory/hash-only through this surface. First-color
+creation uses Blender's automatic activation. Animation/drivers targeting mesh
+fields and shared shape-key isolation require specialized workflows. Hard-crash
+atomicity, wind packing schemas, custom GLB retention, engine interpretation and
+continuous wind remain outside this milestone. No packages, environments,
+installed runtime/services or user Blender sessions changed.
+
 ## Owned sampled native wind previews — 2026-11-03
 
 Native preview planning/creation/inspection/removal now use the portable solver

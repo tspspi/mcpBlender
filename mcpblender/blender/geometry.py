@@ -18,6 +18,7 @@ NODE_TYPES = (
     "GeometryNodeInstanceOnPoints", "GeometryNodeRealizeInstances",
     "GeometryNodeSubdivisionSurface", "GeometryNodeSetMaterial", "GeometryNodeStoreNamedAttribute",
     "GeometryNodeInputIndex", "FunctionNodeCompare", "GeometryNodeSeparateGeometry",
+    "GeometryNodeInputNamedAttribute",
     "ShaderNodeMath", "ShaderNodeVectorMath", "ShaderNodeCombineXYZ",
 )
 PROPERTIES = {
@@ -26,6 +27,7 @@ PROPERTIES = {
     "GeometryNodeDistributePointsOnFaces": ("distribute_method",),
     "ShaderNodeMath": ("operation",), "ShaderNodeVectorMath": ("operation",),
     "GeometryNodeStoreNamedAttribute": ("data_type", "domain"),
+    "GeometryNodeInputNamedAttribute": ("data_type",),
     "FunctionNodeCompare": ("data_type", "operation", "mode"),
     "GeometryNodeSeparateGeometry": ("domain",),
 }
@@ -170,8 +172,8 @@ def configure_node(tree, spec):
             raise ValueError(f"Material not found: {spec['material']}")
         node.inputs["Material"].default_value = mat
     if spec.get("attribute"):
-        if spec["type"] != "GeometryNodeStoreNamedAttribute":
-            raise ValueError("attribute requires GeometryNodeStoreNamedAttribute")
+        if spec["type"] not in {"GeometryNodeStoreNamedAttribute","GeometryNodeInputNamedAttribute"}:
+            raise ValueError("attribute requires a named-attribute reader/store node")
         node.inputs["Name"].default_value = spec["attribute"]
     for item in spec.get("inputs", []):
         socket = resolve(node.inputs, item["socket"])

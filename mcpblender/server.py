@@ -708,7 +708,7 @@ def build_http_app(server, state):
 def addon_zip(destination: Path):
     source = Path(__file__).parent
     with zipfile.ZipFile(destination, "x", zipfile.ZIP_DEFLATED) as archive:
-        for path in [*(source / name for name in ("__init__.py","wire.py","broker.py","retention.py","network.py","storage.py","fluid_files.py","texture_files.py","skin_math.py","uv_math.py","animation_graph.py","driver_graph.py","rest_math.py","lod_files.py","skin_glb.py","package_files.py","export_jobs.py","lod_recipe.py","render_jobs.py","botany.py","foliage.py","foliage_coverage.py","gltf_units.py","card_fit.py","atlas_layout.py","wind.py")), *sorted((source / "blender").glob("*.py"))]:
+        for path in [*(source / name for name in ("__init__.py","wire.py","broker.py","retention.py","network.py","storage.py","fluid_files.py","texture_files.py","skin_math.py","uv_math.py","animation_graph.py","driver_graph.py","rest_math.py","lod_files.py","skin_glb.py","package_files.py","export_jobs.py","lod_recipe.py","render_jobs.py","botany.py","foliage.py","foliage_coverage.py","gltf_units.py","card_fit.py","atlas_layout.py","wind.py","attribute_values.py")), *sorted((source / "blender").glob("*.py"))]:
             archive.write(path, str(Path("mcpblender") / path.relative_to(source)))
 
 

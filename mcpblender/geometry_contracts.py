@@ -17,6 +17,7 @@ NODE_TYPES = (
     "GeometryNodeInstanceOnPoints", "GeometryNodeRealizeInstances",
     "GeometryNodeSubdivisionSurface", "GeometryNodeSetMaterial", "GeometryNodeStoreNamedAttribute",
     "GeometryNodeInputIndex", "FunctionNodeCompare", "GeometryNodeSeparateGeometry",
+    "GeometryNodeInputNamedAttribute",
     "ShaderNodeMath", "ShaderNodeVectorMath", "ShaderNodeCombineXYZ",
 )
 
@@ -64,8 +65,8 @@ class GeometryNode(Model):
     def material_node(self):
         if self.material and self.type != "GeometryNodeSetMaterial":
             raise ValueError("material requires GeometryNodeSetMaterial")
-        if self.attribute and self.type != "GeometryNodeStoreNamedAttribute":
-            raise ValueError("attribute requires GeometryNodeStoreNamedAttribute")
+        if self.attribute and self.type not in {"GeometryNodeStoreNamedAttribute","GeometryNodeInputNamedAttribute"}:
+            raise ValueError("attribute requires a named-attribute reader/store node")
         return self
 
 

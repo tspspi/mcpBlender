@@ -420,3 +420,13 @@ pose/strain metrics and render its bounded baked range. Use returned objects for
 preview staging and a fresh preview guard for owned cleanup. Attribute-retention
 proof and target runtime validation remain open. Never present front-PBR
 transfer as native optical parity or geometry coverage as measured render overdraw.
+
+For custom numeric fields, inspect_mesh_attributes returns a base attributes_sha256
+for expected_attributes on create/set/ramp/remove_mesh_attribute. Choose native
+POINT/EDGE/FACE/CORNER and FLOAT/INT/BOOLEAN/FLOAT_VECTOR/FLOAT_COLOR explicitly.
+Page values; preserve protected UV/internal fields. Shared mesh edits need explicit
+make_single_user, and shared shape-key isolation refuses. Ramps use local axes,
+not metres/world coordinates. GeometryNodeInputNamedAttribute supports the
+attribute shortcut; INSTANCE storage requires realization for evaluated mesh
+readback. Evaluated guards cannot edit base data. Check the native result and save
+the editable project; custom GLB retention and wind packing are separate checks.

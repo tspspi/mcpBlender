@@ -3382,6 +3382,51 @@ evaluation may mark Blender dirty. Inspect the actual rendered result as well.
 glTF import may create additional bone-display meshes; use this count or
 `inspect_shape_keys` to identify the asset mesh when reviewing imported morphs.
 
+## Structured numeric mesh attributes
+
+Use `inspect_mesh_attributes` to list schemas and obtain `attributes_sha256`.
+Supply that base-data guard as `expected_attributes` for `create_mesh_attribute`,
+`set_mesh_attribute_values`, `ramp_mesh_attribute` and `remove_mesh_attribute`.
+Inspect with `attribute`, `offset` and `limit` (at most 128) to page values.
+`evaluated=true` reads the current evaluated mesh without changing the source;
+its guard cannot authorize base edits. Unrealized instance components require
+Geometry Nodes realization before mesh readback.
+
+Creation accepts `FLOAT`, signed 32-bit `INT`, strict `BOOLEAN`, `FLOAT_VECTOR`
+(three components) or `FLOAT_COLOR` (nonnegative linear RGBA, HDR allowed), on
+`POINT`, `EDGE`, `FACE` or `CORNER`. Supply a uniform initial `value`. Updates
+accept one uniform `value` for the whole domain or distinct `indices`, or a
+bounded `values` array with contiguous `offset` or matching distinct `indices`.
+Values must be finite and fit native float32 storage. There is no implicit unit,
+axis, normalization or shader conversion. Names have at most 63 UTF-8 bytes and
+cannot use internal prefixes, controls or outer whitespace.
+
+A ramp fills an existing FLOAT field using local X/Y/Z coordinates: vertices,
+edge midpoints, face centroids or each corner's vertex. Omit both `input_min` and
+`input_max` to use the coordinate extent; otherwise supply an increasing pair.
+`output_min`, `output_max` and `clamp` control the result. Degenerate ranges refuse.
+For example, create POINT/FLOAT `bend_weight` with value 0, inspect its new guard,
+then ramp along Z from output 0 to 1. A shader's `ShaderNodeAttribute` can read
+it through its Factor output. In a structured geometry graph, `GeometryNodeInputNamedAttribute` supports
+`properties.data_type` and the `attribute` name shortcut. Store a field on
+INSTANCE with `GeometryNodeStoreNamedAttribute`, then realize instances for
+numeric mesh readback.
+
+Edits protect topology/internal/reserved attributes and UV maps, preserving UV2
+and existing UV/color selectors. Creating the first color layer follows Blender's
+automatic color activation. Shared mesh data needs `make_single_user=true`;
+shared shape-key meshes refuse isolation. Single-user edits retain shape-key and
+armature IDs. Animated/driven mesh attributes require a specialized workflow.
+Cooperative failures restore values and selectors or discard an isolated copy;
+removal rollback can recreate the attribute handle/order. Hard-crash atomicity
+is outside this guarantee. Successful writes are read back before handoff.
+
+Budgets are 256 attributes, one million vertices/faces, two million edges, four
+million corners and 64 million stored components; explicit update arrays have at
+most 100,000 rows. This is a numeric mesh foundation, not a runtime wind packing
+schema or proof of custom GLB attribute retention. Unsupported native types are
+listed and included in guards but have no value editing through these tools.
+
 ## Blender to Godot
 
 Use Blender for modeling, materials, UVs, rigging and animation; export selected

@@ -38,6 +38,15 @@ sRGB. Output is 8-bit PNG, not HDR or arbitrary shader-lobe equivalence. Alpha i
 separate and AO does not account for cutouts. The output PBR material carries
 glTF AO metadata. Reopen its asset and call `validate_texture_bake` before export.
 
+For shared material delivery, inspect_texture_atlas accepts successful original
+bake directories with distinct IDs. Build with the same options/expected_atlas,
+explicit dimensions, gutters and full-mip RGBA8 budget. Maps must match across
+entries; native single-UV/static/PBR binding is rechecked in the isolated worker.
+Tiles keep resolution and tangent orientation; base-level edge gutters do not
+prove mip/anisotropic bleed behavior. Reopen/validate every atlas mesh before
+export and inspect the atlas maps. Sources retain their own editable bundles;
+native thin-leaf conversion losses remain recorded in the atlas provenance.
+
 Poll the tracked operation/storage fields during baking. Cancel stops its owned
 child; broker restart preserves it. After parent death, `inspect_texture_job` and
 `recover_texture_job` reconcile without replay once recorded processes are gone.
@@ -187,4 +196,5 @@ optics remain in the editable source. A card needs its own clear unit-tile UVs,
 ALPHA map and deliberate silhouette/projection review; empty pixels are not a
 projection failure only when explicitly intended. Review converted maps and a
 render, validate the reopened asset, and verify exported alpha. Current proof is
-sampled Blender/GLB delivery, not Godot or complete foliage atlas qualification.
+sampled Blender/GLB delivery. Verified-bundle static atlases are available;
+Godot, multi-view vegetation representations and wind remain separate.

@@ -147,6 +147,8 @@ class State:
         if command == "run_action":
             return [path for step in params["steps"] for path in State.input_paths(step["command"], step["params"])]
         paths = []
+        if command in {'inspect_texture_atlas','build_texture_atlas'}:
+            paths.extend(e['directory'] for e in params['entries'])
         if command in {"open_blend", "import_asset", "upload_asset", "inspect_glb_deformation"}:
             paths.append(params["path"])
         if command == "vse_add_strip":
@@ -205,6 +207,13 @@ class State:
             params['directory']=str(self.library_path(params['directory'],write=command=='render_camera_batch',directory=True))
         if command in {"bake_textures", "validate_texture_bake", "cleanup_texture_job", "inspect_texture_job", "recover_texture_job"}:
             params["directory"] = str(self.library_path(params["directory"], write=command == "bake_textures", directory=True))
+        if command in {'inspect_texture_atlas','build_texture_atlas'}:
+            for entry in params['entries']:entry['directory']=str(self.library_path(entry['directory'],directory=True))
+            if len({e['directory'] for e in params['entries']})!=len(params['entries']):raise ValueError('Atlas inputs must resolve to distinct bundles')
+            if command=='build_texture_atlas':
+                output=self.library_path(params['directory'],directory=True,must_exist=False)
+                if any(output.is_relative_to(Path(e['directory'])) for e in params['entries']):raise ValueError('Atlas output must be outside source bundles')
+                params['directory']=str(self.library_path(params['directory'],write=True,directory=True))
         if command in {"export_lod_chain", "validate_lod_export", "export_asset_package", "validate_asset_package"}:
             params["directory"] = str(self.library_path(params["directory"],write=command in {"export_lod_chain","export_asset_package"},directory=True))
         if command=='list_export_jobs':
@@ -430,7 +439,7 @@ def build_server(config: Config):
 
     def domain_tool(command):
         model, _, description = COMMANDS[command]
-        default_wait = command not in ("create_botanical_tree", "regenerate_botanical_tree", "plan_botanical_tree", "inspect_botanical_coverage", "plan_botanical_foliage", "configure_botanical_foliage", "remove_botanical_foliage", "render_animation", "render_video", "render_animation_preview", "render_camera_batch", "download_asset", "upload_asset", "request_asset_api", "sample_rigid_bodies", "bake_rigid_bodies", "sample_simulation", "bake_simulation", "bake_fluid", "bake_textures", "sample_constraint_animation", "bake_constraint_animation", "configure_nla_strip", "remove_nla_strip", "move_nla_track", "configure_nla_playback", "retarget_animation", "set_skin_weights", "repair_skin_weights", "smooth_skin_weights", "mirror_skin_weights", "edit_armature_rest", "generate_lod_chain", "export_lod_chain", "sample_lod_chain", "inspect_glb_deformation", "create_asset_assembly", "realize_asset_instances", "generate_asset_proxies", "export_asset_package", "rebuild_lod_chain", "adopt_lod_chain", "readopt_lod_chain", "recover_export_job", "cleanup_export_job", "list_export_jobs")
+        default_wait = command not in ("create_botanical_tree", "regenerate_botanical_tree", "plan_botanical_tree", "inspect_botanical_coverage", "plan_botanical_foliage", "configure_botanical_foliage", "remove_botanical_foliage", "render_animation", "render_video", "render_animation_preview", "render_camera_batch", "download_asset", "upload_asset", "request_asset_api", "sample_rigid_bodies", "bake_rigid_bodies", "sample_simulation", "bake_simulation", "bake_fluid", "bake_textures", "build_texture_atlas", "sample_constraint_animation", "bake_constraint_animation", "configure_nla_strip", "remove_nla_strip", "move_nla_track", "configure_nla_playback", "retarget_animation", "set_skin_weights", "repair_skin_weights", "smooth_skin_weights", "mirror_skin_weights", "edit_armature_rest", "generate_lod_chain", "export_lod_chain", "sample_lod_chain", "inspect_glb_deformation", "create_asset_assembly", "realize_asset_instances", "generate_asset_proxies", "export_asset_package", "rebuild_lod_chain", "adopt_lod_chain", "readopt_lod_chain", "recover_export_job", "cleanup_export_job", "list_export_jobs")
 
         async def operation(params=None, wait: bool = default_wait, request_id: str | None = None) -> dict:
             values = params.model_dump(exclude_none=True) if params is not None else {}
@@ -699,7 +708,7 @@ def build_http_app(server, state):
 def addon_zip(destination: Path):
     source = Path(__file__).parent
     with zipfile.ZipFile(destination, "x", zipfile.ZIP_DEFLATED) as archive:
-        for path in [*(source / name for name in ("__init__.py","wire.py","broker.py","retention.py","network.py","storage.py","fluid_files.py","texture_files.py","skin_math.py","uv_math.py","animation_graph.py","driver_graph.py","rest_math.py","lod_files.py","skin_glb.py","package_files.py","export_jobs.py","lod_recipe.py","render_jobs.py","botany.py","foliage.py","foliage_coverage.py","gltf_units.py","card_fit.py")), *sorted((source / "blender").glob("*.py"))]:
+        for path in [*(source / name for name in ("__init__.py","wire.py","broker.py","retention.py","network.py","storage.py","fluid_files.py","texture_files.py","skin_math.py","uv_math.py","animation_graph.py","driver_graph.py","rest_math.py","lod_files.py","skin_glb.py","package_files.py","export_jobs.py","lod_recipe.py","render_jobs.py","botany.py","foliage.py","foliage_coverage.py","gltf_units.py","card_fit.py","atlas_layout.py")), *sorted((source / "blender").glob("*.py"))]:
             archive.write(path, str(Path("mcpblender") / path.relative_to(source)))
 
 

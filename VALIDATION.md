@@ -1,5 +1,56 @@
 # Local validation: 0.2.0
 
+## Verified-bundle PBR atlases — 2026-11-03
+
+`inspect_texture_atlas` / `build_texture_atlas` now pack successful original bake
+bundles into nonrotated/unresampled tiles with edge-duplicated base-level gutters.
+Plans bind source file hashes, conversion declarations and layout; explicit
+dimensions, input-byte and base/full-mip RGBA8 budgets bound work. The shared
+texture worker rechecks native input bindings and emits separate metre-space
+meshes, remapped AtlasUV and one shared PBR material. Source bundles and the editor
+remain unchanged. Existing validation checks every output object; layout metadata
+is also bound during completion and abandoned-job recovery.
+
+The final atlas workflow/layout/policy/addon gate passed **7 tests in 46.74
+seconds**. A UV-driven two-dimensional color gradient and a second blue input
+exercise four maps and every inner/gutter pixel, matching source RGBA bytes
+within one unit after PNG round-trip. Inputs deliberately mix scene scales 1
+and .01. Independently decoded GLB coordinates retain the blue plane's 4m origin
+and 5m maximum X; raw TEXCOORD accessors match both packed tile rectangles after
+glTF's V conversion. The delivered GLB has two meshes and one material. Its
+128×64 four-map layout reports 131,072 base RGBA8 bytes and 174,768 full-mip
+estimated bytes, with 25% inner-tile occupancy.
+
+The same workflow cancels a live 2048² atlas while actually packing maps, checks
+free-space/estimate progress, confirms the owned process exits, recovers the same
+cancelled request ID and removes its owned partial directory. A genuine complete
+atlas simulates the post-worker/pre-adoption crash window: altered layout metadata
+refuses recovery, restored metadata adopts without replay and passes native
+validation. Layout changes, native output transforms, stale guards and nested
+output paths refuse. Ordinary bake validation still checks its own single object
+even if an extraneous empty atlas-style inventory is inserted into its manifest.
+
+Real fitted leaf/cluster bake → atlas → reopen/validate → GLB workflows at scene
+scales 1 and .01, plus native addon dependency isolation, passed **3 tests in
+98.79 seconds**. Both atlases retain four maps and thin-leaf conversion loss
+declarations. The centimetre fixture's base-color and alpha atlas images were
+opened and inspected.
+Existing high-to-low PBR/GLB, worker cancellation/reconnect/adoption/parent-death
+and managed leaf conversion regression plus layout checks passed **7 tests in
+118.98 seconds**. Server/texture-policy checks passed **10 tests in 18.34 seconds**
+with the existing Starlette/AnyIO deprecation warning. Both bundled skills validate
+and whitespace checks pass. These are focused checks, not a fresh full-project run.
+
+The native assembly profile requires original successful bake bundles, matching
+map sets, one UV layer, positive nonsingular transforms and matching untextured
+PBR constants. Unsupported native inputs fail in the owned worker. Only base PNGs
+are emitted; mip chains, compression, anisotropic bleed, measured GPU memory,
+wind-aware attributes/LODs and engine import remain unqualified. Physical placement
+is preserved, so separate representations may overlap until deliberately arranged.
+Evidence is local under `/tmp/mb-atlas-20261103` and
+`/tmp/mb-atlas-foliage-20261103`; installed runtimes/services and dependencies were
+not changed.
+
 ## Fitted leaf and mesh-cluster card targets — 2026-11-03
 
 `inspect_foliage_card` / `create_foliage_card` now fit a convex envelope or rectangle

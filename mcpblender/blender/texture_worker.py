@@ -26,6 +26,9 @@ def main():
     threading.Thread(target=parent_watch,daemon=True).start()
     if os.getppid()!=job['parent_pid']:raise RuntimeError('Texture parent is gone')
     def status(phase,**kw):write_json(root/'result.json',{'job_id':job['job_id'],'state':'running','phase':phase}|kw)
+    if job.get('_texture_pipeline')=='ATLAS':
+        from mcpblender.blender.atlas_worker import run
+        return run(job,root,status)
     status('loading isolated texture source')
     bpy.ops.wm.open_mainfile(filepath=str(root/'source.blend'),load_ui=False,use_scripts=False)
     bpy.context.preferences.filepaths.save_version=0;source_info=textures.guard(job)

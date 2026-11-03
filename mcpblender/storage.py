@@ -35,7 +35,7 @@ def require_space(path, estimated_bytes=0, **policy):
 
 
 def estimate(command, params):
-    if command in {"bake_rigid_bodies","bake_simulation","bake_fluid","bake_textures","render_camera_batch"}:
+    if command in {"bake_rigid_bodies","bake_simulation","bake_fluid","bake_textures","build_texture_atlas","render_camera_batch"}:
         return 16*1024**2, "initial_project_heuristic_worker_refines_with_body_count_and_range"
     if command in {"create_botanical_tree", "regenerate_botanical_tree", "create_asset_assembly"}:
         return 16*1024**2, "initial_native_graph_transfer_heuristic_worker_refines_mesh_and_image_size"

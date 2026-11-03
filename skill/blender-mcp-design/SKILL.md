@@ -401,6 +401,14 @@ Creation returns guarded bake_parameters with CardUV and native-unit cage/rays.
 Choose directory, resolution and min_projection_coverage explicitly; the suggested
 threshold is only a geometry estimate. Bake with the existing isolated worker,
 review coverage/alpha masks, reopen/validate asset.blend and inspect the exported
-card. Sources stay editable; the projection flattens depth and holes. Atlas packing,
-vegetation wind and target runtime validation remain open. Never present front-PBR
+card. Sources stay editable; the projection flattens depth and holes.
+For shared atlases, inspect_texture_atlas with distinct ID/bake-directory entries,
+then build_texture_atlas with the same layout options and expected_atlas guard.
+Inputs must be successful original texture-bake bundles with matching maps; no
+tile rotation/resampling occurs. Choose gutters, dimensions and full-mip RGBA8
+budget; the estimate does not emit mipmaps or prove runtime memory/bleed behavior.
+Reopen asset.blend and validate_texture_bake checks every ID mesh and shared
+material before export. It preserves source placement in metres; arrange separate
+representations deliberately. Existing texture-job tools handle recovery/cleanup.
+Vegetation wind and target runtime validation remain open. Never present front-PBR
 transfer as native optical parity or geometry coverage as measured render overdraw.

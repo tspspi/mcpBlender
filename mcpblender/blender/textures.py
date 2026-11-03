@@ -138,6 +138,9 @@ def inspect(p):
 
 
 def guard(p):
+    if p.get('_texture_pipeline')=='ATLAS':
+        from .texture_atlas import guard as atlas_guard
+        return atlas_guard(p)
     info=inspect(p)
     if not info['complete']:raise ValueError('Unsupported bake sources: '+'; '.join(info['unsupported_reasons'][:8]))
     if info['bake_sha256']!=p['expected_bake']:raise ValueError('Texture bake fingerprint is stale; inspect_texture_bake first')
@@ -153,13 +156,17 @@ def output_signature(name):
 def validate(p):
     root=Path(p['directory']);record=read_json(root/MARKER);saved=read_json(root/'manifest.json')
     if record.get('kind')!='mcpblender-texture-job' or record.get('state')!='succeeded':raise ValueError('Texture job is not a successful bundle')
-    if saved.get('job_id')!=record['job_id'] or saved.get('source')!=record['source'] or saved.get('material_adapters',[])!=record.get('material_adapters',[]):raise ValueError('Texture manifest binding mismatch')
+    if saved.get('job_id')!=record['job_id'] or saved.get('source')!=record['source'] or saved.get('material_adapters',[])!=record.get('material_adapters',[]) or saved.get('atlas')!=record.get('atlas'):raise ValueError('Texture manifest binding mismatch')
     size=yield from verify_steps(root,saved['files'])
-    obj=mesh_object(saved['name'])
-    if obj.get(BINDING)!=record['job_id'] or output_signature(obj.name)!=saved['asset_sha256']:raise ValueError('Texture asset binding mismatch; open the unchanged baked asset')
-    for image in (n.image for m in obj.data.materials for n in m.node_tree.nodes if n.type=='TEX_IMAGE'):
-        if Path(bpy.path.abspath(image.filepath)).resolve().parent!=(root/'textures').resolve():raise ValueError('Baked image path does not reference this bundle')
-    return {'validated':True,'bytes':size,'maps':saved['maps'],'material':saved['material'],'projection':saved['projection'],'material_adapters':saved.get('material_adapters',[]),'validation_scope':'file hashes and native low geometry/UV/material/image binding'}
+    names=saved['objects'] if saved.get('atlas') is not None else [saved['name']]
+    if saved.get('atlas') is not None and (names!=[t['id'] for t in saved['atlas']['layout']['tiles']] or set(saved['object_signatures'])!=set(names)):raise ValueError('Atlas object inventory differs from tiles')
+    for name in names:
+        obj=mesh_object(name)
+        signature=saved['object_signatures'][name] if saved.get('atlas') is not None else saved['asset_sha256']
+        if obj.get(BINDING)!=record['job_id'] or output_signature(obj.name)!=signature:raise ValueError('Texture asset binding mismatch; open the unchanged baked asset')
+        for image in (n.image for m in obj.data.materials for n in m.node_tree.nodes if n.type=='TEX_IMAGE'):
+            if Path(bpy.path.abspath(image.filepath)).resolve().parent!=(root/'textures').resolve():raise ValueError('Baked image path does not reference this bundle')
+    return {'validated':True,'bytes':size,'maps':saved['maps'],'material':saved['material'],'projection':saved['projection'],'material_adapters':saved.get('material_adapters',[]),**({'atlas':saved['atlas'],'objects':names} if saved.get('atlas') is not None else {}),'validation_scope':'file hashes and native low geometry/UV/material/image binding'}
 
 
 def bake(p):
@@ -168,12 +175,13 @@ def bake(p):
     if root.exists():raise FileExistsError('Texture output directory already exists')
     scene_bytes=sum(len(m.vertices)*64+len(m.loops)*64 for m in bpy.data.meshes)+sum(i.packed_file.size for i in bpy.data.images if i.packed_file)
     previous=Path(bpy.data.filepath).stat().st_size if bpy.data.filepath and Path(bpy.data.filepath).is_file() else 0
-    estimate=p['width']*p['height']*32*(len(p['maps'])+(2 if p['sources'] else 0))+max(16*1024**2,scene_bytes*2,previous*2)
+    estimate=(info['estimated_output_bytes'] if p.get('_texture_pipeline')=='ATLAS' else p['width']*p['height']*32*(len(p['maps'])+(2 if p['sources'] else 0)))+max(16*1024**2,scene_bytes*2,previous*2)
     if estimate>p['max_bytes']:raise ValueError('Texture bake estimate exceeds max_bytes')
-    policy=bridge._bridge.active['storage'];policy.update(estimated_bytes=estimate,estimate_kind='texture_pixels_maps_and_snapshot_heuristic')
+    policy=bridge._bridge.active['storage'];policy.update(estimated_bytes=estimate,estimate_kind='atlas_png_geometry_snapshot_heuristic' if p.get('_texture_pipeline')=='ATLAS' else 'texture_pixels_maps_and_snapshot_heuristic')
     reserve=policy.get('reserve_bytes',256*1024**2);require_space(root,estimate,reserve_bytes=reserve,estimate_kind=policy['estimate_kind'])
     root.mkdir(parents=True,exist_ok=False)
     record={'kind':'mcpblender-texture-job','version':1,'job_id':uuid.uuid4().hex,'state':'running','source':info['bake_sha256'],'parent_pid':os.getpid(),'worker_pid':None,'material_adapters':info.get('material_adapters',[])}
+    if 'atlas' in info:record['atlas']=info['atlas']
     write_json(root/MARKER,record);proc=None;success=False;cancelled=False;started=time.monotonic()
     try:
         yield {'phase':'saving isolated texture source','native_call_interruptible':False}
@@ -193,11 +201,11 @@ def bake(p):
             status=read_json(root/'result.json') if (root/'result.json').exists() else {}
             raise RuntimeError(f"Texture worker exited {proc.returncode}: {status.get('error','inspect worker.log')}; partial bundle preserved")
         result=read_json(root/'result.json');saved=read_json(root/'manifest.json')
-        if result.get('state')!='succeeded' or result.get('job_id')!=record['job_id'] or saved.get('source')!=record['source'] or saved.get('job_id')!=record['job_id'] or saved.get('material_adapters',[])!=record.get('material_adapters',[]):raise ValueError('Texture worker result binding mismatch')
+        if result.get('state')!='succeeded' or result.get('job_id')!=record['job_id'] or saved.get('source')!=record['source'] or saved.get('job_id')!=record['job_id'] or saved.get('material_adapters',[])!=record.get('material_adapters',[]) or saved.get('atlas')!=record.get('atlas'):raise ValueError('Texture worker result binding mismatch')
         if sum(r['bytes'] for r in inventory(root)[0])>p['max_bytes']:raise ValueError('Completed texture bundle exceeds max_bytes')
         guard(p);yield from verify_steps(root,saved['files'])
         record['state']='succeeded';write_json(root/MARKER,record);success=True
-        return {'directory':str(root),'path':str(root/'asset.blend'),'maps':saved['maps'],'material':saved['material'],'projection':saved['projection'],'material_adapters':saved.get('material_adapters',[]),'live_scene_unchanged':True,'bytes':sum(r['bytes'] for r in inventory(root)[0])}
+        return {'directory':str(root),'path':str(root/'asset.blend'),'maps':saved['maps'],'material':saved['material'],'projection':saved['projection'],'material_adapters':saved.get('material_adapters',[]),**({'atlas':saved['atlas'],'objects':saved['objects']} if 'atlas' in saved else {}),'live_scene_unchanged':True,'bytes':sum(r['bytes'] for r in inventory(root)[0])}
     except GeneratorExit:cancelled=True;raise
     finally:
         if proc and proc.poll() is None:
@@ -220,7 +228,7 @@ def recover(p):
     result=read_json(root/'result.json') if (root/'result.json').is_file() else {}
     if result.get('state')=='succeeded' and result.get('job_id')==record['job_id']:
         saved=read_json(root/'manifest.json')
-        if saved.get('source')!=record['source'] or saved.get('job_id')!=record['job_id'] or saved.get('material_adapters',[])!=record.get('material_adapters',[]):raise ValueError('Abandoned texture manifest binding mismatch')
+        if saved.get('source')!=record['source'] or saved.get('job_id')!=record['job_id'] or saved.get('material_adapters',[])!=record.get('material_adapters',[]) or saved.get('atlas')!=record.get('atlas'):raise ValueError('Abandoned texture manifest binding mismatch')
         yield from verify_steps(root,saved['files']);record['state']='succeeded'
     else:record['state']='interrupted'
     write_json(root/MARKER,record)

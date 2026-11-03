@@ -1119,8 +1119,8 @@ and 128x128 maps at default scene units. It measures about 35.9% geometry hits a
 The native PBR card renders in Cycles, and its exported GLB has a nonopaque material
 and an embedded base-color texture containing transparent and opaque alpha values.
 This verifies the sampled files/Blender path, not Godot behavior or final atlas
-quality. Fitted targets are available through the workflow below; branch-cluster
-atlas packing, runtime overdraw/memory budgets, multi-view representations and
+quality. Fitted targets and verified-bundle atlases are available below; runtime
+overdraw, multi-view representations and
 wind-aware delivery remain separate work.
 
 ### Fitted leaf and mesh-cluster cards
@@ -1164,7 +1164,57 @@ coverage, capped at .99; it is a starting estimate, not transfer validation.
 Review worker coverage/alpha maps, reopen `asset.blend`, run
 `validate_texture_bake`, and inspect/render the exported card. The shared baker
 continues to report free space, own its worker and support cancellation/recovery.
-This produces one view of a leaf or mesh cluster; atlas packing is a later step.
+This produces one view of a leaf or mesh cluster; combine verified bakes with the
+atlas workflow below.
+
+### Shared PBR texture atlases
+
+Use `inspect_texture_atlas` with `entries=[{"id":"leaf","directory":"leaf-bake"},
+{"id":"cluster","directory":"cluster-bake"}]`, then `build_texture_atlas` with the
+same options, a new output `directory` and `expected_atlas=atlas_sha256`.
+IDs are distinct lowercase identifiers (letters, digits, underscore, starting
+with a letter; at most 32 characters). Inputs must resolve to distinct successful
+original `bake_textures` bundles inside the active library. Atlas outputs are not
+accepted recursively. Existing output directories and outputs inside a source
+bundle refuse. Input files, conversion declarations and packed layout bind the
+guard; changed sources require inspection again.
+
+Choose `width`/`height` (32–4096 each, at most 4,194,304 pixels) and `gutter`
+(0–64 pixels, default 8). All entries must have the same ordered set of baked
+8-bit PBR maps, with uniform map dimensions within each entry. Entries may differ
+in size. A deterministic height-first shelf layout places them without rotating,
+resampling or reducing resolution. Insufficient room refuses. Tile rectangles
+use bottom-left pixel coordinates; `uv_rect` is `[u,v,width,height]` for the inner
+tile, excluding its gutter. Base-level edge pixels are duplicated through the
+gutter. Tangent-space maps retain their orientation.
+
+The plan reports tile/allocated fractions, `base_rgba8_bytes` and
+`full_mip_rgba8_bytes`. `max_texture_bytes` (default 256 MiB) caps the full-mip
+RGBA8 estimate across all maps; `max_input_bytes` (default 2 GiB) caps the verified
+input bundle inventory. These are storage/texture planning figures, not measured
+GPU memory. Only base-level PNGs are emitted: mipmap creation, compression and
+bleed-free anisotropic sampling are downstream concerns. Geometry coverage from
+card inspection is distinct from atlas tile occupancy.
+
+Inspection verifies files/hashes, map encodings, dimensions and layout. The
+isolated worker additionally opens each `asset.blend` with scripts disabled,
+checks its native binding and requires a static single-UV mesh with positive
+nonsingular transforms and matching untextured PBR constants. Per-mesh bounds are
+250,000 vertices and the existing bake-signature loop limit; combined bounds are
+1,000,000 vertices and 2,000,000 corners. Unsupported inputs fail with their owned
+partial job preserved for inspection/cleanup. Bake or simplify sources first.
+
+Output `asset.blend` contains one mesh per ID, one shared material, `AtlasUV` and
+the atlas maps. Physical source placement is converted to metre scene units;
+editable source bundles and the connected editor remain unchanged. The manifest
+records source files/guards, loss declarations, tile layout and each output's
+geometry/UV/material/image signature. Reopen the asset and use
+`validate_texture_bake` before selected-object GLB export. Validation checks all
+atlas objects and binds the declared layout to its owned job. Use the existing
+`inspect_texture_job`, `recover_texture_job` and `cleanup_texture_job` commands
+for progress/reconciliation/partial cleanup. Atlas building uses the same owned
+worker, parent-death handling, timeout, cancellation and free-space reporting as
+texture baking. Default execution is asynchronous; poll its operation.
 
 ## Mesh element editing and cleanup
 

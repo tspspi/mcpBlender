@@ -51,6 +51,13 @@ def test_fitted_leaf_and_cluster_bake_delivery(assets_live,scene_unit_scale):
             assert cluster_bake['live_scene_unchanged'] and cluster_bake['projection']['fraction']>.2
             await client.call_tool('open_blend',{'path':cluster_dir+'/asset.blend'})
             assert (await tool(client,'validate_texture_bake',directory=cluster_dir))['validated']
+            atlas_args={'entries':[{'id':'leaf','directory':leaf_dir},{'id':'cluster','directory':cluster_dir}],'width':256,'height':256,'gutter':4}
+            atlas_plan=await tool(client,'inspect_texture_atlas',**atlas_args);atlas_dir='foliage-atlas-'+str(scene_unit_scale)
+            atlas=(await client.call_tool('build_texture_atlas',{'params':atlas_args|{'directory':atlas_dir,'expected_atlas':atlas_plan['atlas_sha256']},'wait':True})).data
+            assert atlas['live_scene_unchanged'] and atlas['objects']==['cluster','leaf']
+            await client.call_tool('open_blend',{'path':atlas_dir+'/asset.blend'})
+            assert (await tool(client,'validate_texture_bake',directory=atlas_dir))['validated']
+            await tool(client,'export_objects_glb',objects=atlas['objects'],path=atlas_dir+'.glb')
             # The worker bundle is self-contained: reopen, validate and export it.
             await client.call_tool('open_blend',{'path':leaf_dir+'/asset.blend'})
             checked=await tool(client,'validate_texture_bake',directory=leaf_dir);assert checked['validated']
@@ -68,6 +75,8 @@ def test_fitted_leaf_and_cluster_bake_delivery(assets_live,scene_unit_scale):
                 out=Path(directory)/('metres' if scene_unit_scale==1 else 'centimetres');out.mkdir(parents=True,exist_ok=True)
                 shutil.copytree(library/leaf_dir,out/'fitted-leaf',dirs_exist_ok=True)
                 shutil.copytree(library/cluster_dir,out/'fitted-cluster',dirs_exist_ok=True)
+                shutil.copytree(library/atlas_dir,out/'atlas',dirs_exist_ok=True)
+                shutil.copy2(library/(atlas_dir+'.glb'),out/'atlas.glb')
                 shutil.copy2(library/(leaf_dir+'.glb'),out/'fitted-leaf.glb');shutil.copy2(library/preview,out/'fitted-preview.png')
                 (out/'proof.json').write_text(json.dumps({'plan':plan,'rectangle':rect,'created':created,'bake':result,'cluster':target},indent=2))
     asyncio.run(run())

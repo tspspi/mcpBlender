@@ -376,6 +376,7 @@ class BridgeServer:
                 reads = {"get_scene_info", "get_object_info", "inspect_mesh", "inspect_mesh_elements", "inspect_shape_keys", "inspect_morph_animation", "sample_morph_animation", "inspect_rig", "inspect_animation", "sample_animation", "get_capabilities", "inspect_resources", "vse_list", "checkpoint", "shutdown_blender", "capture_viewport", "render_still", "render_animation", "render_video"}
                 reads.update({"asset_report", "preflight_game_asset", "render_animation_preview"})
                 reads.add("inspect_foliage_card")
+                reads.update({"inspect_texture_atlas","build_texture_atlas"})
                 reads.update({"shader_node_catalog", "inspect_shader_graph"})
                 reads.update({"geometry_node_catalog", "inspect_geometry_graph"})
                 reads.update({"inspect_physics", "validate_rigid_bake", "sample_rigid_bodies"})

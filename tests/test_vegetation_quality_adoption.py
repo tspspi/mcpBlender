@@ -60,6 +60,9 @@ def test_quality_bake_adoption_and_standalone_delivery(assets_live):
             for role,row in adopted['baked_materials'].items():
                 assert row['texture_quality']['passed'] and row['texture_quality']['policy']['mip_levels']==0
                 assert row['preparation_bake_sha256']==prep['components'][role]['initial_bake_sha256']
+            retained=adopted['baked_materials']
+            adopted=await wait(client,'create_vegetation_secondary_uv',lod_collection='Lods',expected_lods=adopted['lods_sha256'],assets=['leaf-0'],texture_width=512,texture_height=512,chart_layout={'min_area_pixels':64,'min_span_pixels':2,'gutter_pixels':4,'allow_stretch':True})
+            assert adopted['valid'] and adopted['baked_materials']==retained
             report=await tool(client,'inspect_vegetation_delivery',lod_collection='Lods',required_maps=maps,require_quality=True)
             assert not report['complete'] and set(report['quality_policies'])=={'leaf-0','lod-0-wood'}
             assert not set(report['quality_policies'])&set(report['assets_without_quality_reports'])
@@ -71,6 +74,8 @@ def test_quality_bake_adoption_and_standalone_delivery(assets_live):
             exported=await wait(client,'export_botanical_lods',lod_collection='Lods',expected_lods=state['lods_sha256'],directory='delivery')
             manifest=texture_files.read_json(root/'library/delivery/semantics.json')
             assert all(r['texture_quality']['passed'] for r in manifest['baked_materials'].values())
+            assert manifest['secondary_uv']==adopted['secondary_uv']
+            assert next(r for r in exported['proof']['assets'] if r['asset']=='leaf-0')['proof']['uv_channels']==3
             if dest:=os.environ.get('MCPBLENDER_QUALITY_ADOPTION_EVIDENCE_DIR'):
                 shutil.copytree(root/'library',Path(dest),dirs_exist_ok=True)
                 (Path(dest)/'quality-delivery.json').write_text(json.dumps(report,indent=2))

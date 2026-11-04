@@ -17,5 +17,5 @@ def test_typed_lod_contracts_and_readonly_policy(tmp_path):
             names={t.name for t in await client.list_tools()}
             assert {'inspect_botanical_lod_source','inspect_botanical_lods','validate_botanical_lod_bundle'}<=names
             assert 'export_botanical_lods' not in names
-            assert not {'create_botanical_lods','activate_botanical_lod','remove_botanical_lods'}&names
+            assert not {'create_botanical_lods','activate_botanical_lod','remove_botanical_lods','create_vegetation_secondary_uv'}&names
     asyncio.run(run())

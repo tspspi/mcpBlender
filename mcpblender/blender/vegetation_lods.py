@@ -65,9 +65,16 @@ def inspect(p,*,ignore_users=None):
         if isinstance(value,bpy.types.Collection) and any(v not in owned for v in [*value.objects,*value.children]):blockers.append('Foreign collection member: '+value.name)
     current=signature(owned,version=meta.get('content_signature_version',1));issues=[]
     if current!=meta['content_sha256']:issues.append('Botanical LOD contents changed')
+    if 'secondary_uv' in meta:
+        from . import vegetation_uv
+        try:vegetation_uv.verify(col,meta)
+        except ValueError as exc:issues.append(str(exc))
     guard=botany.digest({'content':current,'meta':meta,'users':sorted((v.name,sorted((u.bl_rna.identifier,u.name) for u in users.get(v,set()))) for v in owned)})
     result={'lod_collection':col.name,'lods_sha256':guard,'valid':not issues and not blockers,'issues':issues,'ownership_blockers':sorted(set(blockers)),
             'levels':meta['levels'],'active_level':meta['active_level'],'root':meta['root'],'prototypes':meta['prototypes'],'source':meta['plan']['source'],'semantic_text':getattr(col.get(TEXT),'name',None),'plan':meta['plan'],'verification':meta['verification'],'baked_materials':meta.get('baked_materials',{})}
+    result['secondary_uv']=meta.get('secondary_uv',{})
+    from .vegetation_materials import lod_objects
+    result['mesh_assets']={role:{'name':obj.name,'uv_maps':[l.name for l in obj.data.uv_layers]} for role,obj in lod_objects(col,meta).items()}
     return col,owned,meta,result
 
 

@@ -41,7 +41,7 @@ def validate(record):
     return total
 
 
-def verify(root,records,assets):
+def verify(root,records,assets,*,secondary_uv=None):
     from pathlib import Path
     from .lod_files import read_glb
     from .package_files import texture_infos
@@ -53,7 +53,13 @@ def verify(root,records,assets):
         sub=json.loads((root/asset/'manifest.json').read_text());names=sub['source']['uv_maps'];uvs=sub['witness']['uvs']
         if len(names)!=len(uvs) or len(set(names))!=len(names):raise ValueError('Baked vegetation UV channel inventory changed')
         actual={name:uv_digest(rows) for name,rows in zip(names,uvs)}
-        if actual!=record['uv_witness']:raise ValueError('Baked vegetation UVs differ from adopted layout')
+        expected=dict(record['uv_witness'])
+        if secondary_uv and asset in secondary_uv:
+            from . import vegetation_uv
+            extra=vegetation_uv.verify_maps(secondary_uv[asset],names,actual)
+            if any(name in expected and expected[name]!=value for name,value in extra.items()):raise ValueError('Secondary UV baseline differs from adopted layout')
+            expected.update(extra)
+        if actual!=expected:raise ValueError('Baked vegetation UVs differ from adopted layout')
         doc,_=read_glb(root/asset/'asset.glb');channel=names.index(record['uv_map'])
         used={p['material'] for mesh in doc['meshes'] for p in mesh['primitives'] if 'material' in p}
         infos=[spec for i in used for spec in texture_infos(doc['materials'][i])]

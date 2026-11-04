@@ -3772,6 +3772,51 @@ remain separate work. Cooperative cancellation removes owned staged IDs; hard-cr
 recovery during native staging is not independently qualified here. The generic
 static/skeletal/morph LOD tools remain available for other asset types.
 
+### Secondary UVs on owned vegetation LODs
+
+Use `inspect_botanical_lods` to obtain the current `lods_sha256` and `mesh_assets`
+inventory (asset role, object name and ordered UV-map names). Call
+`create_vegetation_secondary_uv` with that `expected_lods`, `lod_collection` and
+explicit `assets`, such as `["lod-1-wood", "leaf-0"]`. The default new map is
+`UV2`. Projection angle, margin, rotation, texture dimensions, tile border and
+optional `chart_layout` have the same meaning as `create_secondary_uv`; the
+default border is four pixels at 1024x1024. `max_corners` bounds the whole batch
+(default 500,000; maximum one million); the ordinary per-mesh UV limits also
+apply. Each role must have a primary map, an absent target name and fewer than
+eight maps. Raw shoot meshes without a primary UV need a textured/bake-derived
+layout first. Existing maps are never overwritten by this action.
+
+This transaction operates on independent LOD delivery meshes, preserving the
+editable botanical master, all prior UV coordinates/order, geometry, branch/wind
+attributes, materials and active/render maps. Templates remain shared across
+all levels and instances. Staging and verification precede the batch ownership
+update; cooperative cancellation or failure restores the old mesh bindings,
+names, metadata and owned-ID inventory, including cancellation after the swaps.
+Foreign users and invalid/modified profiles refuse. Native UV operators cannot
+cancel mid-call; abrupt process loss during staging is not qualified as an atomic
+transaction. Do not use raw UV tools to bypass managed ownership.
+
+The returned `secondary_uv` records bind the source profile guard, creation
+options, ordered channels and exact float32 coordinate hashes for the new map
+and its preserved baseline. Later appended layouts retain that baseline. LOD
+inspection checks these records against actual meshes, and LOD export retains
+them in `semantics.json`; file validation checks the records against the decoded
+numeric-bundle UV witnesses. Existing adopted bake/quality records are preserved
+verbatim. A separate secondary record accounts for the added map rather than
+rewriting the historical bake's UV inventory. Material revisions should use a
+fresh preparation made after secondary authoring, normally with
+`uv_strategy="EXISTING"` to retain BakeUV. An older preparation lacking the added
+map is refused for adoption; reprepare instead of dropping the secondary layout.
+
+Inspect the actual `UV2` layout and run `inspect_texture_quality` with the intended
+dimensions, density and padding before using it for lighting. A secondary map
+on a shared leaf template is reused by every leaf; it is not a unique per-instance
+or whole-tree lightmap atlas. The fixtures qualify shared-template and reduced
+wood coordinates, retained real texture bakes, a subsequent rebake/adoption,
+save/reopen and independent file delivery. Managed botanical master UV2,
+receiving-engine lightmap import, actual lighting bakes, deformation-dependent
+lightmaps, filtering and mature-tree/population quality remain separate work.
+
 ## Shared vegetation LOD bundle export
 
 Inspect the native profile with `inspect_botanical_lods`, then call

@@ -53,7 +53,8 @@ and reports ordered uv_maps and zero-based Blender uv_channel. It can use the
 same chart_layout and tile_padding_pixels controls. Check inspect_texture_quality
 on the new map separately; a name or layer index does not certify engine lightmap
 use. Decode exported channels with export_attribute_bundle when numeric-field
-delivery applies. Managed vegetation UV2 authoring remains a separate milestone.
+delivery applies. For owned native vegetation LODs use the dedicated transaction
+below; botanical master UV2 and instance atlases remain separate workflows.
 For an explicit texture-edge border, pack with tile_padding_pixels and matching
 texture_width/texture_height. scale=true uniformly shrinks/translates the packed
 layout; scale=false only translates and refuses layouts too large for the inset.
@@ -525,6 +526,20 @@ for activate_botanical_lod/remove_botanical_lods. Full LOD0 and reduced levels
 share copied templates, retain canonical wind IDs/parents and survive source
 removal. Cards/impostors, collision, optical/shadow/runtime
 qualification and animated LOD playback remain separate. See USER_MANUAL.md.
+
+For secondary UVs on owned LOD delivery meshes, inspect_botanical_lods returns
+mesh_assets and the current lods_sha256. Use create_vegetation_secondary_uv with
+expected_lods and explicit asset roles (for example lod-1-wood and leaf-0), a new
+uv_map (default UV2), actual texture dimensions and optional chart_layout. This
+stages the complete batch and preserves geometry/wind fields, prior UVs,
+active/render maps, materials and historical bake/quality records. Every target
+needs a primary UV and a free channel; no existing target is overwritten. Source
+masters remain independent. Reinspect the new map and its geometric quality.
+For later material revisions make a new bake preparation after secondary editing,
+normally reusing BakeUV with uv_strategy=EXISTING; older preparations missing UV2
+cannot be adopted. Secondary records travel with LOD export and are checked
+against decoded UV data. Shared templates reuse UV2 for all instances; no unique
+leaf/tree lightmap atlas, engine lightmap import or lighting bake follows.
 
 For native LOD file delivery, inspect_botanical_lods then export_botanical_lods
 with expected_lods and a new directory. SOURCE placement omits preview offsets

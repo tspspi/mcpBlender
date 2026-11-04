@@ -32,6 +32,7 @@ from . import attributes
 from . import attribute_export
 from . import vegetation_export
 from . import vegetation_lods
+from . import vegetation_uv
 from . import vegetation_lod_export
 from . import vegetation_adoption
 from . import vegetation_bake
@@ -87,6 +88,7 @@ COMMANDS.update(attributes.COMMANDS)
 COMMANDS.update(attribute_export.COMMANDS)
 COMMANDS.update(vegetation_export.COMMANDS)
 COMMANDS.update(vegetation_lods.COMMANDS)
+COMMANDS.update(vegetation_uv.COMMANDS)
 COMMANDS.update(vegetation_lod_export.COMMANDS)
 COMMANDS.update(vegetation_materials.COMMANDS)
 COMMANDS.update(vegetation_bake.COMMANDS)
@@ -138,6 +140,7 @@ def dispatch(command, p):
     if command in vegetation_materials.COMMANDS:return vegetation_materials.dispatch(command,p)
     if command in vegetation_lod_export.COMMANDS:return vegetation_lod_export.dispatch(command,p)
     if command in vegetation_lods.COMMANDS:return vegetation_lods.dispatch(command,p)
+    if command in vegetation_uv.COMMANDS:return vegetation_uv.dispatch(command,p)
     if command in vegetation_export.COMMANDS:return vegetation_export.dispatch(command,p)
     if command in attribute_export.COMMANDS:return attribute_export.dispatch(command,p)
     if command in attributes.COMMANDS:return attributes.dispatch(command,p)

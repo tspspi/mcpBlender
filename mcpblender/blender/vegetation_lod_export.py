@@ -55,6 +55,7 @@ def export(p):
               'coordinates':common.semantics(model,population,delivery_wind)['coordinates']}
     if materials is not None:semantic['materials']=materials
     if meta.get('baked_materials'):semantic['baked_materials']=meta['baked_materials']
+    if meta.get('secondary_uv'):semantic['secondary_uv']=meta['secondary_uv']
     encoded=(json.dumps(semantic,sort_keys=True,allow_nan=False)+'\n').encode()
     if len(encoded)>p['max_bytes']:raise ValueError('LOD semantics exceed max_bytes')
     estimate=len(encoded)*2+sum(len(bpy.data.objects[n].data.loops)*256 for level in meta['levels'] for n in level['objects'][:2])+16*1024**2

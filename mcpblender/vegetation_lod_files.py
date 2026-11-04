@@ -79,6 +79,9 @@ def validate(root,*,cancelled=None,progress=None):
         if record.get('material_delivery')!={a:vegetation_materials.delivery(root/a/'asset.glb',data['materials'],a) for a in assets}:raise ValueError('Encoded LOD material delivery changed')
     if data.get('baked_materials'):
         from . import vegetation_adoption
-        vegetation_adoption.verify(root,data['baked_materials'],assets)
+        vegetation_adoption.verify(root,data['baked_materials'],assets,secondary_uv=data.get('secondary_uv',{}))
+    if 'secondary_uv' in data:
+        from . import vegetation_uv
+        vegetation_uv.verify(root,data['secondary_uv'],assets)
     return {'format':FORMAT,'levels':reports,'shared_leaf_templates':len(templates),'assets':proofs,'placement_mode':data['placement_mode'],
             'semantic_sha256':botany.digest(data),'scope':'Independent mesh/field/UV/metre placement, canonical hierarchy/selection/instance correspondence. No engine shader, animated LOD/optical or GPU runtime qualification.'}

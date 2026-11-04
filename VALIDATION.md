@@ -3834,3 +3834,49 @@ exact concave repack exceeded the 120-second native test bound on the small
 shape-key fixture. Bounding-box packing completed while retaining complete
 clear-overlap verification; no timing or scalability bound is claimed for
 arbitrary larger meshes or native projection calls.
+
+## Owned vegetation secondary UVs
+
+`create_vegetation_secondary_uv` qualifies new secondary layouts on explicit
+native LOD delivery roles. A code-disabled MCP fixture creates a procedural tree,
+one reduced woody LOD and a shared leaf variant, then performs a real four-map
+64px leaf bake and guarded adoption. A two-role secondary edit preserves the
+historical adopted record verbatim, the unchanged preparation, source master,
+geometry and primary map choices. A subsequent EXISTING-UV preparation, real
+rebake and replacement adoption retains the new map and secondary records.
+Save/reopen and independently decoded GLB delivery prove three leaf UV channels
+and two woody UV channels. File validation still succeeds after profile removal.
+The complete new MCP workflow passed in 65.38 seconds.
+
+Native batch tests inject cancellation after staging the first mesh and after
+actual mesh swaps, metadata publication and new ownership verification. Both
+restore the exact old metadata, ID inventory and profile/source guards. They
+also verify repeated append-only authoring, raw-edit refusal on owned data,
+foreign-user refusal and detection of a changed coordinate witness even when its
+record digest is recomputed. The native test, add-on import without frontend
+dependencies, read-only tool discovery and pure record checks passed five checks
+in 14.80 seconds. Portable record tests cover channel ordering, baseline lineage,
+intervening appended bake maps, malformed records and altered numeric witnesses.
+
+The quality-adoption fixture additionally adds secondary UVs to a leaf carrying
+actual quality-gated 1024px maps, preserving its historical quality and bake
+records exactly. Its exporter/validator accepts the added map only through the
+separate secondary record and checks that the baked textures still reference the
+adopted channel. This fixture plus existing texture replacement/ancestry/rollback,
+native LOD lifecycle, placement modes and file-export cancellation regressions
+passed four checks in 199.47 seconds. The design skill validates; compilation and
+whitespace checks pass. No permanent runtime, environment or dependency changes.
+
+These are five-metre sparse source fixtures, not a mature-tree, full population,
+per-instance lightmap atlas or receiving-engine lighting test. New secondary UVs
+need their own density/padding inspection; retained bake-quality policies describe
+the original texture layout only. Old preparations lacking the new map are
+refused for replacement adoption; use a fresh preparation rather than silently
+losing UVs. Managed master UV editing, whole-tree/per-instance atlases, lighting
+bakes, actual mip/filter/optical behavior and abrupt-crash transaction recovery
+remain unqualified. Cooperative native cancellation is observed between native
+projection/packing calls, not during those calls. Portable records and manifests
+are unsigned correspondence witnesses, not authenticated provenance.
+The final default-AABB append, malformed native metadata and portable-record
+checks passed three tests in 8.30 seconds. An empty list used in place of the
+secondary-record mapping is refused rather than treated as an absent record.

@@ -17,7 +17,7 @@ from .morphs import topology_digest
 from .simulations import props
 from . import shaders,uv
 from .fluids import alive
-from mcpblender.texture_files import MARKER,inventory,write_json,read_json,verify_steps,file_hash
+from mcpblender.texture_files import MARKER,inventory,write_json,read_json,verify_steps,file_hash,projected_map_policy,validate_map_policy
 from mcpblender.storage import require_space
 
 COMMANDS={'inspect_texture_bake','bake_textures','validate_texture_bake','inspect_texture_job','recover_texture_job','cleanup_texture_job'}
@@ -162,6 +162,7 @@ def validate(p):
     root=Path(p['directory']);record=read_json(root/MARKER);saved=read_json(root/'manifest.json')
     if record.get('kind')!='mcpblender-texture-job' or record.get('state')!='succeeded':raise ValueError('Texture job is not a successful bundle')
     if saved.get('job_id')!=record['job_id'] or saved.get('source')!=record['source'] or saved.get('material_adapters',[])!=record.get('material_adapters',[]) or saved.get('atlas')!=record.get('atlas'):raise ValueError('Texture manifest binding mismatch')
+    map_policy=validate_map_policy(record,saved,read_json(root/'job.json'))
     size=yield from verify_steps(root,saved['files'])
     names=saved['objects'] if saved.get('atlas') is not None else [saved['name']]
     if saved.get('atlas') is not None and (names!=[t['id'] for t in saved['atlas']['layout']['tiles']] or set(saved['object_signatures'])!=set(names)):raise ValueError('Atlas object inventory differs from tiles')
@@ -171,7 +172,7 @@ def validate(p):
         if obj.get(BINDING)!=record['job_id'] or output_signature(obj.name)!=signature:raise ValueError('Texture asset binding mismatch; open the unchanged baked asset')
         for image in (n.image for m in obj.data.materials for n in m.node_tree.nodes if n.type=='TEX_IMAGE'):
             if Path(bpy.path.abspath(image.filepath)).resolve().parent!=(root/'textures').resolve():raise ValueError('Baked image path does not reference this bundle')
-    return {'validated':True,'bytes':size,'maps':saved['maps'],'material':saved['material'],'projection':saved['projection'],'material_adapters':saved.get('material_adapters',[]),**({'atlas':saved['atlas'],'objects':names} if saved.get('atlas') is not None else {}),'validation_scope':'file hashes and native low geometry/UV/material/image binding'}
+    return {'validated':True,'bytes':size,'map_policy':map_policy,'maps':saved['maps'],'material':saved['material'],'projection':saved['projection'],'material_adapters':saved.get('material_adapters',[]),**({'atlas':saved['atlas'],'objects':names} if saved.get('atlas') is not None else {}),'validation_scope':'file hashes and native low geometry/UV/material/image binding'}
 
 
 def bake(p):
@@ -186,12 +187,13 @@ def bake(p):
     reserve=policy.get('reserve_bytes',256*1024**2);require_space(root,estimate,reserve_bytes=reserve,estimate_kind=policy['estimate_kind'])
     root.mkdir(parents=True,exist_ok=False)
     record={'kind':'mcpblender-texture-job','version':1,'job_id':uuid.uuid4().hex,'state':'running','source':info['bake_sha256'],'parent_pid':os.getpid(),'worker_pid':None,'material_adapters':info.get('material_adapters',[])}
+    if projected_map_policy(p) is not None:record['map_policy']=projected_map_policy(p)
     if 'atlas' in info:record['atlas']=info['atlas']
     write_json(root/MARKER,record);proc=None;success=False;cancelled=False;started=time.monotonic()
     try:
         yield {'phase':'saving isolated texture source','native_call_interruptible':False}
         finished(bpy.ops.wm.save_as_mainfile(filepath=str(root/'source.blend'),copy=True,check_existing=False))
-        write_json(root/'job.json',p|{'parent_pid':os.getpid(),'job_id':record['job_id']})
+        write_json(root/'job.json',p|{'parent_pid':os.getpid(),'job_id':record['job_id'],**({'map_policy':record['map_policy']} if 'map_policy' in record else {})})
         with (root/'worker.log').open('wb') as log:
             proc=subprocess.Popen([bpy.app.binary_path,'--background','--factory-startup','--disable-autoexec','--threads',str(p['threads']),'--python-exit-code','1','--python',str(Path(__file__).with_name('texture_worker.py')),'--',str(root/'job.json')],cwd=str(root),stdin=subprocess.DEVNULL,stdout=log,stderr=subprocess.STDOUT)
         record['worker_pid']=proc.pid;write_json(root/MARKER,record)
@@ -207,10 +209,11 @@ def bake(p):
             raise RuntimeError(f"Texture worker exited {proc.returncode}: {status.get('error','inspect worker.log')}; partial bundle preserved")
         result=read_json(root/'result.json');saved=read_json(root/'manifest.json')
         if result.get('state')!='succeeded' or result.get('job_id')!=record['job_id'] or saved.get('source')!=record['source'] or saved.get('job_id')!=record['job_id'] or saved.get('material_adapters',[])!=record.get('material_adapters',[]) or saved.get('atlas')!=record.get('atlas'):raise ValueError('Texture worker result binding mismatch')
+        validate_map_policy(record,saved,read_json(root/'job.json'))
         if sum(r['bytes'] for r in inventory(root)[0])>p['max_bytes']:raise ValueError('Completed texture bundle exceeds max_bytes')
         guard(p);yield from verify_steps(root,saved['files'])
         record['state']='succeeded';write_json(root/MARKER,record);success=True
-        return {'directory':str(root),'path':str(root/'asset.blend'),'maps':saved['maps'],'material':saved['material'],'projection':saved['projection'],'material_adapters':saved.get('material_adapters',[]),**({'atlas':saved['atlas'],'objects':saved['objects']} if 'atlas' in saved else {}),'live_scene_unchanged':True,'bytes':sum(r['bytes'] for r in inventory(root)[0])}
+        return {'directory':str(root),'path':str(root/'asset.blend'),'map_policy':saved.get('map_policy'),'maps':saved['maps'],'material':saved['material'],'projection':saved['projection'],'material_adapters':saved.get('material_adapters',[]),**({'atlas':saved['atlas'],'objects':saved['objects']} if 'atlas' in saved else {}),'live_scene_unchanged':True,'bytes':sum(r['bytes'] for r in inventory(root)[0])}
     except GeneratorExit:cancelled=True;raise
     finally:
         if proc and proc.poll() is None:
@@ -234,6 +237,7 @@ def recover(p):
     if result.get('state')=='succeeded' and result.get('job_id')==record['job_id']:
         saved=read_json(root/'manifest.json')
         if saved.get('source')!=record['source'] or saved.get('job_id')!=record['job_id'] or saved.get('material_adapters',[])!=record.get('material_adapters',[]) or saved.get('atlas')!=record.get('atlas'):raise ValueError('Abandoned texture manifest binding mismatch')
+        validate_map_policy(record,saved,read_json(root/'job.json'))
         yield from verify_steps(root,saved['files']);record['state']='succeeded'
     else:record['state']='interrupted'
     write_json(root/MARKER,record)

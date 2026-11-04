@@ -4481,3 +4481,45 @@ ALPHA. This is a concrete suspected contributor to excess opacity; the alpha pat
 must be investigated and corrected before qualifying dense card silhouettes. The
 comparison gates were not relaxed. Box-filter results do not qualify GPU mipmaps,
 alpha clipping/compression, shadows, wind, population or receiving-engine behavior.
+
+### Projected opacity padding correction
+
+The matched dense-card rejection above was traced with an existing-API control:
+rebaking all maps at zero margin reduced alpha occupancy from 0.18599 to 0.10730
+and passed the unchanged image gates. The same source, 256px maps, camera, 512px
+renders, lighting, sample counts and thresholds were retained. Full-size hard IoU
+became 0.89904, soft IoU 0.88082 and alpha-area bias -0.310%; factors 2/4/8 also
+passed. This isolates EXTEND padding as the dominant excess-opacity contributor.
+
+New projected jobs requesting ALPHA now record
+`PROJECTED_ALPHA_NO_EXTEND_V1`: ALPHA uses zero margin and other maps retain the
+requested padding. Self-bakes and jobs without projected ALPHA retain their
+existing margin behavior. The policy is bound across job/marker/manifest, and
+per-map effective margins are checked during completion, validation and
+finished-file recovery. Explicit source policies enter atlas input guards.
+Legacy bundles with no policy remain readable with their original pixels and
+are not retroactively accepted as silhouette-correct.
+
+The corrected dense bake retained two-pixel colour/normal/roughness padding and
+zero ALPHA padding. Its alpha occupancy is 0.10730, identical to the all-zero-margin
+control. The same matched native-versus-delivered-GLB protocol now PASSES the
+unchanged hard/soft IoU >=0.8, alpha MAE <=0.05 and RGB RMSE <=0.1 gates at all four
+scales. Full size: hard IoU 0.89823, soft IoU 0.88071, alpha MAE 0.01076,
+alpha-area bias -0.3185% and premultiplied RGB RMSE 0.00595. Factors 2/4/8 have
+hard IoU 0.90982/0.93971/0.95798 and soft IoU 0.89877/0.92363/0.95095. Colour
+padding improves RGB error over the all-zero-margin control. The corrected render
+was visually inspected; leaf gaps remain visible.
+
+The positive matched comparison plus metre/centimetre fitted-card/bake/reopen/
+atlas/GLB regressions passed three tests in 111.59 seconds. Dense rebake with legacy
+validation, new policy checks and a synthetic completed-file recovery refusal/
+reconciliation, plus pure policy and native emission regressions, passed three
+tests in 46.34 seconds. Final policy/contracts/quality-binding checks passed seven
+tests in 5.57 seconds. Recovery here is a deliberately edited finished-file
+fixture, not a new live-crash qualification. All owned workers terminated normally.
+
+This accepts one fixed TOP-view selected-cluster approximation at the measured
+resolution/filter scales. It does not establish multi-view/whole-tree, GPU mip or
+alpha mode, compression, shadows, wind, population, calibrated optics or Godot
+behavior. The original padded render remains rejected evidence; gates were not
+relaxed. Atlas optical comparisons and far representations remain open.

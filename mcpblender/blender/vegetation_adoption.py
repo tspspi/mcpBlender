@@ -17,6 +17,7 @@ def bundle(directory,component,limits):
     record=texture_files.read_json(root/texture_files.MARKER);saved=texture_files.read_json(root/'manifest.json');job=texture_files.read_json(root/'job.json')
     if record.get('kind')!='mcpblender-texture-job' or record.get('version')!=1 or record.get('state')!='succeeded' or saved.get('version')!=1 or saved.get('job_id')!=record.get('job_id') or job.get('job_id')!=record.get('job_id'):raise ValueError('Successful owned texture job required')
     if saved.get('atlas') is not None or job.get('sources') or job.get('cage') or saved.get('name')!=component['name'] or job.get('name')!=component['name']:raise ValueError('Adoption requires a self-bake of this exact prepared component')
+    texture_files.validate_map_policy(record,saved,job)
     expected,_=texture_files.quality_binding(saved,job,component['initial_bake_sha256'])
     if saved.get('source')!=expected or record.get('source')!=saved['source'] or job.get('expected_bake')!=saved['source']:raise ValueError('Bake source differs from the unchanged initial preparation')
     if job.get('uv_map')!=component['inspect_texture_bake']['uv_map'] or job.get('thin_foliage_mode','REFUSE')!=component['inspect_texture_bake']['thin_foliage_mode'] or saved.get('material_adapters',[])!=component['material_adapters']:raise ValueError('Bake UV/optical adapter binding changed')

@@ -12,7 +12,7 @@ import bpy
 from mathutils import Matrix
 from mcpblender.blender import textures
 from mcpblender.blender.assets import finished
-from mcpblender.texture_files import write_json,read_json,manifest,EMISSION_ENCODING
+from mcpblender.texture_files import write_json,read_json,manifest,EMISSION_ENCODING,projected_map_policy
 
 PROPERTIES={'BASE_COLOR':'Base Color','ROUGHNESS':'Roughness','METALLIC':'Metallic','EMISSION':'Emission Color','ALPHA':'Alpha'}
 
@@ -30,6 +30,8 @@ def main():
     if job.get('_texture_pipeline')=='ATLAS':
         from mcpblender.blender.atlas_worker import run
         return run(job,root,status)
+    map_policy=job.get('map_policy')
+    if map_policy is not None and map_policy!=projected_map_policy(job):raise ValueError('Unsupported projected map padding policy')
     status('loading isolated texture source')
     bpy.ops.wm.open_mainfile(filepath=str(root/'source.blend'),load_ui=False,use_scripts=False)
     bpy.context.preferences.filepaths.save_version=0;source_info=textures.guard(job)
@@ -141,11 +143,14 @@ def main():
         low.select_set(True)
         for obj in source_objects:obj.select_set(True)
         bpy.context.view_layer.objects.active=low
+        # Projected holes are intended transparency, not missing colour texels.
+        # EXTEND on opacity would fill leaf gaps and inflate the silhouette.
+        bake_margin=0 if map_policy is not None and kind=='ALPHA' else job['margin']
         kwargs={'type':kind if kind in {'NORMAL','AO'} else 'EMIT','use_selected_to_active':bool(job['sources']),
                 'use_cage':bool(job.get('cage') or job['sources'] and job['cage_extrusion']>0),
                 'cage_extrusion':job['cage_extrusion'],'max_ray_distance':job['max_ray_distance'],
                 'normal_space':'TANGENT','normal_r':'POS_X','normal_g':'POS_Y','normal_b':'POS_Z',
-                'margin':job['margin'],'margin_type':'EXTEND','target':'IMAGE_TEXTURES','save_mode':'INTERNAL','uv_layer':job['uv_map']}
+                'margin':bake_margin,'margin_type':'EXTEND','target':'IMAGE_TEXTURES','save_mode':'INTERNAL','uv_layer':job['uv_map']}
         if job.get('cage'):kwargs['cage_object']=job['cage']
         finished(bpy.ops.object.bake(**kwargs))
         image.file_format='PNG';image.filepath_raw=str(root/'textures'/f'{kind.lower()}.png');image.save()
@@ -155,7 +160,7 @@ def main():
         pixels=array('f',[0])*(job['width']*job['height']*4);image.pixels.foreach_get(pixels)
         stats={'min':[min(pixels[c::4]) for c in range(4)],'max':[max(pixels[c::4]) for c in range(4)],'mean':[sum(pixels[c::4])/(job['width']*job['height']) for c in range(4)]}
         image.filepath='//textures/'+kind.lower()+'.png';images[kind]=image
-        maps.append({'map':kind,'path':'textures/'+kind.lower()+'.png','width':job['width'],'height':job['height'],'color_space':image.colorspace_settings.name,'statistics':stats})
+        maps.append(({'bake_margin':bake_margin} if map_policy is not None else {})|{'map':kind,'path':'textures/'+kind.lower()+'.png','width':job['width'],'height':job['height'],'color_space':image.colorspace_settings.name,'statistics':stats})
     status('assembling baked PBR asset',completed_maps=len(maps))
     mat=textures.baked_material(images,job['uv_map'])
     low.data.materials.clear();low.data.materials.append(mat)
@@ -165,6 +170,7 @@ def main():
     low[textures.BINDING]=job['job_id']
     finished(bpy.ops.wm.save_as_mainfile(filepath=str(root/'asset.blend'),check_existing=False,relative_remap=False))
     saved={'version':1,'job_id':job['job_id'],'source':job['expected_bake'],'name':low.name,'material':mat.name,'maps':maps,'projection':projection,'blender_version':bpy.app.version_string,'asset_sha256':textures.output_signature(low.name),'material_adapters':source_info.get('material_adapters',[]),'emission_encoding':EMISSION_ENCODING if 'EMISSION' in images else None}
+    if map_policy is not None:saved['map_policy']=map_policy
     saved['texture_quality']=source_info['objects'][0].get('texture_quality')
     if job.get('quality'):
         from mcpblender.texture_files import bake_content

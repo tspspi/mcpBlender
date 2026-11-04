@@ -1,7 +1,7 @@
 """Verified texture-bake inputs and guarded atlas plans."""
 from pathlib import Path
 from mcpblender import atlas_layout,botany
-from mcpblender.texture_files import inventory,verify_steps,read_json,MARKER
+from mcpblender.texture_files import inventory,verify_steps,read_json,MARKER,validate_map_policy
 from mcpblender.package_files import image_info
 
 COMMANDS={'inspect_texture_atlas','build_texture_atlas'}
@@ -18,6 +18,7 @@ def inspect(p,*,cancelled=None,progress=None):
         record=read_json(root/MARKER);saved=read_json(root/'manifest.json')
         if record.get('kind')!='mcpblender-texture-job' or record.get('version')!=1 or record.get('state')!='succeeded' or saved.get('atlas') is not None:raise ValueError('Atlas inputs require successful original texture-bake bundles')
         if any(saved.get(k)!=record.get(k) for k in ('job_id','source')) or saved.get('material_adapters',[])!=record.get('material_adapters',[]):raise ValueError('Atlas source manifest binding mismatch')
+        map_policy=validate_map_policy(record,saved,read_json(root/'job.json'))
         for progress in verify_steps(root,saved['files']):check_cancelled();report_progress(progress|{'input':entry['id']})
         maps=sorted(saved['maps'],key=lambda m:m['map'])
         if not maps or len(maps)>7 or len({m['map'] for m in maps})!=len(maps):raise ValueError('Invalid atlas source map inventory')
@@ -34,6 +35,7 @@ def inspect(p,*,cancelled=None,progress=None):
         w,h=next(iter(dims));entries.append({'id':entry['id'],'width':w,'height':h,'maps':[m['map'] for m in maps]})
         bindings.append({'id':entry['id'],'directory':str(root),'job_id':record['job_id'],'source':record['source'],
                          'asset_sha256':saved['asset_sha256'],'files':saved['files'],'material_adapters':saved.get('material_adapters',[])})
+        if map_policy is not None:bindings[-1]['map_policy']=map_policy
     layout=atlas_layout.pack(entries,p['width'],p['height'],p['gutter'],p['max_texture_bytes'])
     plan={'layout':layout,'inputs':sorted(bindings,key=lambda e:e['id'])};signature=botany.digest(plan)
     return {'complete':True,'bake_sha256':signature,'atlas_sha256':signature,'atlas':plan,'input_bytes':total,

@@ -57,4 +57,5 @@ def test_matched_native_delivered_card_images(assets_live):
                 for name in ('native.png','card.png'):shutil.copy2(library/name,out/name)
                 (out/'comparison.json').write_text(json.dumps({'comparison':result,'camera':camera,'unit_scale':unit,'frame':scene['frame'],'source':source,'candidate':baked[0],
                     'protocol':'Same TOP orthographic camera/frame, 512px Cycles16 samples, white world strength0.5 and transparent film, all other mesh/light objects render-hidden. Original native thin shader versus delivered FRONT_PBR GLB; optical/material losses intentionally measured, not removed.'},indent=2))
+            if os.environ.get('MCPBLENDER_CARD_EXPECT_PASS')=='1':assert result['passed'],result
     asyncio.run(run())

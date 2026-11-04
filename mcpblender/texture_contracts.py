@@ -33,7 +33,7 @@ class BakeTextures(TextureSources):
     width: int = Field(default=1024,strict=True,ge=32,le=4096)
     height: int = Field(default=1024,strict=True,ge=32,le=4096)
     samples: int = Field(default=32,strict=True,ge=1,le=256)
-    margin: int = Field(default=8,strict=True,ge=0,le=64)
+    margin: int = Field(default=8,strict=True,ge=0,le=64,description='Attribute padding pixels. Projected ALPHA always uses zero padding; self-bakes retain this margin.')
     cage_extrusion: FiniteFloat = Field(default=.1,ge=0,le=1000)
     min_projection_coverage: FiniteFloat = Field(default=.99,ge=0,le=1)
     max_ray_distance: FiniteFloat = Field(default=1,gt=0,le=10000)
@@ -61,7 +61,7 @@ class CleanupTexture(TextureBundle):
 
 WRITE=('allow_library_write',)
 COMMANDS={
-    'inspect_texture_bake':(TextureSources,(), 'Inspect evaluated target/high sources/cage, UV validity and supported static Principled materials. Optional quality policy requires complete physical directional density, chart coverage and mip-padding checks at its declared dimensions. Managed thin leaves require explicit FRONT_PBR; reports omitted optics and a mode-bound source fingerprint for guarded baking.'),
+    'inspect_texture_bake':(TextureSources,(), 'Inspect evaluated target/high sources/cage, UV validity and supported static Principled materials. Optional quality policy requires complete physical directional density, chart coverage and mip-padding checks at its declared dimensions. Projected ALPHA uses zero padding while other maps retain margin; bundles record and validate the policy. Managed thin leaves require explicit FRONT_PBR; reports omitted optics and a mode-bound source fingerprint for guarded baking.'),
     'bake_textures':(BakeTextures,('allow_scene_edit',)+WRITE,'Bake normal/AO/PBR maps in an isolated owned worker. Creates a new manifest-bound PNG/editable-asset bundle, preserving live scene; reports space/progress and supports worker cancellation. Optional quality policy must match dimensions and cover bake margin; rechecked in worker and retained in manifest. Explicit FRONT_PBR records managed thin-leaf approximation metadata; default mode refuses it.'),
     'validate_texture_bake':(TextureBundle,(),'Verify bundle file hashes, conversion metadata and the opened baked asset geometry/UV/material/image binding. Open its asset.blend first.'),
     'inspect_texture_job':(TextureBundle,(),'Inspect an owned texture-bake job, recorded process liveness and output bytes.'),

@@ -12,6 +12,30 @@ ROOT_FILES={MARKER,'source.blend','asset.blend','job.json','worker.log','result.
 MAPS={'normal','ao','base_color','roughness','metallic','emission','alpha','coverage','uv_mask'}
 
 
+
+def projected_map_policy(job):
+    """Projected opacity is silhouette data; padding may extend other maps only."""
+    if job.get('_texture_pipeline')=='ATLAS' or not job.get('sources') or 'ALPHA' not in job.get('maps',[]):return None
+    margin=job.get('margin')
+    if type(margin)!=int or not 0<=margin<=64:raise ValueError('Invalid projected map margin')
+    return {'method':'PROJECTED_ALPHA_NO_EXTEND_V1','alpha_margin':0,'other_map_margin':margin}
+
+
+def validate_map_policy(record,saved,job):
+    """Keep legacy bundles readable; bind an explicit policy in all new witnesses."""
+    import json
+    policies=[v.get('map_policy') for v in (record,saved,job)]
+    if all(v is None for v in policies):return None
+    expected=projected_map_policy(job)
+    canonical=lambda v:json.dumps(v,sort_keys=True,separators=(',',':'),allow_nan=False)
+    if expected is None or any(canonical(v)!=canonical(expected) for v in policies):raise ValueError('Texture map padding policy binding mismatch')
+    maps=saved.get('maps',[])
+    if not maps or len(maps)!=len(job['maps']) or {m.get('map') for m in maps}!=set(job['maps']):raise ValueError('Texture map padding inventory mismatch')
+    for row in maps:
+        margin=0 if row['map']=='ALPHA' else expected['other_map_margin']
+        if type(row.get('bake_margin'))!=int or row['bake_margin']!=margin:raise ValueError('Texture map padding differs from declared policy')
+    return expected
+
 def bake_content(info,*,without_quality=False):
     """Canonical source content; preserve the original bake fingerprint recipe."""
     import copy

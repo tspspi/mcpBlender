@@ -708,3 +708,10 @@ premultiplied RGB error at declared box-filter scales. Empty reference data cann
 pass; opaque-background alpha is not an isolated silhouette. Treat passed=false
 as rejected quality, not success merely because rendering/export completed. This
 is image evidence only, not GPU mip/alpha, shadow, wind or engine qualification.
+
+Projected ALPHA now uses zero padding while other bake maps retain margin. Verify
+the bundle's map_policy and per-map bake_margin; legacy files retain old pixels.
+Do not reuse an old operation ID/directory expecting a corrected rebake. Compare
+matched transparent-film renders after any padding/resolution change. The corrected
+dense selected-cluster example passes its fixed TOP-view gates, not multi-view,
+shadow, wind, GPU alpha/mip or whole-tree population acceptance.

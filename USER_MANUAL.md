@@ -672,8 +672,10 @@ the whole frame. Hide other meshes/lights consistently and keep the native shade
 if native/PBR approximation loss is being measured. The tool does not establish
 matched-camera provenance or align/rescale images automatically. Check the images
 as well as the metrics. Colour padding must not be assumed to preserve opacity
-coverage: the retained dense 256px card currently fails this matched silhouette
-gate, as recorded in VALIDATION.md.
+coverage: the original retained dense 256px card with opacity padding failed this
+matched silhouette gate. The corrected projected-alpha policy passes the same
+fixed-view gates for that cluster, as recorded in VALIDATION.md; this does not
+qualify other views, shadows, wind or receiving-renderer filtering.
 
 ## Independent render workers and camera batches
 
@@ -1313,6 +1315,17 @@ baked material includes the glTF occlusion settings group, so AO, normal and PBR
 textures can be embedded by `export_objects_glb`. `maps` returns paths, dimensions,
 color spaces and channel statistics; `material` names the new material.
 
+For projected high-to-low jobs requesting ALPHA, opacity is baked with zero
+EXTEND margin. Other maps retain the requested `margin`, so colour/normal/attribute
+padding does not expand the opacity silhouette. Self-bakes retain the requested
+margin. New projected bundles record `map_policy.method=PROJECTED_ALPHA_NO_EXTEND_V1`
+and per-map `bake_margin`; completion, validation and finished-file recovery bind
+the same policy to the job/marker/manifest and reject inconsistent declarations.
+Atlas input guards retain an explicit source policy when present. Existing legacy
+bundles remain readable with `map_policy=null` and their original padded pixels;
+validation does not retroactively certify silhouette quality. Use a new directory
+and request ID to rebake; idempotent existing requests keep their existing results.
+
 High-to-low jobs first bake zero-margin UV and geometry-hit masks. `projection`
 reports hit pixels divided by rasterized target pixels. Jobs below
 `min_projection_coverage` (default .99) fail with partial files preserved: adjust
@@ -1393,9 +1406,11 @@ around the leaf require an explicit lower `min_projection_coverage` than the
 ordinary .99 high-to-low default. Compare the geometry-hit mask and alpha silhouette;
 a lower threshold alone does not prove complete transfer of the intended leaf.
 
-The qualified example uses a default 12cm blade, a 0.08 by 0.14 target rectangle
-and 128x128 maps at default scene units. It measures about 35.9% geometry hits and
-39.6% alpha occupancy after two-pixel padding. Its delivered mesh has two triangles.
+An earlier file-delivery example uses a default 12cm blade, a 0.08 by 0.14 target
+rectangle and 128x128 maps at default scene units. It measured about 35.9% geometry
+hits and 39.6% alpha occupancy with the old two-pixel opacity padding. That excess
+opacity is not a silhouette qualification. Its delivered mesh has two triangles;
+current projected bakes use unpadded opacity as described above.
 The native PBR card renders in Cycles, and its exported GLB has a nonopaque material
 and an embedded base-color texture containing transparent and opaque alpha values.
 This verifies the sampled files/Blender path, not Godot behavior or final atlas

@@ -1067,6 +1067,15 @@ reports bounds, degenerate islands and area-based texel density for
 `texture_width`/`texture_height` (1024 each by default). Density is the square root
 of pixel area divided by base-mesh world-space surface area, in pixels per
 Blender world unit; scene unit labels do not convert it to pixels per meter.
+Area and density measurements transform local triangle edge differences with
+the evaluated linear matrix in double precision before applying any global
+translation. Moving an asset far from the origin therefore preserves these
+metrics; full placement still participates in the UV/bake/quality guards.
+`inspect_texture_quality` additionally applies the scene's metre scale.
+These calculations use the mesh and linear transform Blender actually provides;
+they cannot recover detail already rounded out of stored coordinates or transform
+evaluation. Rendering, physics and export at extreme offsets require their own
+checks. The measurement change does not rebase or move scene geometry.
 `normalize_uv_density` scales each island about its UV center to `pixels_per_unit`.
 It refuses degenerate islands before assignment. Normalization may create
 out-of-tile coordinates or overlaps: pack afterward with `scale=false` to retain

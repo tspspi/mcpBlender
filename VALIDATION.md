@@ -3773,3 +3773,31 @@ source-signature version, while old metadata keeps its original source SHA.
 Native decoding/cache allocations are not bounded by the Python streaming
 working set. This is current content/provenance qualification, not shader/optical
 or receiving-engine equivalence. The bundled design skill remains schema-valid.
+
+## Translation-independent UV measurements
+
+A native before-fix probe measured a 2x2 plane correctly at the origin (area four
+square units, 64 texels/metre at 128x128), then reported zero area/density and
+refused bake admission after moving it to (100000000,100000000,100000000).
+The float32 world-point multiplication erased edge differences before subtraction.
+`uv.layout` and geometric quality now subtract local triangle coordinates in
+Python double precision, transform the differences by the evaluated linear
+matrix, and apply physical scene units for the quality policy. Global translation
+does not participate in triangle area or directional density; full placement
+continues to participate in source/UV/quality fingerprints.
+
+Pure fixtures cover large local origins, reflection, shear, physical units,
+degenerate edges and nonfinite refusal. Native fixtures check parent nonuniform
+scale/rotation with child rotation (inherited shear), equivalent metre/centimetre
+metrics, near/far equality, read-only ID/mesh preservation and exact collapsed
+geometry rejection. A code-disabled MCP fixture verifies area/density and bake
+admission at the large offset, changed placement guards, and guarded UV density
+normalization preserving local geometry. Nine focused checks passed in 33.61
+seconds. Before/after evidence is `/tmp/mb-uv-precision-20261104/`: after the fix
+both placements report area four, density 64 and supported admission.
+
+This qualifies geometric measurement and admission diagnostics, not an actual
+bake/render/physics/export at the distant location. It cannot restore precision
+already lost in Blender's stored local coordinates or evaluated linear matrix.
+Existing actual quality-bake/UV-editing/vegetation preparation and baking
+regressions passed seven tests in 127.70 seconds at their ordinary placements. The bundled design skill remains schema-valid.

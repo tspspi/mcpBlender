@@ -3,6 +3,7 @@ import time
 import math
 import bpy
 from mcpblender import uv_quality,botany
+from mcpblender.uv_math import affine_triangle_edges
 from . import uv
 from .assets import mesh_object
 
@@ -17,8 +18,10 @@ def measure(obj,mesh,uv_map,policy):
     if not math.isfinite(unit) or unit<=0:raise ValueError('Positive physical scene unit scale required')
     coords,islands,_=uv.layout(mesh,layer,obj.matrix_world,policy['width'],policy['height']);face_island={face:i for i,island in enumerate(islands) for face in island['faces']}
     mesh.calc_loop_triangles();triangles=[]
+    linear=tuple(tuple(float(obj.matrix_world[i][j]) for j in (0,1,2)) for i in (0,1,2))
     for t in mesh.loop_triangles:
-        triangles.append({'island':face_island[t.polygon_index],'uv':[list(coords[i]) for i in t.loops],'world_m':[list((obj.matrix_world@mesh.vertices[i].co)*unit) for i in t.vertices]})
+        edges=affine_triangle_edges([mesh.vertices[i].co for i in t.vertices],linear,unit)
+        triangles.append({'island':face_island[t.polygon_index],'uv':[list(coords[i]) for i in t.loops],'world_m':[(0.,0.,0.),*edges]})
     boundary={}
     for face in mesh.polygons:
         loops=list(face.loop_indices);island=face_island[face.index]

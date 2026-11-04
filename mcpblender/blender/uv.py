@@ -8,7 +8,7 @@ import bpy
 from .assets import active_object, finished, mesh_object
 from .mesh_edit import geometry_digest, resolve
 from .morphs import topology_digest
-from mcpblender.uv_math import signed_area, triangle_overlap
+from mcpblender.uv_math import signed_area, triangle_overlap,affine_triangle_edges,triangle_edge_area
 
 COMMANDS={"activate_uv_map","inspect_uv_layout","set_uv_seams","unwrap_uv_mesh","pack_uv_islands","normalize_uv_density"}
 
@@ -34,6 +34,7 @@ def check_size(mesh):
 
 
 def layout(mesh,layer,matrix,width,height):
+    linear=tuple(tuple(float(matrix[i][j]) for j in (0,1,2)) for i in (0,1,2))
     coordinates=[tuple(v.uv) for v in layer.data]
     if any(not all(math.isfinite(v) for v in uv) for uv in coordinates):
         raise ValueError('UV coordinates must be finite')
@@ -62,9 +63,8 @@ def layout(mesh,layer,matrix,width,height):
     for tri in mesh.loop_triangles:
         uv=[coordinates[i] for i in tri.loops]
         area=abs(signed_area(uv))
-        xyz=[matrix@mesh.vertices[i].co for i in tri.vertices]
-        world=(xyz[1]-xyz[0]).cross(xyz[2]-xyz[0]).length/2
-        if not math.isfinite(world):raise ValueError('World-space triangle areas must be finite')
+        edges=affine_triangle_edges([mesh.vertices[i].co for i in tri.vertices],linear)
+        world=triangle_edge_area(*edges)
         island=islands[root(tri.polygon_index)]
         island['uv_area']+=area;island['world_area']+=world
         triangles.append((min(p[0] for p in uv),max(p[0] for p in uv),min(p[1] for p in uv),max(p[1] for p in uv),tri.polygon_index,uv))

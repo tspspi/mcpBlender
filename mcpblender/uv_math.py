@@ -5,6 +5,25 @@ def signed_area(points):
     return sum(a[0]*b[1]-b[0]*a[1] for a,b in zip(points,points[1:]+points[:1]))/2
 
 
+def affine_triangle_edges(points,linear,unit=1.):
+    """Transform local edge differences in float64 without global translation."""
+    import math
+    origin=points[0];edges=[]
+    for point in points[1:]:
+        x,y,z=(float(point[i])-float(origin[i]) for i in (0,1,2))
+        edge=[(row[0]*x+row[1]*y+row[2]*z)*unit for row in linear]
+        if not all(math.isfinite(v) for v in edge):raise ValueError('Finite transformed triangle edges required')
+        edges.append(edge)
+    return edges
+
+
+def triangle_edge_area(a,b):
+    import math
+    area=math.hypot(a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0])/2
+    if not math.isfinite(area):raise ValueError('Finite transformed triangle area required')
+    return area
+
+
 def inset_tile(values,width,height,pixels,scale):
     """Uniformly fit or translate a layout into a float32-safe pixel border."""
     import math

@@ -66,6 +66,10 @@ otherwise charts retain pixel-space aspect ratios and may refuse to fit. Source
 shader UV pins and geometry stay intact. Inspect chart_layout.stretched_charts
 and independently require complete/passed quality at intended mip sizes; the
 shelf heuristic and mean-width floors do not certify coverage or physical density.
+UV area and physical density use local edge differences before global placement,
+so distant translation does not collapse the measurements. Placement remains in
+their guards. Stored mesh/transform precision and rendering/physics at extreme
+offsets remain separate concerns; the inspector does not rebase geometry.
 Quality-gated vegetation self-bakes retain source inspection witnesses so
 adoption can verify both the original preparation and policy-bearing bake hashes.
 Their geometric reports survive packed adoption, source cleanup and semantic

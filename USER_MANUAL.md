@@ -992,9 +992,37 @@ Example `configure_modifier` arguments:
 
 `inspect_uv_layout` reads a named base-mesh `uv_map` (default `UVMap`) and returns
 `uv_sha256`, including local geometry, world transform, seams, map coordinates and
-active/render map selection. Carry it as `expected_uv` into every UV edit and
+active/render map selection and the ordered UV-map names. Carry it as `expected_uv` into every UV edit and
 reinspect after each change. A missing map still has a fingerprint, allowing
 safe creation with `unwrap_uv_mesh`. Shared data requires `make_single_user=true`.
+
+For an ordinary mesh asset with an existing texture map, use
+`create_secondary_uv` to create a separate map without changing texture sampling.
+First inspect `inspect_uv_layout(name=..., uv_map="UV2")` and carry the missing
+map's `uv_sha256` as `expected_uv`. The action defaults to `uv_map="UV2"`, smart
+projection at `angle_limit_degrees=66`, packing with `margin=0.02`, and a four-pixel
+tile border at the supplied `texture_width`/`texture_height` (default 1024 each).
+It requires `scale=true`; `rotate` controls bounding-box packing. Optional `chart_layout`
+uses the same pixel allocation policy described below. Existing target maps,
+missing primary maps, a ninth map, managed owned meshes, incomplete overlap
+checks and degenerate/overlapping results are refused before publication.
+It stages native edits on a copy and preserves previous maps, seams, geometry,
+shape keys, selection, and the active/render map choices. Shared mesh data needs
+explicit `make_single_user=true`. Native projection/packing cannot cancel
+mid-call; cancellation is checked before publication.
+
+Inspection now includes ordered `uv_maps` and zero-based `uv_channel` (null for a
+missing map). This is the Blender layer index: the name `UV2` alone does not
+guarantee a particular channel or lightmap interpretation in another application.
+For example, starting with just `UVMap` produces `["UVMap", "UV2"]`, preserving
+`UVMap` as active/render map. Run `inspect_texture_quality` explicitly on `UV2`
+at the intended resolution, density, padding and mip levels; projection success
+does not establish lightmap suitability. Static `export_attribute_bundle` can
+independently verify all decoded UV channels alongside numeric fields. The
+qualified two-channel fixture preserves them through save/reopen and GLB;
+receiving-engine lightmap import, instance-specific lightmap atlases, managed
+botanical ownership updates and deformation-dependent lightmap quality remain
+separate workflows. Reinspect guards obtained before this map-inventory change.
 
 Use `set_uv_seams` with `edges: {"indices": [...]}` or a named EDGE selection
 (`edges: {"selection": "..."}`). Modes are `ADD`, `REMOVE` and `SET`; SET replaces

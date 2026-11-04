@@ -10,7 +10,7 @@ from .mesh_edit import geometry_digest, resolve
 from .morphs import topology_digest
 from mcpblender.uv_math import signed_area, triangle_overlap,affine_triangle_edges,triangle_edge_area
 
-COMMANDS={"activate_uv_map","inspect_uv_layout","set_uv_seams","unwrap_uv_mesh","pack_uv_islands","normalize_uv_density"}
+COMMANDS={"activate_uv_map","inspect_uv_layout","set_uv_seams","unwrap_uv_mesh","pack_uv_islands","normalize_uv_density","create_secondary_uv"}
 
 
 def fingerprint(obj,uv_map):
@@ -22,6 +22,8 @@ def fingerprint(obj,uv_map):
     layer=mesh.uv_layers.get(uv_map)
     digest.update(b'1' if layer else b'0')
     digest.update(struct.pack('!i',mesh.uv_layers.active_index))
+    for item in mesh.uv_layers:
+        name=item.name.encode();digest.update(struct.pack('!I',len(name)));digest.update(name)
     digest.update(bytes(item.active_render for item in mesh.uv_layers))
     if layer:
         for item in layer.data:digest.update(struct.pack('!2d',*item.uv))
@@ -109,6 +111,8 @@ def inspect(p):
             'topology_sha256':topology_digest(mesh),'geometry_sha256':geometry_digest(mesh),
             'data_users':mesh.users,'active_uv_map':mesh.uv_layers.active.name if mesh.uv_layers.active else None,
             'render_uv_map':next((v.name for v in mesh.uv_layers if v.active_render),None),'seam_edges':[e.index for e in mesh.edges if e.use_seam][:512],
+            'uv_maps':[v.name for v in mesh.uv_layers],
+            'uv_channel':list(mesh.uv_layers).index(layer) if layer else None,
             'seam_count':sum(e.use_seam for e in mesh.edges),'seams_truncated':sum(e.use_seam for e in mesh.edges)>512,
             'density_units':'pixels per Blender world unit','texture_size':[p['texture_width'],p['texture_height']]}
     if not layer:return result
@@ -144,7 +148,14 @@ def dispatch(command,p):
         mesh.update()
         return inspect(p)
     if not mesh.polygons:raise ValueError('UV editing requires faces')
-    if command!='unwrap_uv_mesh' and not mesh.uv_layers.get(p['uv_map']):raise ValueError('UV map not found')
+    secondary=command=='create_secondary_uv'
+    if secondary:
+        if not mesh.uv_layers:raise ValueError('Secondary UV creation requires an existing primary UV map')
+        if mesh.uv_layers.get(p['uv_map']):raise ValueError('Secondary UV target already exists; choose a new name')
+        if len(mesh.uv_layers)>=8:raise ValueError('Secondary UV creation supports at most eight UV maps')
+        # Managed derived IDs require their own ownership transaction, not a raw UV edit.
+        if any(k.startswith('mcpblender_') and ('owner' in k) for k in (*obj.keys(),*mesh.keys())):raise ValueError('Managed owned meshes require a dedicated derived editing workflow')
+    if command not in {'unwrap_uv_mesh','create_secondary_uv'} and not mesh.uv_layers.get(p['uv_map']):raise ValueError('UV map not found')
     temporary=mesh.copy();staged=bpy.data.objects.new('MCP_UV_Stage',temporary)
     bpy.context.scene.collection.objects.link(staged)
     settings=bpy.context.scene.tool_settings
@@ -167,19 +178,37 @@ def dispatch(command,p):
                 settings.mesh_select_mode=(False,False,True);settings.use_uv_select_sync=False
                 finished(bpy.ops.object.mode_set(mode='EDIT'));finished(bpy.ops.mesh.select_all(action='SELECT'))
                 finished(bpy.ops.uv.select_all(action='SELECT'))
-                if command=='unwrap_uv_mesh':
+                if secondary:
+                    finished(bpy.ops.uv.smart_project(angle_limit=math.radians(p['angle_limit_degrees']),island_margin=p['margin'],correct_aspect=False,scale_to_bounds=True))
+                    if not p.get('chart_layout'):
+                        finished(bpy.ops.uv.pack_islands(rotate=p['rotate'],scale=True,margin=p['margin'],margin_method='FRACTION',shape_method='AABB'))
+                elif command=='unwrap_uv_mesh':
                     finished(bpy.ops.uv.unwrap(method=p['method'],margin=p['margin'],correct_aspect=False))
                 else:
                     finished(bpy.ops.uv.pack_islands(rotate=p['rotate'],scale=p['scale'],margin=p['margin'],margin_method='FRACTION'))
                 finished(bpy.ops.object.mode_set(mode='OBJECT'))
+        if secondary and p.get('chart_layout'):
+            layout_report=pixel_pack(staged,p['uv_map'],p['texture_width'],p['texture_height'],p['tile_padding_pixels'],p['chart_layout'],rotate=p['rotate'],budget=p['overlap_budget'])
         values=[value for item in temporary.uv_layers[p['uv_map']].data for value in item.uv]
         if not all(math.isfinite(v) for v in values):raise ValueError('Native UV edit produced non-finite coordinates')
-        if command=='pack_uv_islands' and p.get('tile_padding_pixels',0) and not p.get('chart_layout'):
+        if command in {'pack_uv_islands','create_secondary_uv'} and p.get('tile_padding_pixels',0) and not p.get('chart_layout'):
             from mcpblender.uv_math import inset_tile
             values=inset_tile(values,p['texture_width'],p['texture_height'],p['tile_padding_pixels'],p['scale'])
+        if secondary:
+            temporary.uv_layers[p['uv_map']].data.foreach_set('uv',values);temporary.update()
+            _,islands,triangles=layout(temporary,temporary.uv_layers[p['uv_map']],obj.matrix_world,p['texture_width'],p['texture_height'])
+            overlap=overlaps(triangles,p['overlap_budget'])
+            if not overlap['complete'] or overlap['face_pair_count'] or any(i['uv_area']<=1e-20 or i['world_area']<=1e-20 for i in islands):raise ValueError('Secondary UV creation requires complete clear overlap and nondegenerate islands; revise projection or budget')
+            from . import bridge
+            bridge.check_cancelled()
         if mesh.users>1:obj.data=mesh.copy();mesh=obj.data
+        active=mesh.uv_layers.active.name if mesh.uv_layers.active else None
+        rendered=next((v.name for v in mesh.uv_layers if v.active_render),None)
         target=mesh.uv_layers.get(p['uv_map']) or mesh.uv_layers.new(name=p['uv_map'])
         target.data.foreach_set('uv',values);mesh.update()
+        if secondary:
+            if active:mesh.uv_layers.active=mesh.uv_layers[active]
+            if rendered:mesh.uv_layers[rendered].active_render=True
     finally:
         settings.mesh_select_mode=select_mode;settings.use_uv_select_sync=sync
         bpy.data.objects.remove(staged,do_unlink=True);bpy.data.meshes.remove(temporary)

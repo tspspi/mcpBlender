@@ -45,6 +45,15 @@ height; packing with `scale=false` preserves that density. Reinspect bounds and
 layout. Use `activate_uv_map` to select the named map for rendering/export.
 These UV-only tools preserve geometry, shape keys and skinning; shared meshes
 still need explicit isolation. Native unwrap/packing cannot cancel mid-call.
+For a separate secondary layout on ordinary meshes, inspect the absent named
+map (for example UV2), then create_secondary_uv with that expected_uv and actual
+texture dimensions. This guarded smart-project/pack action preserves all prior
+maps and active/render choices, refuses existing targets or managed owned data,
+and reports ordered uv_maps and zero-based Blender uv_channel. It can use the
+same chart_layout and tile_padding_pixels controls. Check inspect_texture_quality
+on the new map separately; a name or layer index does not certify engine lightmap
+use. Decode exported channels with export_attribute_bundle when numeric-field
+delivery applies. Managed vegetation UV2 authoring remains a separate milestone.
 For an explicit texture-edge border, pack with tile_padding_pixels and matching
 texture_width/texture_height. scale=true uniformly shrinks/translates the packed
 layout; scale=false only translates and refuses layouts too large for the inset.

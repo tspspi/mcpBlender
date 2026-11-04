@@ -3801,3 +3801,36 @@ bake/render/physics/export at the distant location. It cannot restore precision
 already lost in Blender's stored local coordinates or evaluated linear matrix.
 Existing actual quality-bake/UV-editing/vegetation preparation and baking
 regressions passed seven tests in 127.70 seconds at their ordinary placements. The bundled design skill remains schema-valid.
+
+## Guarded secondary UV authoring
+
+`create_secondary_uv` is qualified for ordinary base meshes with an existing
+primary map. A code-disabled MCP fixture isolates a shared, nonuniformly scaled
+box, creates UV2 with pixel chart allocation and a tile border, preserves the
+sibling and primary active/render map, then checks geometric density/padding at
+256x256. Save/reopen retains the UV guard. A static numeric-field bundle is
+exported and independently decoded: both UV channels, corner correspondence,
+geometry and placement match their witnesses. This verifies encoded data rather
+than relying on the UV2 name or Blender's layer count alone.
+
+Native checks preserve exact prior UV arrays, seams, vertex selection, local
+coordinates, shape-key data and a distinct active versus render map. Cancellation
+before publication leaves the source and native ID inventory unchanged. Missing
+primary maps, stale guards after another channel is renamed, managed ownership,
+and ninth-channel creation are refused. Read-only MCP discovery hides the edit
+tool; typed contracts reject invalid projection, scale and border inputs.
+
+This is not receiving-engine lightmap or per-instance atlas qualification.
+Secondary authoring on managed botanical masters/profiles, alpha-aware baking,
+actual mip generation/filtering and deformation-dependent lightmaps remain open.
+The channel inventory reports Blender indices; exported channel meaning must be
+verified for the chosen exporter/consumer. UV guards now include ordered map
+names, so clients must reinspect older guards. Twelve existing/new UV, chart,
+precision and contract checks passed in 119.94 seconds; the bundled design skill
+validated and source compilation/whitespace checks passed.
+The final ordinary-pack and pixel-layout secondary fixtures both passed in
+19.68 seconds. The ordinary path uses native AABB packing: adding Blender's
+exact concave repack exceeded the 120-second native test bound on the small
+shape-key fixture. Bounding-box packing completed while retaining complete
+clear-overlap verification; no timing or scalability bound is claimed for
+arbitrary larger meshes or native projection calls.

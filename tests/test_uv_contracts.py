@@ -6,7 +6,7 @@ import pytest
 
 from mcpblender.config import Config
 from mcpblender.server import build_server
-from mcpblender.uv_contracts import UVLayout, UVUnwrap, UVSeams, UVDensity, UVPack
+from mcpblender.uv_contracts import UVLayout, UVUnwrap, UVSeams, UVDensity, UVPack, UVSecondary
 from mcpblender.uv_math import triangle_overlap,inset_tile
 
 
@@ -34,9 +34,17 @@ def test_uv_guards_limits_and_readonly_discovery(tmp_path):
         async with Client(server) as client:
             names={t.name for t in await client.list_tools()}
             assert 'inspect_uv_layout' in names
-            assert not names & {'unwrap_uv_mesh','pack_uv_islands','set_uv_seams','normalize_uv_density','activate_uv_map'}
+            assert not names & {'unwrap_uv_mesh','pack_uv_islands','set_uv_seams','normalize_uv_density','activate_uv_map','create_secondary_uv'}
     asyncio.run(run())
     assert not (tmp_path/'private/socket').exists()
+
+
+def test_secondary_projection_limits():
+    base={'name':'Box','expected_uv':'a'*64}
+    assert UVSecondary(**base).uv_map=='UV2'
+    for extra in ({'angle_limit_degrees':0},{'angle_limit_degrees':90},{'angle_limit_degrees':float('nan')},
+                  {'scale':False},{'texture_width':8},{'tile_padding_pixels':-1}):
+        with pytest.raises(ValueError):UVSecondary(**base,**extra)
 
 
 def test_tile_border_uniform_fit_translation_and_refusal():

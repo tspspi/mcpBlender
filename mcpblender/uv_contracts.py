@@ -49,6 +49,17 @@ class UVDensity(UVEdit):
     pixels_per_unit: FiniteFloat = Field(gt=0, le=1000000)
 
 
+class UVSecondary(UVPack):
+    uv_map: Name = "UV2"
+    angle_limit_degrees: FiniteFloat = Field(default=66,gt=0,le=89)
+    tile_padding_pixels: FiniteFloat = Field(default=4,ge=0,le=4096)
+
+    @model_validator(mode='after')
+    def scaled(self):
+        if not self.scale:raise ValueError('Secondary UV creation requires scale=true')
+        return self
+
+
 EDIT = ("allow_scene_edit",)
 COMMANDS = {
     "inspect_uv_layout": (UVLayout, (), "Inspect base-mesh UV islands, positive-area overlaps and pixels per Blender world unit. Reports overlap completeness and a fingerprint including geometry, transform, seams and this UV map."),
@@ -57,4 +68,5 @@ COMMANDS = {
     "unwrap_uv_mesh": (UVUnwrap, EDIT, "Unwrap all base-mesh faces using seams on an isolated temporary mesh, then copy only UV coordinates back. Creates the named map if absent."),
     "pack_uv_islands": (UVPack, EDIT, "Pack existing UV islands in the unit tile. Optional tile_padding_pixels reserves a border at texture_width/height. scale=false preserves UV scale and refuses a layout that cannot fit that interior. Operates on a temporary copy; native packing is not interruptible. Optional chart_layout allocates bounded pixel rectangles with area/mean-span floors and per-chart gutters; stretch requires explicit allow_stretch. Reinspect actual density/chart coverage/mip quality after packing."),
     "normalize_uv_density": (UVDensity, EDIT, "Scale each UV island around its center to pixels_per_unit at the supplied texture dimensions. Does not pack; inspect bounds and pack with scale=false afterward."),
+    "create_secondary_uv": (UVSecondary, EDIT, "Create a new named secondary base-mesh UV map with smart projection and packing on a temporary copy. Requires an existing primary map and an absent target; preserves all previous UV coordinates, seams, active/render maps and geometry. Explicit isolation required for shared data. Reports channel inventory; inspect_texture_quality separately before lightmap use. Does not update managed vegetation ownership or qualify engine lightmap import."),
 }

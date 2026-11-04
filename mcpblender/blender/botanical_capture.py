@@ -9,7 +9,7 @@ from . import assemblies,botanical_trees as trees,botanical_foliage as foliage,r
 from .vegetation_bake import static_matrix
 
 COMMANDS={'inspect_botanical_view_capture','capture_botanical_views'}
-OPTIONS=('collection','views','resolution','margin','world_strength','samples','max_leaves','max_render_triangles','max_bounds_work')
+OPTIONS=('collection','views','resolution','margin','world_strength','samples','max_leaves','max_render_triangles','max_bounds_work','material_fields')
 
 
 def corners(low,high):return [Vector(v) for v in itertools.product(*zip(low,high))]
@@ -23,7 +23,7 @@ def shader_state(tree):
     result=[]
     for node in tree.nodes:
         if node.bl_idname=='ShaderNodeOutputMaterial' and node.inputs['Displacement'].is_linked:raise ValueError('Capture framing requires no material-output displacement; normal/bump detail is supported')
-        row={'node':node.name}
+        row={'node':node.name,'output_defaults':[(s.identifier,assemblies.custom(s.default_value)) for s in node.outputs if hasattr(s,'default_value')]}
         if hasattr(node,'color_ramp'):row['ramp']=ramp_record(node)
         for key in ('texture_mapping','color_mapping','image_user','mapping'):
             value=getattr(node,key,None)
@@ -75,7 +75,7 @@ def source(p):
             if tree:record['nested_shader_state']=shader_state(tree)
             resources.append(record)
         elif isinstance(value,bpy.types.Object):
-            resources.append({'object_dependency':value.name,'static_matrix':[list(r) for r in static_matrix(value)],'properties':assemblies.props(value,exclude={'matrix_world','matrix_local','matrix_basis','dimensions'})})
+            resources.append({'object_dependency':value.name,'static_matrix':[list(r) for r in static_matrix(value)],'material_slots':[(slot.link,slot.material.name if slot.material else None) for slot in value.material_slots],'properties':assemblies.props(value,exclude={'matrix_world','matrix_local','matrix_basis','dimensions'})})
     low=Vector((math.inf,)*3);high=Vector((-math.inf,)*3)
     def include(v):
         if any(not math.isfinite(x) for x in v):raise ValueError('Non-finite capture geometry')
@@ -118,6 +118,12 @@ def source(p):
         for key in ('ortho_scale','clip_start','clip_end'):
             prop=bpy.types.Camera.bl_rna.properties[key];value=view[key]
             if not math.isfinite(value) or not prop.hard_min<=value<=prop.hard_max:raise ValueError('Capture camera setting exceeds native range: '+key)
+    material_contract=None
+    if p.get('material_fields'):
+        from . import capture_material_fields
+        materials={slot.material for obj in mesh_objects+prototypes for slot in obj.material_slots}
+        if None in materials:raise ValueError('Every capture material slot must be populated')
+        material_contract=capture_material_fields.describe(materials)
     summary={'format':tree_capture.FORMAT,'options':{k:p[k] for k in OPTIONS},'frame':scene.frame_current,'collection':col.name,'root':root.name,
              'source_tree_sha256':state['tree_sha256'],'model_sha256':state['model_sha256'],'resource_sha256':botany.digest(resources),
              'source_root_matrix_world':[list(r) for r in matrix],'scene_unit_scale':unit,'root_pivot_world_m':[x*unit for x in matrix.translation],
@@ -128,6 +134,7 @@ def source(p):
              'passes':dict(tree_capture.PASSES),'lighting':{'type':'UNIFORM_WHITE_WORLD','strength':p['world_strength'],'ground':False},
              'pixel_contract':{'PNG':'16-bit RGBA, Standard view, sRGB display reference','EXR':'32-bit float native multilayer data; Combined scene-linear, Normal/Position world scene coordinates, Depth native camera Z, background/no-hit and pass AA follow Blender'},
              'scope':'Static native full-density reference/data capture. Native leaf instances and materials retained. No far mesh, reconstructed PBR, depth compositing, view blending, wind, shadow proxy or optical-equivalence claim.'}
+    if material_contract is not None:summary['material_fields']=material_contract
     return values,deps,summary|{'capture_sha256':botany.digest(summary)}
 
 
@@ -147,6 +154,9 @@ def capture(p):
         scene.render.film_transparent=True;scene.render.use_compositing=False
         scene.view_settings.view_transform='Standard';scene.view_settings.look='None'
         layer=scene.view_layers[0];layer.name='TreeCapture'
+        if plan.get('material_fields'):
+            from . import capture_material_fields
+            capture_material_fields.register(scene,plan['material_fields'])
         for key in tree_capture.PASSES:setattr(layer,'use_pass_'+key,True)
         world=bpy.data.worlds.new('MCP Tree Capture World');created.append(world);world.use_nodes=True;scene.world=world
         world.node_tree.nodes['Background'].inputs['Color'].default_value=(1,1,1,1);world.node_tree.nodes['Background'].inputs['Strength'].default_value=p['world_strength']

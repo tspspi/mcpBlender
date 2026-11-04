@@ -80,6 +80,8 @@ except ValueError as exc:assert 'stale' in str(exc)
 else:raise AssertionError('Shader edit did not invalidate source plan')
 # Native color ramp internals and external shader-coordinate objects also enter
 # the resource guard, beyond primitive socket/property records.
+rgb=material.node_tree.nodes.new('ShaderNodeRGB');before=capture.source(p)[-1]['capture_sha256'];rgb.outputs[0].default_value=(.2,.3,.4,1)
+assert capture.source(p)[-1]['capture_sha256']!=before
 node=material.node_tree.nodes.new('ShaderNodeValToRGB');before=capture.source(p)[-1]['capture_sha256'];node.color_ramp.elements[0].color=(.1,.2,.3,1)
 assert capture.source(p)[-1]['capture_sha256']!=before
 coord=bpy.data.objects.new('ShaderCoordinates',None);bpy.context.scene.collection.objects.link(coord)
@@ -94,6 +96,15 @@ try:capture.source(p)
 except ValueError as exc:assert 'displacement' in str(exc)
 else:raise AssertionError('Unbounded material displacement accepted')
 material.node_tree.nodes.remove(disp)
+# Effective object-linked overrides must enter both field bindings and guards.
+slot=members[0].material_slots[0];original_material=slot.material;original_link=slot.link
+other=bpy.data.materials.new('ObjectLinkedCaptureMaterial');other.use_nodes=True
+slot.link='OBJECT';slot.material=other
+fields=capture.source(p|{'material_fields':True})[-1]
+assert other.name in {m['material'] for m in fields['material_fields']['materials']}
+slot.material=original_material
+assert capture.source(p|{'material_fields':True})[-1]['capture_sha256']!=fields['capture_sha256']
+slot.link=original_link;bpy.data.materials.remove(other)
 root.scale.x=2
 try:capture.source(p)
 except ValueError as exc:assert 'uniform' in str(exc)

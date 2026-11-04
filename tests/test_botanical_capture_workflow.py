@@ -56,6 +56,26 @@ def test_native_tree_multiview_reference_capture(assets_live):
             assert measured['covered_pixels']>0 and measured['nonfinite_covered']==0 and measured['reconstructed_outside_bounds']==0
             assert measured['statistics']['depth_position_error_m']['max']<.001
             assert measured['statistics']['position_projection_error_px']['max']<.01
+            # The same native shaders are sampled into raw input fields in the
+            # worker, with beauty outputs preserved and the live tree untouched.
+            with pytest.raises(ToolError,match='recapture'):await wait(client,'inspect_botanical_capture_data',directory='tree-capture',material_inputs=True,views=['FRONT'])
+            field_args=args|{'material_fields':True}
+            field_plan=await wait(client,'inspect_botanical_view_capture',**field_args)
+            await wait(client,'capture_botanical_views',**field_args,directory='tree-material-fields',expected_capture=field_plan['capture_sha256'])
+            field_proof=await tool(client,'validate_render_job',directory='tree-material-fields')
+            assert len(field_proof['botanical_capture']['material_fields']['fields'])==14
+            field_data=await wait(client,'inspect_botanical_capture_data',directory='tree-material-fields',material_inputs=True,views=['FRONT'],alpha_threshold=.01)
+            material=field_data['views'][0]['material_inputs']
+            assert material['covered_with_surface_weight']>0 and material['covered_without_surface_weight']==0
+            assert material['normalized_inputs']['roughness']['min'][0]>=0
+            assert material['normalized_inputs']['alpha']['min'][0]>.99999
+            assert material['normalized_inputs']['thin_weight']['max'][0]>.21
+            assert material['normalized_inputs']['thin_mode']['max'][0]>.99
+            for original,field in zip(proof['outputs'],field_proof['outputs']):
+                if original['format']=='PNG':
+                    from mcpblender.image_comparison import decode_png
+                    assert decode_png((root/'library/tree-capture'/original['file']).read_bytes(),color_space='LINEAR',premultiply=False)==decode_png((root/'library/tree-material-fields'/field['file']).read_bytes(),color_space='LINEAR',premultiply=False)
+            assert (await wait(client,'inspect_botanical_tree',collection='CaptureTree'))['tree_sha256']==before['tree_sha256']
             bundle=root/'library/tree-capture'
             # Immutable content inspection remains available after copying, while
             # owner/inode-scoped recovery validation continues to reject copies.
@@ -74,4 +94,6 @@ def test_native_tree_multiview_reference_capture(assets_live):
             if dest:=os.environ.get('MCPBLENDER_TREE_CAPTURE_EVIDENCE_DIR'):
                 out=Path(dest);out.mkdir(parents=True,exist_ok=True);shutil.copytree(bundle,out/'small-bundle',dirs_exist_ok=True)
                 (out/'small-proof.json').write_text(json.dumps(proof,indent=2))
+                shutil.copytree(root/'library/tree-material-fields',out/'material-bundle',dirs_exist_ok=True)
+                (out/'material-proof.json').write_text(json.dumps(field_data,indent=2))
     asyncio.run(run())

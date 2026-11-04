@@ -153,7 +153,11 @@ def validate_contents(root,job_id,progress=lambda value:None,cancelled=lambda:Fa
         if key not in expected or key in actual or item['file']!=name or item['camera']!=job['cameras'][ci] or item['frame']!=job['frame_start']+fi*job['frame_step']:raise ValueError('Render camera/frame association mismatch')
         path=root/name;header=image_header(path)
         if path.stat().st_size!=item['bytes'] or checked_hash(path)!=item['sha256'] or header!=item['header'] or header['width']!=job['width'] or header['height']!=job['height'] or header['format']!=fmt:raise ValueError('Render output hash/header mismatch')
-        if capture is not None and fmt=='OPEN_EXR_MULTILAYER':tree_capture.validate_header(header)
+        if capture is not None and fmt=='OPEN_EXR_MULTILAYER':
+            tree_capture.validate_header(header)
+            if capture.get('material_fields'):
+                from . import capture_material_fields
+                capture_material_fields.validate_header(header,capture['material_fields'])
         actual.add(key);members.append(item)
         progress({'phase':'verified render output','completed_files':len(members),'total_files':len(expected)})
     if actual!=expected or {v['path'] for v in rows if v['path'].startswith('outputs/')}!={i['file'] for i in members}:raise ValueError('Render output inventory mismatch')

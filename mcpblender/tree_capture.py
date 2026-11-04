@@ -14,6 +14,11 @@ def validate(metadata,job):
     if not 1<=len(views)<=10 or len({v['view'] for v in views})!=len(views) or any(v['view'] not in card_views.DIRECTIONS for v in views):raise ValueError('Invalid botanical capture views')
     if [v['camera'] for v in views]!=job['cameras'] or job['formats']!=['PNG','OPEN_EXR_MULTILAYER'] or job['engine']!='CYCLES' or job['frame_start']!=job['frame_end'] or job['frame_start']!=metadata['frame']:raise ValueError('Botanical capture camera/frame/format binding mismatch')
     if job['width']!=metadata['options']['resolution'] or job['height']!=job['width'] or job['samples']!=metadata['options']['samples']:raise ValueError('Botanical capture render settings binding mismatch')
+    fields=metadata.get('material_fields')
+    if bool(fields)!=bool(metadata['options'].get('material_fields',False)):raise ValueError('Capture material field option/contract mismatch')
+    if fields is not None:
+        from . import capture_material_fields
+        capture_material_fields.validate(fields)
     return metadata
 
 

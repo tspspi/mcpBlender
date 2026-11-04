@@ -32,7 +32,7 @@ def test_full_density_tree_capture_and_live_editing(assets_live):
                     assert time.monotonic()<deadline
             await client.call_tool('open_blend',{'path':'native-tree.blend'})
             before=await operation('inspect_botanical_tree',collection='Canopy3')
-            args={'collection':'Canopy3','views':list(DIRECTIONS),'resolution':512,'samples':8}
+            args={'collection':'Canopy3','views':list(DIRECTIONS),'resolution':512,'samples':8,'material_fields':True}
             plan=await operation('inspect_botanical_view_capture',**args)
             assert plan['leaf_instances']==88704 and plan['expanded_render_triangles']>17000000
             queued=(await client.call_tool('capture_botanical_views',{'params':args|{'directory':'dense-bundle','expected_capture':plan['capture_sha256']}})).data
@@ -50,6 +50,17 @@ def test_full_density_tree_capture_and_live_editing(assets_live):
             assert len(proof['outputs'])==20 and proof['botanical_capture']['capture_sha256']==plan['capture_sha256']
             assert (await operation('inspect_botanical_tree',collection='Canopy3'))['tree_sha256']==before['tree_sha256']
             verified=await operation('validate_render_job',directory='dense-bundle');assert verified['valid']
+            material_data=await operation('inspect_botanical_capture_data',directory='dense-bundle',material_inputs=True,views=['FRONT','BACK_LEFT'])
+            for view in material_data['views']:
+                fields=view['material_inputs'];assert fields['covered_with_surface_weight']>0 and fields['covered_without_surface_weight']==0
+                assert fields['normalized_inputs']['thin_weight']['max'][0]>.219
+                assert fields['normalized_inputs']['thin_mode']['max'][0]>.999
+                assert fields['normalized_inputs']['alpha']['min'][0]>.999
+            if baseline:=os.environ.get('MCPBLENDER_TREE_CAPTURE_BASELINE'):
+                from mcpblender.image_comparison import decode_png
+                for row in verified['outputs']:
+                    if row['format']=='PNG':assert decode_png((Path(baseline)/row['file']).read_bytes(),color_space='LINEAR',premultiply=False)==decode_png((library/'dense-bundle'/row['file']).read_bytes(),color_space='LINEAR',premultiply=False)
+            if evidence:(evidence/'dense-material-inputs.json').write_text(json.dumps(material_data,indent=2))
             # Independently reopen the retained snapshot and check native shared
             # data, rather than trusting the planner's instance-count report.
             snapshot=library/'dense-bundle/source.blend'

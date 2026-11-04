@@ -42,6 +42,9 @@ def main():
         if capture:=job.get('botanical_capture'):
             from mcpblender import tree_capture
             tree_capture.validate(capture,job)
+            if capture.get('material_fields'):
+                from mcpblender.blender import capture_material_fields
+                capture_material_fields.install(scene,capture['material_fields'])
             # Source editing visibility is preserved in source.blend; canonical
             # reference owners are enabled only in this isolated process.
             for name in capture['render_visible_objects']:bpy.data.objects[name].hide_render=False

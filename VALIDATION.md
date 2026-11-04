@@ -5022,3 +5022,34 @@ no-bump EXR/control report. This qualifies decoding and observation, not arbitra
 EXR support, fully ray-consistent native Position data, inferred edge depths,
 far geometry, reconstructed PBR/thickness/transmission or native-versus-far
 optics. No existing delivery or image-comparison gate was relaxed.
+
+
+## Native shader-input capture
+
+Optional material-field captures are qualified for static Principled and managed
+thin-foliage shaders. Independent native plane/leaf tests check linked RGB/Value
+inputs, roughness, metallic, alpha, emission, IOR, transmission, distinct front
+and back leaf colors and separate artistic backlighting. A constant-one AOV
+witness differs from beauty alpha for the transparent-plane fixture; input
+normalization uses the former. Snapshot binding changes and muted optical nodes
+refuse. The original surface-output links remain intact. Source guards cover
+RGB/Value output defaults and effective object-linked material slots. The final
+object-override/guard/hidden-source native regression passed in 14.71s.
+
+The structured three-view workflow passed in 62.16s, including data inspection,
+copy/ownership distinctions and exact decoded beauty-pixel comparison with a
+capture without extra fields. Native calibration and source guard controls passed
+two cases in 18.43s; the focused pure contract/data/journal/server suite passed
+20 cases in 24.06s. A full 88,704-leaf, estimated 17,457,216-triangle canopy test
+passed in 264.86s: ten 512px views with fourteen fields, live editing after
+handoff, unchanged source, independent snapshot readback with leaf instancing
+preserved, bounded masks, material inspection of FRONT/BACK_LEFT, and **exact
+decoded PNG equality** against the earlier ten-view reference. PNG byte hashes
+can differ because of embedded timestamp/source-filename metadata; no pixel
+tolerance was relaxed. Retained final evidence is local under
+`tmp/qualification/capture-materials-20261104/final/`.
+
+This qualifies the input capture and inspection, not complete BSDF reconstruction,
+physical thickness, corrected normals/depth edges, far geometry, view blending,
+shadow/wind behavior, or native-versus-far optical equivalence. Prior Position
+pass diagnostic failures remain open.

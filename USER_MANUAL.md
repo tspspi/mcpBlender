@@ -759,6 +759,31 @@ binding and required float32 pass headers as well as ordinary file/source hashes
 It does not certify decoded pass values, optical equivalence, far fitting,
 angular interpolation, shadow proxies, wind or population performance.
 
+### Optional native material-input fields
+
+Set `material_fields: true` when planning and capturing to retain fourteen shader
+AOVs alongside the standard passes. The default is false. This supports static
+Principled surfaces and the managed thin-foliage topology, including linked
+procedural/texture inputs, effective object material overrides and evaluated
+front/back leaf colors. Unsupported closures, muted managed optical nodes and
+reserved AOV-name collisions refuse before capture. Source guards include RGB
+and Value output defaults and effective material-slot assignments.
+
+Fields include base color, roughness, metallic, shader alpha, emission color and
+strength, IOR, Principled transmission weight, and separate artistic thin-leaf
+color/weight, thin-mode, culling, material identity and constant-one surface
+weight. The retained contract records input bindings and omitted Principled
+inputs. Worker-only AOV wiring preserves the original surface links; the live
+editing shader and snapshot source graphs stay unchanged. Storage estimates
+include the extra channels.
+
+Use `material_inputs: true` with `inspect_botanical_capture_data` to report these
+fields; captures without them require recapture. Statistics divide raw AOVs by
+their own constant-one surface weight, **not beauty alpha**. Both witnesses can
+differ for transparent surfaces. Material IDs and values may be filtered mixtures
+of surfaces. Normal data remain raw. Physical thickness is unknown; these fields
+do not reconstruct a complete BSDF or establish native-versus-far equivalence.
+
 ### Numerical reference-pass inspection
 
 `inspect_botanical_capture_data` reads completed captures without Blender,

@@ -43,6 +43,7 @@ def launch(p,*,scene=None,snapshot_writer=None,resource_ids=None,scene_name=None
     if active.get('command') not in {'render_camera_batch','capture_botanical_views'} or not active.get('operation_id') or not active.get('owner'):raise RuntimeError('Independent rendering requires broker operation ownership')
     count=len(p['cameras'])*len(range(p['frame_start'],p['frame_end']+1,p['frame_step']))
     channels=4+sum(4 for layer in scene.view_layers for key in compositing.PASSES if getattr(*compositing.pass_owner(layer,key)))
+    channels+=sum(4 if aov.type=='COLOR' else 1 for layer in scene.view_layers for aov in layer.aovs)
     scene_bytes=sum(len(m.vertices)*64+len(m.loops)*64 for m in resources if isinstance(m,bpy.types.Mesh))+sum(i.packed_file.size for i in resources if isinstance(i,bpy.types.Image) and i.packed_file)
     estimate=max(16*1024**2,scene_bytes*2)+count*p['width']*p['height']*(9+4*channels*('OPEN_EXR_MULTILAYER' in p['formats']))
     if estimate>p['max_bytes']:raise ValueError('Render batch estimate exceeds max_bytes')

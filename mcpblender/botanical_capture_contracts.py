@@ -11,6 +11,7 @@ class Source(Model):
     resolution: int = Field(default=512,strict=True,ge=32,le=2048)
     margin: FiniteFloat = Field(default=1.1,ge=1.01,le=2)
     world_strength: FiniteFloat = Field(default=.5,gt=0,le=10)
+    material_fields: bool = False
     samples: int = Field(default=16,strict=True,ge=1,le=1024)
     max_leaves: int = Field(default=100000,strict=True,ge=0,le=250000)
     max_render_triangles: int = Field(default=32000000,strict=True,ge=1,le=100000000)
@@ -29,11 +30,12 @@ class Capture(Source):
 
 COMMANDS={
  'inspect_botanical_view_capture':(Source,(),'Plan native whole-tree reference captures without realizing leaf instances. Bound analytical prototype-box work and expanded render triangles; pin source/materials, static root/pivot, units, cameras and neutral-world lighting. Read-only; no far mesh or PBR reconstruction.'),
- 'capture_botanical_views':(Capture,('allow_snapshots','allow_library_write','allow_start_blender'),'Guardedly snapshot only a static managed botanical tree and render directional PNG plus multilayer EXR reference/data passes in an owned independent worker. Preserve editing scene and instances; worker-only canonical visibility. Uses render-job progress/free space, cancellation, byte/time limits and recovery. Native pass data is not a reconstructed game material or far representation.'),
+ 'capture_botanical_views':(Capture,('allow_snapshots','allow_library_write','allow_start_blender'),'Guardedly snapshot only a static managed botanical tree and render directional PNG plus multilayer EXR reference/data passes in an owned independent worker. Preserve editing scene and instances; worker-only canonical visibility. Uses render-job progress/free space, cancellation, byte/time limits and recovery. Optional material_fields captures native shader-input AOVs with a separate surface weight, preserving backlighting/side evaluation. Data is not a reconstructed game material or far representation.'),
 }
 
 
 class Data(Model):
+    material_inputs: bool = False
     directory: str = Field(min_length=1)
     views: list[View]|None = Field(default=None,min_length=1,max_length=10)
     alpha_threshold: FiniteFloat = Field(default=.5,gt=0,lt=1)

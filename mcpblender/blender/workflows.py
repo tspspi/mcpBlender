@@ -221,6 +221,7 @@ def setup_preview_stage(p):
         return {"camera": fitted, "lights": lights, "created_objects": names,
                 "previous_camera": previous_camera.name if previous_camera else None,
                 "asset_center": list(center), "asset_extent": extent,
+                "asset_world_bounds": {"min": list(low), "max": list(high)},
                 "note": "Persistent stage; existing lights remain. Fit is for the current frame and render aspect."}
     except Exception:
         scene.camera = previous_camera

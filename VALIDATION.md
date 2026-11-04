@@ -3932,3 +3932,94 @@ installation, dependencies, service configuration or installed skills changed.
 The final native master rollback and saved-setting/record/policy/discovery checks
 passed five tests in 10.20 seconds. Master records require saved projection
 settings that agree with the declared map and texture dimensions.
+
+## Dense canopy study preset and larger reference sources
+
+`OAK_CANOPY_STUDY` version 1 integrates the existing canonical oak generator,
+dense shoot/leaf recipes and native procedural bark/leaf surfaces. It creates an
+ordinary editable master with three shared leaf templates. Planning exposes
+model/foliage guards, counts, stored/expanded geometry and explicit budgets.
+The new create tool uses the preset guard and preserves existing IDs/materials;
+cooperative cancellation removes only newly created data. This is an artistic
+study profile, not biological or complete game-asset certification.
+
+The code-disabled MCP fixture creates seeds 1/2/3, renders front/back/right/
+isometric plus a sun-only backlit view for each, saves projects, verifies framing
+and reopens the final saved source. It passed in 514.38 seconds. The 15 PNGs and
+three editable projects are retained under `/tmp/mb-canopy-preset-20261104/`.
+Each image was viewed. Whole-tree 320px views show fuller crowns than the sparse
+control, but angular/intersecting sleeve branches and strong bark contrast remain
+visible. The backlit images are too dark to establish transmission quality.
+Dedicated sky/exposure and macro front/backlighting remain required.
+
+| Seed | Leaves | Stored triangles | Conservative canopy top, m | Front coverage | Side coverage | Top coverage |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| 1 | 92,136 | 75,048 | 14.94 | 56.58% | 62.44% | 77.68% |
+| 2 | 90,288 | 73,396 | 15.25 | 56.39% | 59.88% | 78.91% |
+| 3 | 88,704 | 71,820 | 14.86 | 56.05% | 59.99% | 74.15% |
+
+Coverage is a separate CPU opaque-blade triangle/pixel-centre measure at 128px,
+fixed declared-crown frames and 1.5m margins; no frame clipped. Model/foliage
+hashes match the actual MCP-created presets. The seed-1 default control has
+20,940 leaves and 19.74%/21.64%/35.58% front/side/top coverage at the same settings.
+Seed-1 default/dense measurements took 66.00/343.92 seconds; dense seeds 2/3 took
+440.47/406.99 seconds while other qualification ran. These are workload records,
+not isolated performance benchmarks or render-opacity/overdraw estimates.
+
+A fresh native process independently reopened all three saved projects, verified
+master guards and counted actual mesh triangles and point/template inventory.
+The first has 24,204 wood + 50,256 shoot + 3x196 template triangles, agreeing with
+the plan. Expanding its leaves would yield 18,133,116 total triangles; the native
+source retains sharing. `setup_preview_stage.asset_world_bounds` reports the
+conservative evaluated geometry/instance boxes in Blender world units. These
+fixtures use scene unit scale 1 and base Z=0; the 14m recipe describes wood, not
+the added foliage's complete extent. No GPU memory, draw-call or frame-time claim.
+
+Full-size preset fault tests cancel both before master completion and after
+surface/content verification before handoff. ID inventory/names and a preexisting
+same-named bark material remain unchanged; stale guards refuse without native
+allocation. Successful native readback verifies 92,136 point carriers, three
+prototypes and Instance-on-Points without Realize-Instances. Native rollback,
+add-on import without frontend dependencies and export-job packaging checks
+passed five tests in 224.40 seconds. Pure recipe/determinism/budget/default-surface
+and discovery tests passed three in 57.09 seconds; readonly policy regressions
+passed three in 7.63 seconds. No environment, package or installation changes.
+
+Run the larger source fixture explicitly with `MCPBLENDER_TEST_BLENDER=1
+MCPBLENDER_TEST_CANOPY=1` and `tests/test_botanical_canopy_workflow.py`; set
+`MCPBLENDER_CANOPY_EVIDENCE_DIR` to retain its outputs. The seeded delivery fixture
+uses `MCPBLENDER_CANOPY_SOURCE` pointing to that retained `Canopy1.blend` (siblings
+Canopy2/Canopy3 are used by their parametrized cases). Its export instance limit
+is supplied explicitly from the source count, preserving shared templates rather
+than realizing a complete leaf population.
+
+The full mature-oak milestone remains open: plausible close-up junctions and
+habit, controlled lighting/shadows/physical optics, texture filtering/mips,
+wind playback at this density, near/mid/far/collision representations and the
+1000-tree workload are not established here. Godot/custom-renderer adapters and
+GPU qualification remain outside this Blender-only evidence.
+
+All three larger sources also passed shared-template GLB/semantic delivery via
+MCP with code execution disabled and explicit instance budgets. The first case
+passed in 141.05 seconds; seeds 2/3 passed two cases in 363.06 seconds. Each export
+matches every native leaf rest instance, independently decodes five mesh assets
+(wood, shoots and three templates), preserves the source guard, then validates
+the files again after guarded source removal. Logical bundle sizes are 81,279,326,
+79,459,585 and 77,801,576 bytes; no leaf population was realized into mesh output.
+Native instance orientation/scale component differences remain below 6.6e-7 in
+the recorded comparison; position comparisons reported zero at that check's
+float32 precision. This is geometric/numeric correspondence, not shader parity.
+The supplied procedural material graphs still need portable PBR baking/review.
+
+Retained delivery evidence is `/tmp/mb-canopy-delivery-20261104/`, with
+`delivery-summary.json` and per-case export proofs. The source study's minimum
+observed free output storage was 9,425,666,048 bytes; its operation journal records
+reserve and free/available space. This is an observed minimum at polling points,
+not a filesystem or peak-memory guarantee. No GPU qualification was performed.
+
+Final recipe/budget/discovery checks passed three tests in 35.47 seconds,
+including a whole-asset cap just above leaf-only triangles that now refuses
+before leaf-record allocation. The cap includes wood and shoots as well as
+leaves. New preset planning/creation advertise wait=false by default; existing
+commands retain their defaults. The final readonly/schema compatibility check
+passed without requiring Blender startup. All owned Blender fixtures stopped.

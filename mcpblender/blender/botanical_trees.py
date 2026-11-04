@@ -200,6 +200,7 @@ def inventory(p):
             'scope':'Owned woody mesh and semantic bud points; materials remain shared. Sleeve junctions intersect but are not welded/unioned. Attributes are native semantic inputs, not qualified wind animation/export packing.'}
     from . import botanical_uv
     report['secondary_uv']=meta.get('secondary_uv',{})
+    report['asset_preset']=meta.get('asset_preset')
     report['mesh_assets']={role:{'name':obj.name,'uv_maps':[l.name for l in obj.data.uv_layers]} for role,obj in botanical_uv.objects(meta).items()}
     return col,root,members,text,owned,links,model,report
 

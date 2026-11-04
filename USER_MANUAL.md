@@ -1594,6 +1594,63 @@ wind deformation, collision/LOD/impostor quality and general species/organ growt
 remain separate milestones. Keep the canonical model alongside the editable
 `.blend` when developing those downstream representations.
 
+## Dense oak canopy study preset
+
+For a complete starting scene without manually composing growth, leaf placement
+and native surface steps, discover `botanical_asset_presets`. Plan
+`OAK_CANOPY_STUDY` with `plan_botanical_asset_preset`, a `seed`, `max_leaves`
+(default and maximum 100,000) and `max_expanded_triangles` (default and maximum
+30 million, including wood, shoots and leaf instances). Pass the returned `preset_sha256` as `expected_preset` to
+`create_botanical_asset_preset` with the same options, a fresh `collection` and
+optional `location`. Both planning and creation default to tracked operations;
+use `submit_operation` and poll the same ID for this larger asset. Python
+execution can remain disabled. Creation rolls back its newly allocated IDs,
+including materials, on cooperative failure/cancellation before handoff.
+
+Version 1 is an artistic reference recipe: a 14m woody scaffold, 13m declared
+crown width, twelve 1.1m shoots per terminal bud, 22 alternate leaf nodes per
+shoot, three shared curved/lobed templates and editable procedural bark/leaf
+surfaces. The added foliage can extend beyond the woody height and crown
+reference. The source remains an ordinary editable botanical master; use its
+normal inspection, foliage, growth, UV, material and export tools afterward.
+`asset_preset` identifies the creation plan, not a frozen material/geometry
+quality certificate. Generic regeneration returns a newly generated master;
+the current recipe and source guard remain authoritative.
+
+Planning reports normalized recipes and model/foliage guards, actual counts,
+stored versus expanded triangles, explicit caller limits, a botanical export
+instance-budget hint and host-specific LOD mask estimates for 64/128px views.
+Budgets are checked before allocating the leaf table and are never increased
+silently. Some seeds can exceed a chosen budget and refuse. The reference seeds
+1, 2 and 3 have 92,136, 90,288 and 88,704 leaves. The first stores about 75,000
+triangles with shared templates, versus about 18.1 million triangles if expanded.
+Use the explicit instance budget when exporting the semantic/shared-template
+bundle. All three reference sources passed independently decoded geometry/wind
+field/attachment delivery and file validation after source removal. This verifies
+geometry and numeric semantics; portable PBR materials still need baking/review.
+No leaf population is realized by this preset, and triangle figures are
+not draw-call or GPU timing measurements. The source is larger than the default
+small-fixture export/preview instance budgets; inspect those before submission.
+
+The three-seed MCP fixture creates all assets with code execution disabled,
+renders front/back/right/isometric and sun-only backlit comparisons, saves the
+editable projects, verifies framing and reopens a saved master. Its measured
+canopy tops are approximately 14.94m, 15.25m and 14.86m, with base Z=0 in a
+metre-scale scene. `setup_preview_stage` now returns `asset_world_bounds` from
+its evaluated geometry/instance boxes; those general bounds are Blender world
+units, so apply the scene unit scale when reporting physical metres.
+
+These scenes establish a larger source/visual comparison fixture, not the full
+mature-oak acceptance milestone. Compared with the sparse default seed-1 canopy,
+the denser source has much stronger orthographic crown coverage. Whole-tree
+320px views still expose stylized sleeve branches and strong bark contrast;
+close-up junction and texture quality need work. The sun-only backlit images are
+too dark for reliable transmission judgment. Controlled sun/sky/exposure and
+macro front/backlighting, physical optics, actual filtering/mips, shadow/collision,
+wind at this density, near/mid/far representations and large tree populations
+remain separate requirements. No Godot or other receiving renderer is required
+or qualified by this preset.
+
 ## Procedural botanical surface detail
 
 Use `create_botanical_surface` to create a reusable native material with

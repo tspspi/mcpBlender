@@ -506,6 +506,20 @@ components; they do not auto-convert anchor vectors into GLB axes/metres. UV2 st
 available for lightmaps. Integers outside +/-2^24 refuse. Save the .blend separately;
 complete botanical wind packing and downstream engine behavior remain separate.
 
+For a larger complete source study, botanical_asset_presets exposes
+OAK_CANOPY_STUDY. plan_botanical_asset_preset accepts a seed and explicit leaf/
+expanded-triangle budgets; create_botanical_asset_preset uses expected_preset
+and a fresh collection. It creates the ordinary editable master, three shared
+leaf variants and procedural bark/leaf detail without bpy code. Use tracked
+operations and poll the same ID; about 89-92k leaves in reference seeds 1/2/3
+exceed default small-fixture instance budgets. Inspect returned stored/expanded
+triangle counts, export instance hint and LOD mask estimates before downstream
+work. The 14m figure describes wood; canopy boxes include added shoots/leaves.
+Preview stages return asset_world_bounds in Blender world units; convert with
+scene scale for physical dimensions. Save the project and view multiple renders.
+This is an artistic canopy study, with remaining junction/optics/lighting/LOD/
+collision/population work, not a completed mature-tree or game-runtime certificate.
+
 For master secondary UVs, inspect_botanical_tree supplies mesh_assets and
 expected_tree. create_botanical_secondary_uv accepts wood and leaf-N roles with
 a new map name, actual texture dimensions and the same chart/border controls as

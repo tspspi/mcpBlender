@@ -4970,3 +4970,55 @@ portable PBR/thickness/transmission reconstruction, native-versus-far optics,
 view interpolation, depth/shadow proxies, wind, population performance and the
 mature-tree artistic reference remain separate qualifications. No receiving
 engine or GPU renderer is qualified by these CPU captures.
+
+## Decoded native reference-pass inspection
+
+`inspect_botanical_capture_data` is qualified as a read-only file operation. It
+verifies immutable render contents separately from the unchanged owner/inode
+lifecycle checks and supports copied archives without adopting their jobs. Its
+bounded standard-library float32 scanline EXR reader was checked against files
+encoded by the already installed OpenEXR C++ library: NONE, ZIPS and ZIP; single
+and multipart; increasing and decreasing scanline order; negative data-window
+origins; full and partial final chunks; all and selected channels. Analytically
+specified channel values match exactly, including signs and row orientation.
+Deep/tiled, half, unsupported codec, corrupt ZIP, missing/truncated/overlapping
+chunk data, hash and work/memory limits, cancellation and nonregular/FIFO inputs
+have negative coverage. Test fixture compilation uses existing development
+files only and skips when unavailable; the runtime has no new dependencies.
+
+Analytic plane witnesses exercise root rotation, translation, uniform scale,
+scene-unit conversion, projection, depth, no-hit/coverage distinctions and raw
+normal lengths. The structured native three-view capture test now also inspects
+real pass data, checks depth-position error below 0.001m and camera projection
+error below 0.01px for its front fixture, verifies copied-archive digest equality
+and confirms ordinary owner/inode validation still refuses that copy. It passed
+in 45.94s with arbitrary Python tools absent. An independent MCP server with no
+Blender attached and scene-edit, snapshot, startup and write authority disabled
+successfully inspected the copied dense source without changing archive file
+inventory/mtime/size (16.17s). Combined focused codec, analytic, readonly MCP,
+render journal/contracts, server/archive tests passed 33 cases in 48.49s; final
+nonregular-input coverage with the focused decoder/math/journal set passed 23
+cases in 7.30s. Subsequent finite-pose/clipping checks passed the final
+24-case decoder/math/journal set in 13.98s.
+
+All ten retained 512px dense-canopy views were decoded and measured in 77.79s.
+Applicable depth/position distances agree within 0.00001017m, and depth-based
+pixel-centre backprojection stays inside the conservative source bounds. The
+reference is not uniformly ray-consistent in its Position pass: maximum error
+is about 0.00289px for cardinal views and 1.43616px for BACK_LEFT, whose two
+covered samples exceed one pixel. All four diagonals exceed the diagnostic
+0.01px maximum criterion; that diagnostic remains **failed**, not relabelled as
+passing. Partially covered samples without centre-depth hits range from 3,072
+to 5,183 per view; no fully opaque sample lacks depth in this fixture. Many
+covered Normal samples have non-unit lengths. These values are preserved and
+reported without correction. An independently rendered BACK_LEFT control with
+three normal/bump links disconnected leaves its depth/position error metrics
+unchanged while changing normal-length statistics; bump links alone do not
+explain that view's position outliers. The cause remains unresolved.
+
+Evidence is local under `tmp/qualification/capture-data-20261104/`: dense data
+and summary/progress, readonly proof, structured small bundle/proof and the
+no-bump EXR/control report. This qualifies decoding and observation, not arbitrary
+EXR support, fully ray-consistent native Position data, inferred edge depths,
+far geometry, reconstructed PBR/thickness/transmission or native-versus-far
+optics. No existing delivery or image-comparison gate was relaxed.

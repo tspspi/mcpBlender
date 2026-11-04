@@ -51,7 +51,18 @@ def test_native_tree_multiview_reference_capture(assets_live):
             proof=await tool(client,'validate_render_job',directory='tree-capture')
             assert len(proof['outputs'])==6 and proof['botanical_capture']['leaf_instances']==plan['leaf_instances']
             assert (await wait(client,'inspect_botanical_tree',collection='CaptureTree'))['tree_sha256']==before['tree_sha256']
+            data=await wait(client,'inspect_botanical_capture_data',directory='tree-capture',views=['FRONT'])
+            measured=data['views'][0]
+            assert measured['covered_pixels']>0 and measured['nonfinite_covered']==0 and measured['reconstructed_outside_bounds']==0
+            assert measured['statistics']['depth_position_error_m']['max']<.001
+            assert measured['statistics']['position_projection_error_px']['max']<.01
             bundle=root/'library/tree-capture'
+            # Immutable content inspection remains available after copying, while
+            # owner/inode-scoped recovery validation continues to reject copies.
+            shutil.copytree(bundle,root/'library/copied-capture')
+            copied=await wait(client,'inspect_botanical_capture_data',directory='copied-capture',views=['FRONT'])
+            assert copied['data_sha256']==data['data_sha256']
+            with pytest.raises(ToolError,match='identity'):await tool(client,'validate_render_job',directory='copied-capture')
             code="import bpy,json\nbpy.ops.wm.open_mainfile(filepath="+repr(str(bundle/'source.blend'))+",use_scripts=False)\nassert len(bpy.data.scenes)==1\nassert bpy.data.objects.get('Cube') is None and bpy.data.objects.get('Light') is None\ns=bpy.data.scenes[0]\nassert len(s.collection.children)==1\nassert any(n.bl_idname=='GeometryNodeInstanceOnPoints' for g in bpy.data.node_groups for n in g.nodes)\nassert not any(n.bl_idname=='GeometryNodeRealizeInstances' for g in bpy.data.node_groups for n in g.nodes)\n"
             probe=subprocess.run(['blender','--background','--factory-startup','--disable-autoexec','--python-exit-code','1','--python-expr',code],capture_output=True,text=True,timeout=30)
             assert probe.returncode==0,probe.stdout+probe.stderr

@@ -759,6 +759,58 @@ binding and required float32 pass headers as well as ordinary file/source hashes
 It does not certify decoded pass values, optical equivalence, far fitting,
 angular interpolation, shadow proxies, wind or population performance.
 
+### Numerical reference-pass inspection
+
+`inspect_botanical_capture_data` reads completed captures without Blender,
+snapshot or write authority. It also accepts copied capture archives: immutable
+source/file hashes, camera/frame/format associations and metadata are verified,
+while owner/inode checks remain mandatory for render-job recovery and cleanup.
+Reading a copied archive does not adopt its job or authorize mutations.
+
+```json
+{
+  "directory": "renders/tree-review-01",
+  "views": ["FRONT", "BACK_LEFT"],
+  "alpha_threshold": 0.5,
+  "max_pixels": 1048576,
+  "max_total_pixels": 4194304
+}
+```
+
+Omit `views` to inspect every retained view. This file-only operation is tracked
+asynchronously by default, with view/chunk/pixel progress, cancellation and free
+space. `data_sha256` binds the selected file hashes, capture/source identities,
+options and numerical results. No pixel arrays or native IDs are created in the
+editing instance. Read-only input paths stay referenced against owned cleanup
+while inspection runs.
+
+The runtime reader uses only the standard library and supports full-resolution
+float32 NONE/ZIPS/ZIP scanline EXRs, single or multipart. It bounds headers,
+parts/channels, file/chunk bytes, output memory and decompression work; rejects
+missing/overlapping/truncated data, unsupported layouts and source changes; and
+checks the decoded file SHA. Deep, tiled, half/integer, subsampled and other codec
+profiles refuse. The [OpenEXR file layout](https://openexr.com/en/latest/OpenEXRFileLayout.html)
+is the format reference. Defaults permit one megapixel per view and four million
+pixels overall; ceilings are 4,194,304 and 41,943,040 respectively. The reader's
+file/output/decompression limits are 512/256/512 MiB, with an 8 MiB chunk limit.
+
+Reports distinguish raw float alpha coverage (`alpha > alpha_threshold`), opaque
+pixels (`alpha >= 1-1e-6`), valid centre-depth hits, missing centre depth and
+nonfinite samples. They measure depth-versus-position distance in physical
+metres, position-versus-camera-ray projection in pixels, raw normal-length error
+and depth-backprojected bounds overshoot. Covered and opaque error statistics
+remain separate; percentile samples are deterministic and capped at 65,536 per
+statistic. Maxima, means, RMS and counts use every applicable pixel. Position
+outliers over half/one pixel and opaque samples without depth are explicit.
+
+These observations do not normalize normals, fill missing depths or correct
+positions. The retained dense fixture has partially covered pixels without
+centre-depth hits and some diagonal-view position outliers; callers must handle
+those before reconstruction. PNG16 rounding can place an exact float alpha of
+0.5 just above the PNG threshold, so raw EXR and PNG binary mask counts need not
+match at that boundary. No far-geometry or optical quality gate is implied by
+successful decoding.
+
 ## Independent render workers and camera batches
 
 `render_camera_batch` snapshots the current project, starts a separate owned

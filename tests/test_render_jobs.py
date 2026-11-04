@@ -13,7 +13,7 @@ def bundle(root,owner='agent',op='operation',state='succeeded'):
     root.mkdir();(root/'outputs').mkdir();(root/'writer.lock').touch();s=root.stat()
     jobs.write_json(root/jobs.MARKER,{'kind':'mcpblender-render-job','version':1,'id':'job1','operation_id':op,'owner':owner,'identity':[s.st_dev,s.st_ino]})
     (root/'source.blend').write_bytes(b'fixture')
-    job={'cameras':['Cam'],'frame_start':1,'frame_end':1,'frame_step':1,'formats':['PNG'],'width':16,'height':16,'source_sha256':jobs.file_hash(root/'source.blend'),'max_bytes':1024**2}
+    job={'job_id':'job1','cameras':['Cam'],'frame_start':1,'frame_end':1,'frame_step':1,'formats':['PNG'],'width':16,'height':16,'source_sha256':jobs.file_hash(root/'source.blend'),'max_bytes':1024**2}
     jobs.write_json(root/'job.json',job)
     path=root/'outputs/c00_f0000.png';png(path,lambda x,y:(50,70,90))
     member={'camera':'Cam','camera_index':0,'frame':1,'frame_index':0,'format':'PNG','file':'outputs/c00_f0000.png','bytes':path.stat().st_size,'sha256':jobs.file_hash(path),'header':jobs.image_header(path)}

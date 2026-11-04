@@ -11,7 +11,7 @@ import struct
 from .fluid_files import read_json,write_json,file_hash
 from .storage import snapshot
 MARKER='.mcpblender-render-job.json'
-COMMANDS={'inspect_render_job','validate_render_job','recover_render_job','cleanup_render_job'}
+COMMANDS={'inspect_botanical_capture_data','inspect_render_job','validate_render_job','recover_render_job','cleanup_render_job'}
 ROOT_FILES={MARKER,'job.json','source.blend','source.blend@','worker.log','status.json','manifest.json','cancel.json','writer.lock'}
 TERMINAL={'succeeded','failed','cancelled','interrupted'}
 
@@ -122,7 +122,13 @@ def image_header(path):
         return {'format':'OPEN_EXR_MULTILAYER','width':parts[0]['width'],'height':parts[0]['height'],'multipart':multipart,'parts':parts,'channels':channels}
 
 def validate(root,owner,progress=lambda value:None,cancelled=lambda:False):
-    root=Path(root);r=record(root,owner);rows=inventory(root);job=read_json(root/'job.json');saved=read_json(root/'manifest.json')
+    root=Path(root);r=record(root,owner)
+    return validate_contents(root,r['id'],progress,cancelled)
+
+
+def validate_contents(root,job_id,progress=lambda value:None,cancelled=lambda:False):
+    """Read-only immutable file proof, also usable on copied capture archives."""
+    root=Path(root);rows=inventory(root);job=read_json(root/'job.json');saved=read_json(root/'manifest.json')
     if sum(v['bytes'] for v in rows)>job['max_bytes']:raise ValueError('Render bundle exceeds byte budget')
     def checked_hash(path):
         value=hashlib.sha256();done=0
@@ -132,7 +138,7 @@ def validate(root,owner,progress=lambda value:None,cancelled=lambda:False):
                 value.update(block);done+=len(block)
                 if done%(16*1024**2)==0:progress({'phase':'verifying render file','file':Path(path).name,'bytes_verified':done})
         return value.hexdigest()
-    if saved.get('job_id')!=r['id'] or saved.get('source_sha256')!=job.get('source_sha256') or checked_hash(root/'source.blend')!=job['source_sha256']:raise ValueError('Render source/manifest binding mismatch')
+    if job.get('job_id')!=job_id or saved.get('job_id')!=job_id or saved.get('source_sha256')!=job.get('source_sha256') or checked_hash(root/'source.blend')!=job['source_sha256']:raise ValueError('Render source/manifest binding mismatch')
     capture=job.get('botanical_capture')
     if capture is not None:
         from . import tree_capture
@@ -151,7 +157,7 @@ def validate(root,owner,progress=lambda value:None,cancelled=lambda:False):
         actual.add(key);members.append(item)
         progress({'phase':'verified render output','completed_files':len(members),'total_files':len(expected)})
     if actual!=expected or {v['path'] for v in rows if v['path'].startswith('outputs/')}!={i['file'] for i in members}:raise ValueError('Render output inventory mismatch')
-    return {'valid':True,'directory':str(root),'job_id':r['id'],'outputs':members,'frames':[str(root/v['file']) for v in members if v['format']=='PNG'],'path':str(root/'manifest.json'),'source_sha256':saved['source_sha256'],**({'botanical_capture':capture} if capture is not None else {})}
+    return {'valid':True,'directory':str(root),'job_id':job_id,'outputs':members,'frames':[str(root/v['file']) for v in members if v['format']=='PNG'],'path':str(root/'manifest.json'),'source_sha256':saved['source_sha256'],**({'botanical_capture':capture} if capture is not None else {})}
 
 def request_cancel(root,owner):
     r=record(root,owner)
@@ -220,6 +226,9 @@ def cleanup(root,owner,p):
 
 
 def execute(command,p,progress=lambda value:None,cancelled=lambda:False):
+    if command=='inspect_botanical_capture_data':
+        from . import capture_data
+        return capture_data.inspect(p,progress,cancelled)
     root=p['directory'];owner=p['_job_owner']
     if command=='inspect_render_job':return inspect(root,owner)
     if command=='validate_render_job':return validate(root,owner,progress,cancelled)

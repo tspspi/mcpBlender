@@ -31,3 +31,17 @@ COMMANDS={
  'inspect_botanical_view_capture':(Source,(),'Plan native whole-tree reference captures without realizing leaf instances. Bound analytical prototype-box work and expanded render triangles; pin source/materials, static root/pivot, units, cameras and neutral-world lighting. Read-only; no far mesh or PBR reconstruction.'),
  'capture_botanical_views':(Capture,('allow_snapshots','allow_library_write','allow_start_blender'),'Guardedly snapshot only a static managed botanical tree and render directional PNG plus multilayer EXR reference/data passes in an owned independent worker. Preserve editing scene and instances; worker-only canonical visibility. Uses render-job progress/free space, cancellation, byte/time limits and recovery. Native pass data is not a reconstructed game material or far representation.'),
 }
+
+
+class Data(Model):
+    directory: str = Field(min_length=1)
+    views: list[View]|None = Field(default=None,min_length=1,max_length=10)
+    alpha_threshold: FiniteFloat = Field(default=.5,gt=0,lt=1)
+    max_pixels: int = Field(default=1048576,strict=True,ge=1024,le=4194304)
+    max_total_pixels: int = Field(default=4194304,strict=True,ge=1024,le=41943040)
+    @model_validator(mode='after')
+    def distinct(self):
+        if self.views is not None and len(set(self.views))!=len(self.views):raise ValueError('Data views must be distinct')
+        return self
+
+COMMANDS['inspect_botanical_capture_data']=(Data,(),'Read decoded native reference EXR depth/position/normal/alpha within bounded pixel/byte budgets, without Blender. Verify immutable source/files and metadata, including copied archives; report hit/coverage, normal length, camera projection and depth-position discrepancies separately for covered and opaque pixels. No automatic correction, reconstruction or job adoption.')

@@ -24,6 +24,7 @@ def test_cluster_planning_mcp_pagination_budgets_and_source_preservation(assets_
             state=await wait(client,'configure_botanical_foliage',collection='ClusterMaster',foliage=cfg,expected_tree=state['tree_sha256'],expected_foliage=pop['foliage_sha256'])
             args={'collection':'ClusterMaster','max_leaves':17,'limit':1}
             first=await wait(client,'inspect_botanical_foliage_clusters',**args)
+            assert 'recovery' not in first
             allrows=[]
             for offset in range(first['cluster_count']):
                 page=await wait(client,'inspect_botanical_foliage_clusters',**(args|{'offset':offset}))
@@ -47,7 +48,7 @@ def test_cluster_planning_mcp_pagination_budgets_and_source_preservation(assets_
             assert alpha['min'][0]==0 and alpha['max'][0]==1
             assert (await tool(client,'inspect_botanical_tree',collection='ClusterMaster'))['tree_sha256']==state['tree_sha256']
             snapshot=await tool(client,'inspect_botanical_foliage_cluster',cluster_collection='SelectedCluster')
-            assert snapshot['valid'] and snapshot['source_unchanged']
+            assert snapshot['valid'] and snapshot['source_unchanged'] and 'recovery' not in snapshot
             await tool(client,'remove_botanical_tree',collection='ClusterMaster',expected_tree=state['tree_sha256'])
             snapshot=await tool(client,'inspect_botanical_foliage_cluster',cluster_collection='SelectedCluster')
             assert snapshot['valid'] and not snapshot['source_present']

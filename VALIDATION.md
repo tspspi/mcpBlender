@@ -4437,3 +4437,11 @@ The rendered preview is not a matched native/card comparison or a multi-view,
 shadow, filtering, overdraw, wind, population, mature-tree or receiving-engine
 qualification. Atlas/far representations and those independent quality gates
 remain open. No Godot operation, package installation or Blender rebuild was used.
+
+Botanical cluster/collision inspection commands are explicitly classified as
+read-only by the native bridge. Live MCP checks confirm cluster planning/snapshot
+inspection and collision planning/snapshot inspection return no recovery metadata
+and therefore do not trigger mutation checkpoints. The cluster delivery regression
+passed in 56.70 seconds; a dedicated small collision lifecycle check passed in
+14.21 seconds. The optional large-canopy collision tests were not enabled in that
+run (three skipped), so no new large-canopy physics claim follows from this fix.

@@ -4868,3 +4868,55 @@ bounds, projection and restoration cases; it does not establish arbitrary modifi
 behavior, a large-population/GPU performance result or a new live-crash guarantee.
 All owned test jobs finished normally; no dependency, environment, installed
 runtime, Blender build, service, Godot, push or tag changes were required.
+
+### Wider directional card catalog and version-2 delivery
+
+The shared catalog now supports eight horizontal directions and both poles:
+TOP, FRONT, SIDE, BACK, LEFT, BOTTOM, FRONT_RIGHT, BACK_RIGHT, BACK_LEFT and
+FRONT_LEFT. The original three view indices/tie priorities and fitting recipes
+are preserved. Defaults still request those three views. Additional view counts
+and work budgets are explicit: up to ten requested views, 2,500,000 aggregate
+projected triangles and 2,540 fitted triangles, with the prior lower defaults.
+Diagonal fitting uses orthonormal U/V/normal frames; horizon V remains +Z and
+U cross V points toward the viewer. Ready camera view/direction arguments are
+returned by multi-view planning, including a one-view diagonal request.
+
+Pure checks exercise frame orthonormality, backing-plane distance, winding and UVs
+for all ten directions. A 0.1-degree sweep around the horizon checks the nearest
+sample never exceeds 22.5 degrees when all eight ring views are present. Explicit
+pole selection and the unsupported 45-degree elevation case retain the distinction
+between geometric support and full-sphere coverage. Contract admission and limits
+cover the expanded view count and work caps.
+
+New portable exports use bundle-v2 with the full fixed tie catalog. Version-1
+bundles retain the original three-view tie contract. The legacy synthetic fixture
+and both retained real version-1 bundles (three-view and centimetre/single-view)
+continued to validate without modification. Export-job staging admits the new
+canonical filenames; independent validation still requires exact declared member,
+view-identity, geometry, UV, normal, placement, PBR and selector consistency.
+The final focused catalog/fit/contract/file/journal/server/archive suite passed
+31 tests in 26.03 seconds. Three default/legacy native planning, MCP creation and
+all-map family regressions passed in 43.27 seconds.
+
+The new code-disabled MCP workflow created a rotated textured cuboid, fitted all
+ten rectangular targets, and independently baked BASE_COLOR/NORMAL/ROUGHNESS/ALPHA
+for every direction at 64x64. All ten were packed into a 512x256 atlas with exact
+RGBA core/gutter checks, copied into a packed family, individually selected and
+checked at 24 orbit directions, exported as a ten-view version-2 bundle, independently
+validated and reopened natively. The fitted total was 20 triangles over 120 source
+triangle projections. The full workflow passed in 75.41 seconds. The retained
+blend plus GLBs occupy 427,079 bytes excluding the manifest.
+
+A separate matched-copy check re-imported BACK_RIGHT and BOTTOM GLBs, rendering
+them against the native packed cards at 256x256, 16 samples, uniform world and
+transparent film. At scales 1/2/4, hard IoU was 1.0 for both directions. Base soft
+IoU was 1.0/0.9999983; shared-coverage RGB RMSE was 0.00000589/0.00009972.
+Both passed the unchanged copy gates; the workflow passed in 37.46 seconds.
+All owned workers finished normally.
+
+This qualifies the directional workflow and measured copy cases on that bounded
+textured asset. It does not qualify intermediate-angle appearance, interpolation,
+full-sphere coverage, native foliage optical equivalence, whole-tree far assets,
+wind, shadows or population cost. Existing flat-PBR shading loss remains open.
+No package/environment, installed runtime, Blender build, service, Godot, remote
+push or tag changes were used.

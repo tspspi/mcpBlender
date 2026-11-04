@@ -8,7 +8,7 @@ from mcpblender.card_contracts import Views
 
 
 def test_view_contracts_and_discovery(tmp_path):
-    for patch in ({'views':['TOP','TOP']},{'views':[]},{'views':['BACK']},{'max_projected_triangles':True},{'max_total_card_triangles':763}):
+    for patch in ({'views':['TOP','TOP']},{'views':[]},{'views':['UNSUPPORTED']},{'max_projected_triangles':True},{'max_total_card_triangles':2541}):
         with pytest.raises(ValueError):Views(sources=['Cube'],**patch)
     cfg=Config();cfg.bridge.socket_path=str(tmp_path/'bridge/sock');cfg.stdio.allow_scene_edit=False
     server,_=build_server(cfg)

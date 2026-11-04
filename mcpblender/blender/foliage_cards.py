@@ -1,6 +1,6 @@
 """Source-preserving fitted card targets for the shared texture-bake pipeline."""
 import bpy
-from mcpblender import card_fit,botany
+from mcpblender import card_fit,botany,card_views
 from . import textures
 from .assets import mesh_object
 
@@ -59,12 +59,13 @@ def views(p):
         params=options|{'view':view};state=fitted(params,triangles,records,unit);total+=state['triangles']
         if total>p['max_total_card_triangles']:raise ValueError('Foliage view-family total card triangle budget exceeded')
         rows.append({'view':view,'card':state,'create_parameters':params|{'expected_card':state['card_sha256']},
-                     'camera_frame_view':{'TOP':'TOP','FRONT':'FRONT','SIDE':'RIGHT'}[view]})
+                     'camera_frame_view':card_views.CAMERA_VIEWS.get(view),
+                     'camera_frame_parameters':{'view':card_views.CAMERA_VIEWS[view]} if view in card_views.CAMERA_VIEWS else {'direction':list(card_views.DIRECTIONS[view])}})
     result={'method':'ORTHOGRAPHIC_CARD_VIEW_FAMILY_V1','sources':p['sources'],'views':rows,'source_triangles':len(triangles),
             'projected_triangles':work,'total_card_triangles':total,'scene_unit_scale':unit,
             'limits':{k:p[k] for k in ('max_projected_triangles','max_total_card_triangles')},
             'scope':'Individually fitted static alternatives with independent source-bound creation guards. No automatic baking, angular selection/interpolation, crossed-card union, wind, or whole-tree far representation.',
-            'next_step':'For each selected alternative, call create_foliage_card with create_parameters and a distinct name. Bake separately, then optionally atlas verified bundles. Configure an ORTHO camera and frame_objects using source plus created target and camera_frame_view; keep that camera fixed for matched native/delivered review.'}
+            'next_step':'For each selected alternative, call create_foliage_card with create_parameters and a distinct name. Bake separately, then optionally atlas verified bundles. Configure an ORTHO camera and frame_objects using source plus created target and camera_frame_parameters; keep that camera fixed for matched native/delivered review.'}
     check_cancelled();return result|{'views_sha256':botany.digest(result)}
 
 

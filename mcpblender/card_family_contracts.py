@@ -1,10 +1,9 @@
 """Persistent, independently packed alternatives and explicit angular selection."""
-from typing import Literal
 from pydantic import Field,FiniteFloat,model_validator
 from .config import Model
 from .mesh_contracts import Name,Digest,Vec3
 
-View=Literal['TOP','FRONT','SIDE']
+from .card_views import View
 
 
 class Entry(Model):
@@ -14,7 +13,7 @@ class Entry(Model):
 
 class Source(Model):
     directory: str
-    entries: list[Entry] = Field(min_length=1,max_length=3)
+    entries: list[Entry] = Field(min_length=1,max_length=10)
     accept_front_pbr: bool = False
     max_angle_degrees: FiniteFloat = Field(default=30,gt=0,le=80)
     max_total_triangles: int = Field(default=1024,strict=True,ge=1,le=4096)
@@ -55,7 +54,7 @@ class Remove(Family):
 
 
 COMMANDS={
- 'inspect_foliage_card_family_source':(Source,(),'Validate the opened bake/atlas and inspect bounded canonical TOP/FRONT/SIDE planar alternatives for an independent packed family. Explicit FRONT_PBR acceptance required when applicable. Returns source/geometry/map/options-bound creation guard; no scene edits.'),
+ 'inspect_foliage_card_family_source':(Source,(),'Validate the opened bake/atlas and inspect bounded catalog-directed planar alternatives (eight horizon directions plus poles) for an independent packed family. Explicit FRONT_PBR acceptance required when applicable. Returns source/geometry/map/options-bound creation guard; no scene edits.'),
  'create_foliage_card_family':(Create,('allow_scene_edit',),'Create a guarded independent collection/root/meshes/private materials and packed textures from a validated bake or atlas. Copies start hidden; original objects and files are preserved. Static alternatives only; select a supported view explicitly.'),
  'inspect_foliage_card_family':(Family,(),'Inspect owned family content, packed resources, placement, visibility and external-reference blockers after save/reopen. No source files required. Returns guard for removal; no optical equivalence implied.'),
  'inspect_foliage_card_family_selection':(Direction,(),'Plan deterministic nearest supported family view from a named ORTHO/PERSP camera or explicit world viewer direction. Perspective tests all family-bound corners against the angular limit. Reports unsupported directions without edits and returns a camera/family-bound selection guard.'),

@@ -32,7 +32,7 @@ def test_fitted_triangle_encloses_source_and_reduces_empty_area():
 
 
 def test_limits_degenerate_and_cooperative_cancel():
-    for patch in ({'resolution':1},{'max_triangles':0},{'standoff_m':0},{'padding':float('nan')},{'view':'BACK'}):
+    for patch in ({'resolution':1},{'max_triangles':0},{'standoff_m':0},{'padding':float('nan')},{'view':'UNSUPPORTED'}):
         with pytest.raises(ValueError):fit(TRIANGLES,**patch)
     with pytest.raises(ValueError,match='edge-on'):fit([[(0,0,0),(1,0,0),(2,0,0)]])
     with pytest.raises(ValueError,match='max_vertices'):fit(TRIANGLES,max_vertices=4)

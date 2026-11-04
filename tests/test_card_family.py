@@ -10,7 +10,7 @@ from mcpblender.server import build_server
 
 
 def test_canonical_nearest_and_reverse_refusal():
-    normals=api.DIRECTIONS
+    normals={k:api.DIRECTIONS[k] for k in ('TOP','FRONT','SIDE')}
     for name,normal in normals.items():
         result=api.choose(normals,[normal],30)
         assert result['supported'] and result['selected_view']==name

@@ -4,11 +4,12 @@ import json
 import math
 from pathlib import Path
 from types import SimpleNamespace
-from . import attribute_glb,botany,card_family,lod_files
+from . import attribute_glb,botany,card_family,lod_files,card_views
 from .skin_glb import Accessor,point,IDENTITY,multiply,matrix,trs
 from .package_files import image_info
 
-FORMAT='mcpblender-card-family-bundle-v1'
+LEGACY_FORMAT='mcpblender-card-family-bundle-v1'
+FORMAT='mcpblender-card-family-bundle-v2'
 VIEW_FIELD='_MCP_CARD_VIEW'
 COORDINATES='GLTF_WORLD_Y_UP_METRES'
 
@@ -32,7 +33,7 @@ def placement(matrix,unit):
 def inventory(root,cancelled=lambda:None):
     root=Path(root)
     if root.is_symlink() or not root.is_dir():raise ValueError('Family bundle requires a regular local directory')
-    rows=[];total=0;allowed={'manifest.json','asset.blend','top.glb','front.glb','side.glb'}
+    rows=[];total=0;allowed={'manifest.json','asset.blend',*(v.lower()+'.glb' for v in card_views.DIRECTIONS)}
     for path in root.iterdir():
         cancelled()
         if path.name not in allowed or path.is_symlink() or not path.is_file():raise ValueError('Unknown/nonregular family bundle member')
@@ -112,15 +113,15 @@ def validate(directory,*,cancelled=lambda:None,progress=lambda v:None):
     root=Path(directory);listed=inventory(root,cancelled);manifest=root/'manifest.json'
     if not manifest.is_file() or manifest.stat().st_size>16*1024**2:raise ValueError('Missing/oversized family manifest')
     data=json.loads(manifest.read_text())
-    if data.get('format')!=FORMAT or data.get('files')!=listed:raise ValueError('Family file inventory/hash mismatch')
-    rows=data.get('variants',[])
-    if not isinstance(rows,list) or not 1<=len(rows)<=3 or [r.get('view') for r in rows]!=[v for v in card_family.DIRECTIONS if any(r.get('view')==v for r in rows)]:raise ValueError('Canonical unique family view order required')
+    if data.get('format') not in {FORMAT,LEGACY_FORMAT} or data.get('files')!=listed:raise ValueError('Family file inventory/hash mismatch')
+    rows=data.get('variants',[]);catalog=card_views.LEGACY if data['format']==LEGACY_FORMAT else tuple(card_views.DIRECTIONS)
+    if not isinstance(rows,list) or not 1<=len(rows)<=len(catalog) or [r.get('view') for r in rows]!=[v for v in catalog if any(r.get('view')==v for r in rows)]:raise ValueError('Canonical unique family view order required')
     expected={'asset.blend',*(row['view'].lower()+'.glb' for row in rows)}
     if {r['path'] for r in listed}!=expected:raise ValueError('Family member inventory differs from alternatives')
     unit=data['scene_unit_scale'];pose=placement(data['root_matrix_native'],unit)
     pose['normals_world']={row['view']:pose['normals_world'][row['view']] for row in rows}
     if not isinstance(data.get('family_guard'),str) or len(data['family_guard'])!=64 or any(c not in '0123456789abcdef' for c in data['family_guard']):raise ValueError('Invalid source family guard')
-    selector={'method':'NEAREST_ONE_SIDED_CARD_V1','coordinates':COORDINATES,'tie_order':list(card_family.DIRECTIONS),'max_angle_degrees':data['max_angle_degrees'],'perspective':'NEAREST_CENTRE_THEN_ALL_EIGHT_WORLD_AABB_CORNERS','automatic_playback':False,**pose}
+    selector={'method':'NEAREST_ONE_SIDED_CARD_V1','coordinates':COORDINATES,'tie_order':list(catalog),'max_angle_degrees':data['max_angle_degrees'],'perspective':'NEAREST_CENTRE_THEN_ALL_EIGHT_WORLD_AABB_CORNERS','automatic_playback':False,**pose}
     if data.get('selector')!=selector or data.get('optical_equivalence') is not False:raise ValueError('Family selector/optical metadata differs from declared contract')
     # Exercise policy admission even when there are no consumer camera samples.
     card_family.choose({r['view']:pose['normals_world'][r['view']] for r in rows},[pose['normals_world'][rows[0]['view']]],data['max_angle_degrees'])
@@ -144,5 +145,5 @@ def validate(directory,*,cancelled=lambda:None,progress=lambda v:None):
         proofs.append({'view':view,'proof':proof});progress({'phase':'validated portable card alternative','view':view,'completed':len(proofs),'total':len(rows)})
     physical=bounds([r['witness'] for r in rows],unit)
     if data.get('bounds_world_m')!=physical:raise ValueError('Family world bounds differ from decoded correspondence witness')
-    return {'valid':True,'format':FORMAT,'variants':proofs,'family_guard':data['family_guard'],'selector':selector,'bounds_world_m':physical,
+    return {'valid':True,'format':data['format'],'variants':proofs,'family_guard':data['family_guard'],'selector':selector,'bounds_world_m':physical,
             'scope':'File inventory/hashes; decoded static local geometry, oriented triangles, corner normals, UVs and metre placement; embedded PBR binding/image headers; selection metadata. Editable blend hash only. No native blend reopen, texture pixel equivalence, angular quality or engine playback proof.'}

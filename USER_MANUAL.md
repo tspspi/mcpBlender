@@ -1566,8 +1566,23 @@ loss declaration. Other source slots must satisfy the existing static PBR bake
 profile. Source geometry, shaders, transforms, options, frame and scene scale bind
 the guard. Source edits require another inspection.
 
-Choose world-axis `view="TOP"` (XY, normal +Z), `FRONT` (XZ, normal −Y) or `SIDE`
-(YZ, normal +X). The card sits behind the source along that normal by
+Choose a named `view` from the shared directional catalog. Horizon diagonals use
+normalized components (magnitude 1/sqrt(2)); their vertical texture axis stays +Z.
+
+| View | Normal toward viewer |
+| --- | --- |
+| TOP | +Z |
+| FRONT | -Y |
+| SIDE | +X |
+| BACK | +Y |
+| LEFT | -X |
+| BOTTOM | -Z |
+| FRONT_RIGHT | (+X,-Y) diagonal |
+| BACK_RIGHT | (+X,+Y) diagonal |
+| BACK_LEFT | (-X,+Y) diagonal |
+| FRONT_LEFT | (-X,-Y) diagonal |
+
+The card sits behind the source along that normal by
 `standoff_m` (default .005 metres). `outline="CONVEX_HULL"` trims exterior empty
 area; `RECTANGLE` uses two triangles. `padding` (default .02) expands each side by
 that fraction of projected width/height. Convex fitting encloses the projected
@@ -1601,21 +1616,24 @@ atlas workflow below.
 ### Planning several fitted card views
 
 `inspect_foliage_card_views` evaluates the ordinary mesh `sources` once and plans
-`views` (distinct TOP, FRONT and/or SIDE; all three by default). Use bounded
+`views` (one to ten distinct catalog names; TOP/FRONT/SIDE by default). Use bounded
 botanical cluster sources for dense foliage. The usual fitting/material options
 apply, including explicit `thin_foliage_mode=FRONT_PBR` for managed thin leaves.
-The tool is read-only and defaults to asynchronous execution.
+The tool is read-only and defaults to asynchronous execution. A one-view request
+also provides ready camera arguments for a single diagonal without calculating
+its basis or rotation.
 
 `max_triangles` still bounds the combined source mesh triangles. Additional limits
-are `max_projected_triangles` (default 300000, maximum 750000, source triangles times
-requested views) and `max_total_card_triangles` (default 192, maximum 762, summed
+are `max_projected_triangles` (default 300000, maximum 2500000, source triangles times
+requested views) and `max_total_card_triangles` (default 192, maximum 2540, summed
 fitted targets). These bound the planning request, not a scene-wide object quota.
 Degenerate/edge-on views and over-budget fits refuse the request without silently
 omitting alternatives or editing the source. Choose the requested subset explicitly.
 
 Each returned view has its fitted `card`, existing single-view `card_sha256`,
-`create_parameters` and `camera_frame_view`. Call `create_foliage_card` with a row's
-`create_parameters` plus a distinct `name`; the ordinary guarded creation/bake
+`create_parameters` and ready `camera_frame_parameters`. Axis views also retain
+`camera_frame_view`; it is null for horizon diagonals. Call `create_foliage_card`
+with a row's `create_parameters` plus a distinct `name`; the ordinary guarded creation/bake
 workflow remains unchanged. `views_sha256` identifies the full planning result,
 while creation uses the individual `expected_card` in each row. Changed source,
 frame, units or fitting options require reinspection. Creating several ordinary
@@ -1624,8 +1642,8 @@ targets is not an atomic family edit.
 Bake each alternative separately, inspect its unpadded opacity/coverage, reopen
 and validate the bundles, then optionally build a shared atlas. Configure an
 ORTHO camera and call `frame_objects` with source plus that created target and
-the returned `camera_frame_view` (SIDE maps to the camera's RIGHT preset). This
-fits clipping and placement without agents calculating Blender matrices. Keep the
+the returned `camera_frame_parameters` (pass its `view` or `direction` arguments;
+SIDE maps to the camera's RIGHT preset). This fits clipping and placement without agents calculating Blender matrices. Keep the
 camera fixed while rendering native, individual delivery and atlas alternatives.
 Review `compare_png_images` at declared scales for each orientation.
 
@@ -1647,9 +1665,9 @@ bundle's `asset.blend`. `inspect_foliage_card_family_source` takes `directory` a
 ],"accept_front_pbr":true,"max_angle_degrees":30}
 ```
 
-One to three distinct views/objects are allowed. Entries must belong to that
+One to ten distinct catalog views/objects are allowed. Entries must belong to that
 validated bundle and be static, single-material, camera-visible meshes
-with canonical planar geometry and winding (+Z for TOP, -Y for FRONT, +X for SIDE).
+with planar geometry and winding aligned with their declared catalog normal.
 Static Object-parent chains, including bake placement anchors, are supported up to
 32 objects, with finite invertible transforms bound into the creation guard and
 retained as provenance. Other parenting types and animated/constrained ancestors
@@ -1689,13 +1707,17 @@ including after reload and root placement changes. A perspective camera inside
 the bounds is refused. Framing, clipping, lens and
 occlusion still need separate camera/render review.
 
-Selection chooses the nearest centre direction, using canonical TOP/FRONT/SIDE
-order for exact ties. Its maximum angular deviation must fit the family's fixed
+Selection chooses the nearest centre direction, using catalog order for exact
+ties: TOP, FRONT, SIDE, BACK, LEFT, BOTTOM, FRONT_RIGHT, BACK_RIGHT, BACK_LEFT,
+FRONT_LEFT. Its maximum angular deviation must fit the family's fixed
 `max_angle_degrees` (default 30, allowed >0 through 80). A nearest view outside that
 cone reports `supported=false` and `selected_view=null`; it does not synthesize a
 reverse view or substitute another alternative. These cones are declared support
 limits, not measured image-quality acceptance. Intermediate-angle renders must
-be reviewed for the intended use.
+be reviewed for the intended use. A complete eight-view horizon ring bounds the
+nearest centre angle to 22.5 degrees along that ring. Top/bottom poles supplement
+it; gaps at intermediate elevations can still fall outside the default 30-degree
+cone. This does not establish full-sphere coverage, blending or angular quality.
 
 Apply a supported result with `select_foliage_card_family_view`, the same direction
 or camera and `expected_selection=selection_sha256`. The guard binds relevant
@@ -1723,8 +1745,8 @@ regardless of the current selected view, while preserving live family content,
 selection and visibility. Existing destinations are refused.
 
 The bundle contains `manifest.json`, a family-only packed editable `asset.blend`,
-and one self-contained `top.glb`, `front.glb` and/or `side.glb` for each available
-view. The editable project has its own scene, units and owned family resources;
+and one self-contained lowercase view file (for example `top.glb`, `back.glb`
+or `front_right.glb`) for each available view. The editable project has its own scene, units and owned family resources;
 it excludes original source objects, lights, cameras and unrelated scene data.
 Open it and use `inspect_foliage_card_family` to validate native content. Its saved
 view selection is retained. Each GLB is a standalone alternative; consumers must
@@ -1739,7 +1761,9 @@ report actual written bytes. Durable export journals support the existing
 including no-replay reconciliation after a departed writer. Incomplete staging
 is preserved for review; published output is never overwritten or swept.
 
-The versioned `mcpblender-card-family-bundle-v1` manifest declares
+New exports use `mcpblender-card-family-bundle-v2`; its catalog covers all ten
+views. Existing version-1 bundles retain their original three-view tie contract
+and continue to validate. The manifest declares
 `GLTF_WORLD_Y_UP_METRES`. GLBs retain displayed world placement in metres.
 `selector.origin_world_m` and the available `selector.normals_world` use the same
 coordinate system. Convert Blender vectors `(x,y,z)` to glTF `(x,z,-y)`; positions
@@ -1748,7 +1772,7 @@ corner witnesses are retained for correspondence validation. Do not apply their
 native-unit transform again when loading the already placed GLBs.
 
 Select the closest available normal to the direction from origin toward viewer;
-use canonical TOP/FRONT/SIDE order for exact ties and the fixed declared angular
+use the manifest's catalog tie order for exact ties and the fixed declared angular
 limit. For perspective, test the same selected view against all eight corners of
 `bounds_world_m`. Refuse a camera inside the bounds or a nearest view outside the
 cone. The manifest describes this policy; it installs no engine controller,

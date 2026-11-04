@@ -85,7 +85,9 @@ def allowed(record,relative,is_directory):
     parts=relative.split('/')
     if record['kind']=='LOD':
         return not is_directory and len(parts)==1 and (parts[0]=='manifest.json' or re.fullmatch(r'level_0[0-7]\.glb',parts[0]))
-    if record['kind']=='CARD_FAMILY':return not is_directory and relative in {'manifest.json','asset.blend','top.glb','front.glb','side.glb'}
+    if record['kind']=='CARD_FAMILY':
+        from .card_views import DIRECTIONS
+        return not is_directory and relative in {'manifest.json','asset.blend',*(v.lower()+'.glb' for v in DIRECTIONS)}
     if record['kind']=='NUMERIC':return not is_directory and len(parts)==1 and parts[0] in {'asset.glb','manifest.json'}
     if record['kind'] in {'BOTANICAL','VEGETATION_LOD'}:
         if len(parts)==1 and parts[0] in {'manifest.json','semantics.json'}:return not is_directory

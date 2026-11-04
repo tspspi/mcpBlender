@@ -1,7 +1,7 @@
 """Deterministic one-sided alternative selection; no interpolation or synthesis."""
 import math
 
-DIRECTIONS={'TOP':(0.,0.,1.),'FRONT':(0.,-1.,0.),'SIDE':(1.,0.,0.)}
+from .card_views import DIRECTIONS
 
 
 def unit(value):
@@ -13,7 +13,7 @@ def unit(value):
 
 
 def choose(normals,directions,max_angle_degrees):
-    if not normals or len(normals)>3 or any(v not in DIRECTIONS for v in normals):raise ValueError('One to three named canonical views required')
+    if not normals or len(normals)>10 or any(v not in DIRECTIONS for v in normals):raise ValueError('One to ten named catalog views required')
     if not directions or len(directions)>9:raise ValueError('One to nine viewer directions required')
     if isinstance(max_angle_degrees,bool) or not isinstance(max_angle_degrees,(int,float)) or not math.isfinite(max_angle_degrees) or not 0<max_angle_degrees<=80:raise ValueError('Invalid family angular limit')
     rays=[unit(v) for v in directions];rows=[]

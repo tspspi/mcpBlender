@@ -789,3 +789,17 @@ Hidden target/collection visibility is temporarily enabled for evaluated bounds 
 restored afterward. Keep targets in a nonexcluded current view-layer path; refit
 when frame, aspect or geometry changes. Orthographic fits account for actual
 projection/shift; setup_preview_stage shares the hidden-source evaluation path.
+
+Fitted cards/families support TOP/FRONT/SIDE plus BACK/LEFT/BOTTOM and the four
+FRONT_RIGHT/BACK_RIGHT/BACK_LEFT/FRONT_LEFT horizon diagonals. Default view requests
+stay TOP/FRONT/SIDE. Explicitly budget larger requests (max ten views, 2.5M summed
+source projections, 2540 fitted triangles; lower defaults still apply). Pass the
+returned camera_frame_parameters into frame_objects; diagonal camera_frame_view
+is null. No agent-side basis/quaternion computation is required.
+
+A complete eight-view horizon ring has nearest samples within22.5degrees along
+that ring, with poles additionally available. Elevation gaps remain outside the
+default30degree cone; neither rendering quality nor full-sphere coverage follows
+from that geometric bound. Each back/diagonal is independently baked, never a
+reused reverse face. New delivery uses bundle-v2 with all ten catalog names;
+legacy bundle-v1 retains its original three-view tie contract and validates.

@@ -45,7 +45,7 @@ from . import vegetation_adoption
 from . import vegetation_bake
 from . import vegetation_materials
 from . import botanical_surfaces
-from . import render_batches,botanical_capture
+from . import render_batches,botanical_capture,depth_assets
 from . import compositing
 from . import environment
 from . import lod_adoption
@@ -108,6 +108,7 @@ COMMANDS.update(vegetation_adoption.COMMANDS)
 COMMANDS.update(botanical_surfaces.COMMANDS)
 COMMANDS.update(render_batches.COMMANDS)
 COMMANDS.update(botanical_capture.COMMANDS)
+COMMANDS.update(depth_assets.COMMANDS)
 COMMANDS.update(compositing.COMMANDS)
 COMMANDS.update(environment.COMMANDS)
 COMMANDS.update(image_comparison.COMMANDS)
@@ -167,6 +168,7 @@ def dispatch(command, p):
     if command in botanical_uv.COMMANDS:return botanical_uv.dispatch(command,p)
     if command in botanical_presets.COMMANDS:return botanical_presets.dispatch(command,p)
     if command in botanical_capture.COMMANDS:return botanical_capture.dispatch(command,p)
+    if command in depth_assets.COMMANDS:return depth_assets.dispatch(command,p)
     if command=='render_camera_batch':return render_batches.launch(p)
     if command in image_comparison.COMMANDS:return image_comparison.dispatch(command,p)
     if command in foliage_clusters.COMMANDS:return foliage_clusters.dispatch(command,p)

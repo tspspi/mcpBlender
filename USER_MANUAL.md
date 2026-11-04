@@ -784,6 +784,70 @@ differ for transparent surfaces. Material IDs and values may be filtered mixture
 of surfaces. Normal data remain raw. Physical thickness is unknown; these fields
 do not reconstruct a complete BSDF or establish native-versus-far equivalence.
 
+### Experimental directional depth assets
+
+`inspect_botanical_depth_source` plans a reduced directional mesh from a completed
+capture with `material_fields: true`. `create_botanical_depth_asset` creates an
+independent hidden collection, root, patch mesh, private shader and six packed
+float data images. It preserves the original scene resources and capture files.
+This is one approximate directional layer; it is an intermediate step toward the
+whole-tree far workflow, without native optical equivalence, view blending,
+complete surface reconstruction, shadow, wind or population qualification.
+
+```json
+{
+  "directory": "renders/tree-materials",
+  "view": "FRONT",
+  "settings": {
+    "tile_pixels": 4,
+    "edge_depth_policy": "NEAREST",
+    "edge_radius_pixels": 16,
+    "max_triangles": 32768,
+    "max_texture_bytes": 268435456
+  }
+}
+```
+
+Carry the returned `plan_sha256` into creation as `expected_plan`, supply a fresh
+`collection`, and explicitly set `accept_approximate_optics: true`. Creation
+revalidates source bytes, options, geometry, map values and target units before
+allocating native resources. Plans and creation run as tracked long operations
+with progress/cancellation and storage feedback. The capture directory stays an
+active cleanup input while these operations run. Only creation/removal require
+scene-edit permission; source plans do not create a checkpoint.
+
+Each active tile becomes an independent projected quad at its median measured
+centre depth. Neighbouring tiles never share geometry across depth jumps. Partial
+coverage with no centre hit uses the nearest measured witness inside the explicit
+pixel radius, with separate estimate counts and distances. `REFUSE` rejects such
+tiles; `OMIT` drops and counts them. Missing depth at fully opaque pixels always
+refuses. Pixel, triangle, texture and edge-search work budgets are enforced;
+unavailable neighbours, unsupported intrinsic transparency, zero/nonfinite
+covered normals and malformed source data refuse. Capture sizes through 1024px
+are supported here, with a one-megapixel ceiling per directional asset.
+
+The six RGBA32 data images retain base color/coverage, raw source-root-local
+normal/roughness, emission color/strength, artistic thin color/weight,
+metallic/IOR/Principled transmission/intrinsic alpha, and thin-mode/culling/
+material-ID/surface-weight witnesses. Inputs divide by the constant-one AOV
+weight; coverage is applied once. Intrinsic shader alpha must currently be opaque.
+No beauty RGB enters base color or emission. Shading explicitly normalizes the raw
+normal and transforms it from object to world, so root movement/rotation works.
+This does not restore filtered surface layers, omitted BSDF inputs or physical
+thickness. At 512px the six float images occupy 24 MiB decoded; compressed blend
+size is a different budget. No texture quantization is applied.
+
+`inspect_botanical_depth_asset` works after save/reopen without capture files.
+It checks ownership, private dependencies, actual vertex/UV buffers and every
+packed float image against plan hashes. Source field bindings and omissions stay
+in the asset provenance. Uniform positive root placement and collection display
+changes are supported. Source placement converts physical units into the target
+scene and retains the original root pivot. Inspect again after moving/showing
+an asset to get a fresh `asset_sha256`. Supply it as `expected_asset` to
+`remove_botanical_depth_asset`; changed geometry/shaders, foreign members/users,
+renamed resources and stale guards refuse removal. Creation cancellation/failure
+removes only the newly allocated private resources.
+
 ### Numerical reference-pass inspection
 
 `inspect_botanical_capture_data` reads completed captures without Blender,

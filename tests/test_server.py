@@ -136,6 +136,8 @@ def test_addon_archive_has_no_external_dependencies(tmp_path):
         assert "mcpblender/card_family_files.py" in names
         assert "mcpblender/blender/card_family_export.py" in names
         assert "mcpblender/card_views.py" in names
+        assert "mcpblender/depth_tiles.py" in names
+        assert "mcpblender/blender/depth_assets.py" in names
         assert "mcpblender/tree_capture.py" in names
         assert "mcpblender/exr_scanline.py" in names
         assert "mcpblender/capture_data.py" in names

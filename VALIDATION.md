@@ -5053,3 +5053,69 @@ This qualifies the input capture and inspection, not complete BSDF reconstructio
 physical thickness, corrected normals/depth edges, far geometry, view blending,
 shadow/wind behavior, or native-versus-far optical equivalence. Prior Position
 pass diagnostic failures remain open.
+
+
+## Experimental directional depth assets
+
+The structured source/create/inspect/remove surface is qualified as an owned
+intermediate representation, with `optical_equivalence: false` and explicit
+`accept_approximate_optics` required for creation. It does not qualify the full
+far-asset workflow. Analytic tests independently check plane coordinates, winding,
+UV orientation, rotated/scaled/translated root conversion, disconnected depth
+jumps, measured versus estimated edges, omissions, opaque missing-depth refusal,
+search/triangle/texture limits, invalid data and cancellation. Packing preserves
+all twenty native input components plus coverage and root-local raw normal data
+in six RGBA32 images; inputs use their AOV surface weight, not beauty alpha.
+
+The final focused geometry/contracts, server/archive, capability inventory,
+render-journal and material-contract suite passed 21 cases in 18.36s, with one
+opt-in live capability test skipped in that run. A separate capability run,
+including real Python-disabled discovery and no checkpoint mutation, passed both
+cases in 12.64s. The final analytic refusal checks passed five cases in 0.10s.
+A separate real MCP workflow
+with arbitrary execution absent passed in 23.42s: native tree/foliage creation,
+material-field capture, bounded source plan, refusal of stale/unaccepted plans,
+private packed depth creation, save/reopen, source archive deletion, independent
+owned inspection and guarded removal. Portable original tree model, meshes,
+recipe, metrics, geometry and placement match across reopen, and the live source
+stays unchanged across creation/removal. Live tree guards intentionally include
+RNA addresses, so those guards are refreshed after file reopen.
+
+Native transactional/unit/ownership and packed-shader calibration controls passed
+two cases in 7.83s. They verify rollback after the first packed image, physical
+unit placement, movable positive-uniform root and display changes, stale guards,
+changed meshes and external shared-mesh users, exact signed/vector/scalar/alpha
+lane readback, and clean removal after reopen. Actual rendered shader AOVs verify
+base color, roughness, metallic, IOR, transmission, emission including strength
+2.5 in a data-alpha lane, artistic thin color/weight, coverage, and the normal's
+correct world-space rotation when its root rotates. Covered zero/nonfinite
+normals and nonopaque intrinsic shader alpha refuse rather than being repaired.
+
+The production native API also built independent FRONT and BACK_LEFT assets from
+the retained 88,704-leaf dense canopy. Counts are 15,742/8,380 triangles, with
+329/189 explicitly estimated edge tiles and no omitted tiles. Bounded searches
+visited 336,896/193,536 candidates, with maximum witness distances 7.65/12.10px.
+Both use 24 MiB decoded texture data per view. After saving/reopening the combined
+5.4 MiB blend, actual vertex/UV buffers and every packed image float buffer match
+their plan hashes. This file has the two reduced assets and reference cameras;
+no native source tree geometry was loaded or retained.
+
+Matched 512px CPU2/8-sample reference-camera/world renders give FRONT/BACK_LEFT
+mask IoU 0.933806/0.934139, soft alpha IoU 0.916555/0.920215, overlap RGB RMSE
+0.018557/0.019718 and overlap luminance bias **+15.72%/+19.51%**. Generic image
+comparison passes do not establish optical equivalence. A prior tilted-patch
+control increased FRONT brightness bias to +25.04%; it remains local negative
+research and is not the implemented geometry policy. No automatic albedo gain,
+beauty-to-base/emission substitution, brightness correction or gate relaxation
+was introduced. Production asset render times were 10.28s/7.73s; these are not a
+matched performance study, GPU measurement or population-speed qualification.
+
+Evidence is local under `tmp/qualification/depth-asset-20261105/`, including MCP
+proof, small/dense packed blends, dense per-view plans/reports, decoded-pixel
+comparisons, progress and PNGs. Earlier flat/tilted research is retained under
+`tmp/qualification/depth-far-20261105/`. Native shader equivalence, filtered layers
+and intrinsic-transparency transport, physical thickness, arbitrary view changes,
+view blending, depth compositing, shadows, wind and population/reference quality
+remain open, along with the rest of the original workflow scope. No package
+installation, environment creation, application deployment or receiving-engine
+qualification was performed.

@@ -16,6 +16,7 @@ def test_workflow_inventory_does_not_claim_unregistered_commands():
         assert methods <= commands
     support = workflow_support(commands)
     assert "extrude_mesh_faces" in support["mesh_modeling"]["structured_commands"]
+    assert "create_botanical_depth_asset" in support["botanical_directional_depth"]["structured_commands"]
     assert support["shader_nodes"]["support"] == "structured_partial"
     assert support["geometry_nodes"]["support"] == "structured_partial"
     assert support["physics"]["support"] == "structured_partial"
@@ -47,6 +48,7 @@ def test_live_capability_discovery_with_python_disabled(assets_live):
             assert "attach_geometry_nodes" in result["domain_support"]["geometry_nodes"]["structured_commands"]
             assert "configure_shader_graph" in result["domain_support"]["shader_nodes"]["structured_commands"]
             assert "extrude_mesh_faces" in result["domain_support"]["mesh_modeling"]["structured_commands"]
+            assert "create_botanical_depth_asset" in result["domain_support"]["botanical_directional_depth"]["structured_commands"]
             assert "not caller authorization" in result["discovery_note"]
             assert "not qualification" in result["discovery_note"]
             for domain in result["domain_support"].values():

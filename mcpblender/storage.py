@@ -11,13 +11,23 @@ DEFAULT_RESERVE = 256 * 1024 * 1024
 def snapshot(path, estimated_bytes=0, reserve_bytes=DEFAULT_RESERVE, warn_below_bytes=2 * 1024**3, estimate_kind="unknown"):
     path = Path(path).expanduser().resolve()
     existing = path
-    while not existing.exists():
-        existing = existing.parent
-    if existing.is_file():
-        existing = existing.parent
-    usage = shutil.disk_usage(existing)
+    while True:
+        while not existing.exists() and existing != existing.parent:
+            existing = existing.parent
+        if existing.is_file():
+            existing = existing.parent
+        try:
+            usage = shutil.disk_usage(existing)
+            device = existing.stat().st_dev
+            break
+        except FileNotFoundError:
+            # Owned cleanup may remove this directory after the existence check
+            # or disk-usage read. Continue on a surviving ancestor filesystem.
+            if existing == existing.parent:
+                raise
+            existing = existing.parent
     available = max(0, usage.free - reserve_bytes)
-    return {"path": str(path), "filesystem_path": str(existing), "device": existing.stat().st_dev,
+    return {"path": str(path), "filesystem_path": str(existing), "device": device,
             "total_bytes": usage.total, "used_bytes": usage.used, "free_bytes": usage.free,
             "reserve_bytes": reserve_bytes, "available_after_reserve_bytes": available,
             "estimated_output_bytes": estimated_bytes, "estimate_kind": estimate_kind,

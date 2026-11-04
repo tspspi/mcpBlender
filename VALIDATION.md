@@ -1,5 +1,81 @@
 # Local validation: 0.2.0
 
+## Independent vegetation LOD sampling grids — 2026-11-04
+
+New plans use `AREA_PRIORITY_MULTIGRID_V2`: nested geometric-area/hash priorities
+independent of raster positions, followed by BASE, finer and shifted coverage and
+boundary gates. Native wood uses all grids and a frame including the complete
+source trunk. The historical greedy results below describe the earlier method;
+old bundles retain that exact verification path rather than being reinterpreted.
+
+A retained 88,704-leaf canopy exposed the earlier method's sampling failure:
+22,000 and 6,000 selected leaves passed with zero missing pixels at 64 pixels,
+yet independently checking the same selections at 128 pixels found approximately
+53–66% and 89–93% missing source coverage. Those profiles are not accepted as
+quality-qualified dense delivery.
+
+The new full-population pure probe used BASE 64, FINE 128 and SHIFTED 128 at the
+same 1.5m margin and three views. At unchanged .25 loss limits, 60,000 leaves
+passed every grid (maximum coverage loss .16627, boundary loss .17821).
+50,000 leaves failed (maximum boundary loss .28020); 22,000 failed (maximum
+coverage loss .62848). These are sampled opaque-blade metrics, not optical or
+perspective equivalence. The projection admission was 146,893,824 triangles across
+all grids; mask payload estimate was 85,936 bytes, excluding population/ranking
+and general runtime overhead. The 60-million default is not silently increased.
+
+An exact blade-bounding-box rejection optimization reduced this local pure probe
+from 863.50s to 388.75s; the entire resulting plan dictionaries compared equal.
+These are individual local runs, not a throughput guarantee. Focused tests check
+grid-independent nested selections, fine-grid masks against the separate foliage
+coverage analyzer, an adversarial coarse-pass/fine-fail fixture, work bounds and
+the pre-change legacy plan's portable content hash. Native tests additionally
+exercise bounded plan reuse, source/settings/budget invalidation, expiry and
+creation without repeating projection. The affected bake, material, recovery,
+chart-layout, adoption, quality-adoption and full mapped-delivery regression batch
+passed **8 tests in 771.89s**. The larger 1024-pixel, 77-map quality delivery
+passed **1 test in 1488.35s**, including eleven-role baking/adoption, source-file
+removal, packed save/reopen, rendering, export and independent validation.
+The Python-disabled MCP dense planning operation has separately completed with
+70,000/60,000-leaf levels at unchanged .25 loss limits: worst coverage/boundary
+losses .08719/.10502 and .16627/.17821. Combined leaf/native-wood projection
+admission was 147,716,352; the streaming mask estimate was 70,948 bytes. This
+700.08s run shared the host with downstream regression work and is not a speed
+comparison with the pure probe. The dense native run reached semantic Text
+creation after wood and instance verification, but repeated live stack inspection
+located a prolonged native memory-copy path inside writing its single huge JSON
+line. The owned fixture was explicitly interrupted after 1623.76s; this is not a
+passed native lifecycle test. Bounded-line/chunked Text writing replaced that
+unbounded insertion, with progress/storage and cancellation checks between writes.
+The bounded-writer and native cache/cancellation gates passed **3 tests in
+43.36s**. A native 88,704-record Text exceeding 10 MiB round-tripped exactly with
+bounded lines; interruption immediately after a semantic chunk write removed all
+staged LOD IDs and preserved the existing profile and source guard. Post-fix native
+lifecycle/export and structured MCP lifecycle/export regressions passed **4 tests
+in 247.71s**. Sampling, contracts, add-on packaging and dependency-free native
+add-on import passed **8 tests in 37.27s**, with the existing Starlette/AnyIO
+deprecation warning.
+
+The corrected Python-disabled dense MCP workflow passed **1 test in 1151.29s**.
+Planning took 433.04s and native creation 148.60s in that run. LOD0/near/mid retain
+88,704/70,000/60,000 leaves and share three copied prototypes. Every one of the
+218,704 native leaf instances was matched to its canonical variant/rest pose;
+maximum position error was 1.90735e-6m and normalized linear-component error
+6.54417e-7. All levels retain eight radial sides and all source wood; every wood
+coverage/boundary/excess loss was zero on every grid. This does not qualify branch
+pruning or cheaper radial geometry on this dense fixture.
+
+Six fixed-camera 320x320, eight-sample Cycles renders (FRONT and ISOMETRIC, all
+three levels) were opened and reviewed; every image is distinct. Original source
+and Cube visibility were hidden for the comparisons and restored before saving.
+The profile remained valid after save/reopen; the source's portable readback and
+fresh guard remained intact through profile removal. The renders retain the
+source study's overall crown, with sparse front-facing foliage; they do not close
+the mature-oak habit/junction/material reference, optical/filtered coverage,
+shadow, continuous-wind, distant-card/impostor or receiving-renderer requirements.
+Dense native proof and image hashes are retained locally. Full-density GLB
+delivery is being qualified separately. No packages, virtual environments,
+installed runtime/services, installed skills, Godot or remote Git state changed.
+
 ## Complete mapped-profile coverage and mip-budget inspection — 2026-11-04
 
 The final regenerated workflow gate passed 11 tests in 107.76s on local FreeBSD/

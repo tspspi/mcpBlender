@@ -20,10 +20,10 @@ class Source(Plan):
     resolution: int = Field(default=128,strict=True,ge=32,le=256)
     views: list[Literal['FRONT','SIDE','TOP']] = Field(default=['FRONT','SIDE','TOP'],min_length=1,max_length=3)
     margin: FiniteFloat = Field(default=2.5,ge=0,le=5)
-    silhouette_weight: int = Field(default=4,strict=True,ge=1,le=16)
-    max_projected_triangles: int = Field(default=60000000,strict=True,ge=1,le=100000000)
+    silhouette_weight: int = Field(default=4,strict=True,ge=1,le=16,description='Legacy boundary weight retained for old bundle semantics; current area priorities enforce boundary quality separately.')
+    max_projected_triangles: int = Field(default=60000000,strict=True,ge=1,le=400000000)
     max_mask_bytes: int = Field(default=256*1024**2,strict=True,ge=1024,le=1024**3)
-    max_gain_evaluations: int = Field(default=2000000,strict=True,ge=1,le=5000000)
+    max_gain_evaluations: int = Field(default=2000000,strict=True,ge=1,le=5000000,description='Maximum leaf-importance evaluations; legacy bundles count marginal-gain evaluations.')
     @model_validator(mode='after')
     def distinct(self):
         if len(set(self.views))!=len(self.views):raise ValueError('Choose distinct projection views')
@@ -52,7 +52,7 @@ class Remove(Edit):
     discard_derived_edits: bool = False
 
 COMMANDS={
- 'inspect_botanical_lod_source':(Source,(),'Plan nested greedy leaf LODs in fixed FRONT/SIDE/TOP opaque-blade coverage views. Retain ancestor-closed branch geometry/attachment IDs, radial side and triangle budgets; report quality losses and a source-bound guard. No native edits, optical or runtime performance proof.'),
+ 'inspect_botanical_lod_source':(Source,(),'Plan nested geometric-area/hash-priority leaf LODs independent of sampling grids. Enforce opaque-blade coverage/boundary quality on base, finer and shifted FRONT/SIDE/TOP grids. Retain ancestor-closed branch geometry/attachment IDs, radial side and triangle budgets; report quality losses and a source-bound guard. No native edits, optical or runtime performance proof.'),
  'create_botanical_lods':(Create,('allow_scene_edit',),'Create guarded independent near/mid botanical LODs plus full LOD0, with shared leaf templates, canonical wind IDs and native pose/count verification. Refuse failed coverage/triangle gates; preserve source. Cards/impostors/LOD GLB packaging remain separate.'),
  'inspect_botanical_lods':(Read,(),'Inspect owned botanical LOD contents, active level, coverage plan, native pose readback, shared prototypes and current mutation/removal guard.'),
  'activate_botanical_lod':(Activate,('allow_scene_edit',),'Guardedly select one native botanical LOD for viewport/render visibility. Preserve editable source and other scene objects.'),

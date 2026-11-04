@@ -24,7 +24,7 @@ def test_adopt_shared_leaf_and_reduced_wood_maps(assets_live):
             for m in (await tool(client,'inspect_vegetation_materials',collection='Source'))['contract']['materials']:
                 info=await tool(client,'inspect_botanical_surface',material=m['name'])
                 await wait(client,'configure_botanical_surface',material=m['name'],settings={'profile':'OAK_LEAF' if m['model']=='MANAGED_THIN_FOLIAGE' else 'OAK_BARK'},expected_material=info['material_sha256'])
-            args={'collection':'Source','levels':[{'leaf_budget':70,'radial_sides':6}]}
+            args={'collection':'Source','levels':[{'leaf_budget':110,'radial_sides':8,'min_branch_radius_m':0}]}
             plan=await wait(client,'inspect_botanical_lod_source',**args)
             profile=await wait(client,'create_botanical_lods',**args,expected_plan=plan['plan_sha256'],lod_collection='Lods',display_offset_m=[8,0,0])
             await tool(client,'remove_botanical_tree',collection='Source',expected_tree=tree['tree_sha256'])

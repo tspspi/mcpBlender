@@ -3974,9 +3974,12 @@ makes that additional creation-time check explicit. Review the renders and tune
 budgets deliberately; a green pixel gate is not a complete visual assessment.
 
 The native profile includes independent full LOD0 and the requested reduced
-levels. A lazy greedy selector scores uncovered opaque blade pixels, weighting
-source boundary pixels, in fixed root-local FRONT/SIDE/TOP views. Leaf selections
-are nested and deterministic, with canonical IDs/orientation/scale/phase/flutter
+levels. `AREA_PRIORITY_MULTIGRID_V2` ranks leaves by deterministic, geometric-area
+weighted hash priorities, independently of raster sample positions. Coverage is
+then checked in root-local FRONT/SIDE/TOP views on BASE, FINE and SHIFTED grids.
+FINE doubles the requested resolution up to 256; SHIFTED uses that finer resolution
+with a quarter-pixel offset in each axis. At resolution 256 only BASE and SHIFTED
+are distinct. Leaf selections are nested and deterministic, with canonical IDs/orientation/scale/phase/flutter
 retained. `min_branch_radius_m` retains major wood plus every selected leaf's
 parent branch and all ancestors. It is a canonical local-metre radius threshold,
 prior to the tree's physical placement scale. Lower radial counts rebuild wood
@@ -3986,9 +3989,13 @@ geometry is neither realized nor duplicated for each level or leaf.
 
 `max_coverage_loss` and `max_silhouette_loss` default to .25. These are fractions
 of source occupied pixels and source boundary pixels missing from the selected
-representation. The boundary includes internal gaps. Wood uses the same crown
-window and additionally bounds excess occupied area. The initial plan scores
-leaves; creation checks projected native wood triangles too. Native counts must
+representation. The boundary includes internal gaps. Every grid must pass;
+`quality` reports BASE and `validation_quality` reports the additional grids.
+Wood uses a common window expanded from the crown frame to include the entire
+source wood, including the trunk base, and additionally bounds excess occupied
+area on every grid. Creation reports `wood_quality`, `wood_validation_quality`
+and `wood_quality_frame`. The initial plan scores leaves; creation checks
+projected native wood triangles too. Native counts must
 match planned wood/shoot triangles, and every level's actual leaf instances are
 matched to the retained variant/position/orientation/scale. Expanded triangle
 budgets include wood, shoots and all leaf instances; stored shared templates cost
@@ -4003,16 +4010,34 @@ The profile keeps canonical model/foliage/selection/wind JSON via an owned Text
 reference, survives save/reopen and remains inspectable after source removal.
 Materials remain shared and editable; their optical equivalence is not certified.
 
-Defaults are 128 pixels per view, a 2.5m crown margin, boundary weight 4, 60 million
+Defaults are 128 pixels per view, a 2.5m crown margin, 60 million
 combined leaf/native-wood triangle projections, 256 MiB estimated mask payload
-and two million gain evaluations. Bounds are 32–256 pixels, one to three distinct
-views, 100 million projections, 1 GiB mask payload and five million gain evaluations.
+and two million leaf-priority evaluations. Bounds are 32–256 pixels, one to three
+distinct views, 400 million projections, 1 GiB mask payload and five million
+evaluations. Work admission counts every quality grid; an explicit larger budget
+may be needed for dense sources. `silhouette_weight` remains accepted for legacy
+contracts but does not alter the new ranking: boundary quality is enforced by
+the separate loss gate. `sampling_method` and `quality_grids` identify the plan.
+Old file bundles without a method retain their original greedy selection and
+verification semantics; new plans cannot request that legacy method through MCP.
 Mask estimates include Python integer/container sizes and are host-specific;
 they exclude heap/source/native-scene overhead and do not establish peak RAM.
-The mask budget is checked before generating the full attachment table. Clipped
+Streaming unions avoid storing a separate raster mask for every leaf. The mask
+budget is checked before generating the full attachment table. Clipped
 source foliage or empty sampled views refuse qualification. Keep resolution,
-views and margin fixed for comparisons. Pixel-center estimates can miss subpixel
+views and margin fixed for comparisons. Multiple grids reduce sampling aliasing;
+pixel-center estimates can still miss subpixel
 blades and exclude alpha/translucency, perspective, lighting and shadow behavior.
+
+Within one running Blender bridge, a completed plan may be reused for five minutes
+by creation with identical source, levels and all budget/settings values. This
+one-entry cache stores at most 16 MiB of plain plan data, retains no Blender IDs,
+rechecks the live source and plan hashes, and is consumed after successful creation.
+It does not persist across application restarts or permit stale source guards.
+Large semantic Text records are written in chunks with progress/storage and
+cancellation checks between writes. Whitespace after structural JSON commas
+bounds native line lengths without changing parsed records; an oversized single
+token refuses rather than entering an unbounded native line insertion.
 
 The current profile preserves existing bark/leaf materials and generated UVs;
 texture budgets, combined engine scene import,

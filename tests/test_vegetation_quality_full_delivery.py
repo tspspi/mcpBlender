@@ -61,7 +61,7 @@ def test_full_quality_textures_delivery_and_previews(assets_live):
                 for row in (await tool(client,'inspect_vegetation_materials',collection='Source'))['contract']['materials']:
                     mat=await tool(client,'inspect_botanical_surface',material=row['name'])
                     await operation('configure_botanical_surface',material=row['name'],settings={'profile':'OAK_LEAF' if row['model']=='MANAGED_THIN_FOLIAGE' else 'OAK_BARK'},expected_material=mat['material_sha256'])
-                args={'collection':'Source','levels':[{'leaf_budget':70,'radial_sides':6},{'leaf_budget':35,'radial_sides':5,'max_coverage_loss':.6,'max_silhouette_loss':.6},{'leaf_budget':20,'radial_sides':5,'max_coverage_loss':.75,'max_silhouette_loss':.75}]}
+                args={'collection':'Source','levels':[{'leaf_budget':110,'radial_sides':8,'min_branch_radius_m':0},{'leaf_budget':100,'radial_sides':8,'min_branch_radius_m':0,'max_coverage_loss':.6,'max_silhouette_loss':.6},{'leaf_budget':60,'radial_sides':5,'max_coverage_loss':.75,'max_silhouette_loss':.75}]}
                 plan=await operation('inspect_botanical_lod_source',**args)
                 profile=await operation('create_botanical_lods',**args,lod_collection='Lods',expected_plan=plan['plan_sha256'])
                 await operation('remove_botanical_tree',collection='Source',expected_tree=tree['tree_sha256'])

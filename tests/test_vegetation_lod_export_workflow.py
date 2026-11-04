@@ -18,7 +18,7 @@ def test_structured_lod_export_and_standalone_validation(assets_live):
             tree=await wait(client,'create_botanical_tree',collection='Source',recipe=recipe,expected_model=plan['model_sha256'])
             cfg={'shoots_per_bud':2,'attachment_nodes':5};pop=await wait(client,'plan_botanical_foliage',collection='Source',foliage=cfg)
             tree=await wait(client,'configure_botanical_foliage',collection='Source',foliage=cfg,expected_tree=tree['tree_sha256'],expected_foliage=pop['foliage_sha256'])
-            args={'collection':'Source','levels':[{'leaf_budget':70,'radial_sides':6},{'leaf_budget':35,'radial_sides':5,'min_branch_radius_m':.04,'max_coverage_loss':.55,'max_silhouette_loss':.55}]}
+            args={'collection':'Source','levels':[{'leaf_budget':110,'radial_sides':8,'min_branch_radius_m':0},{'leaf_budget':100,'radial_sides':8,'min_branch_radius_m':0,'max_coverage_loss':.55,'max_silhouette_loss':.55}]}
             plan=await wait(client,'inspect_botanical_lod_source',**args)
             profile=await wait(client,'create_botanical_lods',**args,expected_plan=plan['plan_sha256'],lod_collection='Lods',display_offset_m=[8,0,0])
             await tool(client,'remove_botanical_tree',collection='Source',expected_tree=tree['tree_sha256'])
@@ -29,7 +29,7 @@ def test_structured_lod_export_and_standalone_validation(assets_live):
             assert journal['record']['binding']['materials_sha256']==materials['materials_sha256'] and journal['record']['operation_id']==result['operation_id'] and journal['target_is_original_stage']
             assert result['proof']['placement_mode']=='SOURCE' and len(result['proof']['assets'])==9
             assert result['proof']['shared_leaf_templates']==3
-            assert [x['expanded_triangles'] for x in result['proof']['levels']]==[28548,14620,7608]
+            assert [x['expanded_triangles'] for x in result['proof']['levels']]==[28548,22668,20708]
             assert (await tool(client,'inspect_botanical_lods',lod_collection='Lods'))['lods_sha256']==profile['lods_sha256']
             await client.call_tool('save_blend',{'path':'lod-export-source.blend'})
             await client.call_tool('open_blend',{'path':'lod-export-source.blend'})

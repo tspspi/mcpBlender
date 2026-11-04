@@ -77,7 +77,7 @@ root.parent=None;root.rotation_euler=(0,0,0);root.location=(0,0,0);bpy.context.v
 # A reduced native LOD/profile can also be prepared; copies survive its removal.
 from mcpblender.blender import vegetation_lods as lods
 from mcpblender.vegetation_lod_contracts import Source as LodSource
-largs=LodSource(collection='Oak',levels=[{'leaf_budget':70,'radial_sides':6}]).model_dump();lp=lods.plan(largs)[-1]
+largs=LodSource(collection='Oak',levels=[{'leaf_budget':110,'radial_sides':8,'min_branch_radius_m':0}]).model_dump();lp=lods.plan(largs)[-1]
 ls=lods.create(largs|{'expected_plan':lp['plan_sha256'],'lod_collection':'Lods','display_offset_m':[8,0,0]})
 bargs=Source(lod_collection='Lods',assets=['lod-1-wood','leaf-0'],missing_uv_policy='BAKE_LAYOUT').model_dump();bp=prep.plan(bargs)[-1]
 bs=prep.create(bargs|{'expected_plan':bp['plan_sha256'],'bake_collection':'LodBake'})

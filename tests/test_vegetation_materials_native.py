@@ -40,7 +40,7 @@ plan=exporter.inspect(args);ids=set(bpy.data.user_map());guard=trees.inspect({'c
 result=exporter.export(args|{'expected_export':plan['export_sha256'],'directory':OUTPUT+'/tree','max_bytes':512*1024**2});base.validate(OUTPUT+'/tree')
 record=json.loads((Path(OUTPUT)/'tree/manifest.json').read_text());assert set(record['material_delivery'])=={'wood','shoots','leaf-0','leaf-1','leaf-2'}
 assert set(bpy.data.user_map())==ids and trees.inspect({'collection':'MaterialOak'})['tree_sha256']==guard
-p=Source(collection='MaterialOak',levels=[{'leaf_budget':70,'radial_sides':6}]).model_dump();plan=lods.plan(p)[-1]
+p=Source(collection='MaterialOak',levels=[{'leaf_budget':110,'radial_sides':8,'min_branch_radius_m':0}]).model_dump();plan=lods.plan(p)[-1]
 state=lods.create(p|{'expected_plan':plan['plan_sha256'],'lod_collection':'MaterialLods','display_offset_m':[8,0,0]})
 mc=materials.inspect({'lod_collection':'MaterialLods'});ids=set(bpy.data.user_map())
 params={'lod_collection':'MaterialLods','expected_lods':state['lods_sha256'],'material_mode':'PARAMETERS','expected_materials':mc['materials_sha256'],'placement':'SOURCE','directory':OUTPUT+'/lods','max_bytes':512*1024**2}

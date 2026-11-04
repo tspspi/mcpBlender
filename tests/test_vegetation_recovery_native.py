@@ -32,7 +32,7 @@ if KIND=='BOTANICAL':
     args=BotanicalExportPlan(collection='RecoveryOak').model_dump();plan=botanical.inspect(args)
     command='export_botanical_bundle';args|={'expected_export':plan['export_sha256']};phase='verified botanical bundle before publication'
 else:
-    args=Source(collection='RecoveryOak',levels=[{'leaf_budget':70,'radial_sides':6}]).model_dump();plan=lods.plan(args)[-1]
+    args=Source(collection='RecoveryOak',levels=[{'leaf_budget':110,'radial_sides':8,'min_branch_radius_m':0}]).model_dump();plan=lods.plan(args)[-1]
     state=lods.create(args|{'expected_plan':plan['plan_sha256'],'lod_collection':'RecoveryLods','display_offset_m':[8,0,0]})
     command='export_botanical_lods';args={'lod_collection':'RecoveryLods','expected_lods':state['lods_sha256'],'placement':'SOURCE'};phase='verified vegetation LOD bundle before publication'
 def die(v):

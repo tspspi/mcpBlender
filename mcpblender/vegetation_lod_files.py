@@ -38,7 +38,7 @@ def validate(root,*,cancelled=None,progress=None):
     if type(sides)!=int or not 5<=sides<=16:raise ValueError('Invalid LOD0 radial sides')
     canonical=lod.plan(model,population,[v['options'] for v in selection['levels']],source_sides=sides,
         resolution=selection['resolution'],views=selection['views'],margin=selection['margin'],silhouette_weight=selection['silhouette_weight'],
-        max_projected_triangles=100000000,max_mask_bytes=1024**3,max_gain_evaluations=5000000,cancelled=cancel,progress=report)
+        sampling_method=selection.get('sampling_method',lod.sampling.LEGACY),max_projected_triangles=400000000 if 'sampling_method' in selection else 100000000,max_mask_bytes=1024**3,max_gain_evaluations=5000000,cancelled=cancel,progress=report)
     # Host-specific memory accounting is not a semantic selection difference.
     omitted={'mask_payload_estimated_bytes','plan_sha256'}
     if {k:v for k,v in canonical.items() if k not in omitted}!={k:v for k,v in selection.items() if k not in omitted} or not canonical['valid']:raise ValueError('LOD selection/coverage plan differs from canonical recomputation')

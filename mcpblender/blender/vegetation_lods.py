@@ -2,33 +2,48 @@
 import json
 import math
 import uuid
+import time
 import bpy
 from mathutils import Vector
-from mcpblender import botany,vegetation_lod as solver
+from mcpblender import botany,json_text,vegetation_lod as solver
 from . import botanical_wind as motion,botanical_foliage as foliage,botanical_trees as trees,wind_preview
 
 META='mcpblender_vegetation_lods'
 OWNER='mcpblender_vegetation_lod_owner'
 TEXT='mcpblender_vegetation_lod_semantics'
 COMMANDS={'inspect_botanical_lod_source','create_botanical_lods','inspect_botanical_lods','activate_botanical_lod','remove_botanical_lods'}
+_planning_cache=None
+
 TABLES={'Collection':'collections','Object':'objects','Mesh':'meshes','GeometryNodeTree':'node_groups','Text':'texts','Material':'materials','Image':'images','ShaderNodeTree':'node_groups'}
 
 
 def plan(p):
     from .bridge import check_cancelled,report_progress
+    global _planning_cache
+    if bpy.context.mode!='OBJECT':raise ValueError('Botanical LOD planning requires Object mode')
     values,wind=motion.source(p)
     count=values[-1]['foliage']['metrics']['leaves'] if values[-1]['foliage'] else 0
-    if solver.mask_estimate(count,p['resolution'],len(p['views']))>p['max_mask_bytes']:raise ValueError('Vegetation LOD mask memory budget exceeded before attachment generation')
+    if solver.sampling.mask_estimate(len(p['levels']),p['resolution'],len(p['views']))>p['max_mask_bytes']:raise ValueError('Vegetation LOD mask memory budget exceeded before attachment generation')
     population=motion.layout(values)
     options={k:p[k] for k in ('resolution','views','margin','silhouette_weight','max_projected_triangles','max_mask_bytes','max_gain_evaluations')}
+    key=botany.digest({'source':wind['wind_sha256'],'levels':p['levels'],'options':options,'method':solver.sampling.METHOD})
+    cached=_planning_cache
+    if cached and time.monotonic()-cached['created_at']<=300 and cached['key']==key:
+        result=cached['selection'];summary=cached['summary']
+        if result['plan_sha256']==botany.digest({k:v for k,v in result.items() if k!='plan_sha256'}) and summary['plan_sha256']==botany.digest({k:v for k,v in summary.items() if k!='plan_sha256'}):
+            check_cancelled();report_progress({'phase':'reusing verified botanical LOD plan','collection':p['collection'],'sampling_method':solver.sampling.METHOD})
+            return values,population,result,summary
+    if cached and time.monotonic()-cached['created_at']>300:_planning_cache=None
     result=solver.plan(values[-2],population,p['levels'],source_sides=values[-1]['geometry']['radial_sides'],cancelled=check_cancelled,progress=report_progress,**options)
-    wood_work=(2*solver.wood_triangles(values[-2],list(range(len(values[-2]['branches']))),values[-1]['geometry']['radial_sides'])+sum(l['triangles']['wood'] for l in result['levels']))*len(p['views'])
+    wood_work=(2*solver.wood_triangles(values[-2],list(range(len(values[-2]['branches']))),values[-1]['geometry']['radial_sides'])+sum(l['triangles']['wood'] for l in result['levels']))*len(p['views'])*len(result['quality_grids'])
     if result['projected_triangles']+wood_work>p['max_projected_triangles']:raise ValueError('Combined leaf/native wood projected-triangle budget exceeded')
     summary={'source':wind,'selection_plan_sha256':result['plan_sha256'],'valid':result['valid'],
-             'levels':[{'leaves':len(l['leaf_indices']),'branches':len(l['branch_indices']),'shoots':len(l['shoot_indices']),'quality':l['quality'],'triangles':l['triangles'],'passed':l['passed'],'options':l['options']} for l in result['levels']],
+             'levels':[{'leaves':len(l['leaf_indices']),'branches':len(l['branch_indices']),'shoots':len(l['shoot_indices']),'quality':l['quality'],'validation_quality':l.get('validation_quality',{}),'triangles':l['triangles'],'passed':l['passed'],'options':l['options']} for l in result['levels']],
              'resolution':result['resolution'],'views':result['views'],'source_frame_clipped':result['source_frame_clipped'],
-             'native_wood_quality_pending':True,'projected_triangles':result['projected_triangles']+wood_work,'mask_payload_estimated_bytes':result['mask_payload_estimated_bytes'],'gain_evaluations':result['gain_evaluations'],'scope':result['scope']}
+             'native_wood_quality_pending':True,'sampling_method':result['sampling_method'],'quality_grids':result['quality_grids'],'projected_triangles':result['projected_triangles']+wood_work,'mask_payload_estimated_bytes':result['mask_payload_estimated_bytes'],'gain_evaluations':result['gain_evaluations'],'scope':result['scope']}
     summary['plan_sha256']=botany.digest(summary)
+    if len(json.dumps({'selection':result,'summary':summary},allow_nan=False))<=16*1024**2:
+        _planning_cache={'key':key,'created_at':time.monotonic(),'selection':result,'summary':summary}
     return values,population,result,summary
 
 
@@ -92,13 +107,13 @@ def shoots_mesh(name,model,population,indices,material):
     return mesh
 
 
-def wood_masks(mesh,selection):
+def wood_masks(mesh,selection,grid):
     from .bridge import check_cancelled
     from mcpblender import foliage_coverage as coverage
-    resolution=selection['resolution'];mesh.calc_loop_triangles();result={}
+    resolution=grid['resolution'];shift=grid['sample_shift'];mesh.calc_loop_triangles();result={}
     for view,frame in selection['frame'].items():
-        rows=[0]*resolution;axes=frame['axes'];low=frame['frame_min_m'];step=frame['pixel_size_m']
-        points=[tuple((v.co[a]-low[k])/step[k] for k,a in enumerate(axes)) for v in mesh.vertices]
+        rows=[0]*resolution;axes=frame['axes'];low=frame['frame_min_m'];width=[a-b for a,b in zip(frame['frame_max_m'],low)]
+        points=[tuple((v.co[a]-low[k])*resolution/width[k]-shift[k] for k,a in enumerate(axes)) for v in mesh.vertices]
         for i,triangle in enumerate(mesh.loop_triangles):
             if i%256==0:check_cancelled()
             coverage.raster_triangle(rows,[points[j] for j in triangle.vertices],resolution)
@@ -133,7 +148,12 @@ def create(p):
         for i in range(population['recipe']['variants']):
             mesh=roles['lo'+str(i)].data.copy();mesh.use_fake_user=False;obj=bpy.data.objects.new(name+'_Leaf'+str(i),mesh);prototypes.objects.link(obj);prototype_objects.append(obj)
         col['mcpblender_leaf_sources']=prototypes
-        source_model=values[-2];levels=[];bark=values[2][0].data.materials[0];reference_wood=wood_masks(values[2][0].data,selection)
+        source_model=values[-2];levels=[];bark=values[2][0].data.materials[0];wood_frame={'frame':{}}
+        for view,f in selection['frame'].items():
+            axes=f['axes'];low=[min(f['frame_min_m'][k],min(v.co[a] for v in values[2][0].data.vertices)) for k,a in enumerate(axes)]
+            high=[max(f['frame_max_m'][k],max(v.co[a] for v in values[2][0].data.vertices)) for k,a in enumerate(axes)]
+            wood_frame['frame'][view]={'axes':axes,'frame_min_m':low,'frame_max_m':high}
+        reference_wood={g['name']:wood_masks(values[2][0].data,wood_frame,g) for g in selection['quality_grids']}
         full={'leaf_indices':list(range(len(population['leaves']))),'branch_indices':list(range(len(source_model['branches']))),'shoot_indices':list(range(len(population['shoots']))),'options':{'radial_sides':values[-1]['geometry']['radial_sides']}}
         for number,level in enumerate([full,*selection['levels']]):
             check_cancelled();prefix=f'{name}_LOD{number}';objects=[]
@@ -151,10 +171,15 @@ def create(p):
             native_triangles=[]
             for obj in (wood,shoots):obj.data.calc_loop_triangles();native_triangles.append(len(obj.data.loop_triangles))
             if number and native_triangles!=[level['triangles']['wood'],level['triangles']['shoots']]:raise ValueError('Native LOD wood/shoot triangle counts differ from plan')
-            quality=wood_quality(reference_wood,wood_masks(wood.data,selection),selection['resolution'])
-            if number and any(q['coverage_loss']>level['options']['max_coverage_loss'] or q['silhouette_loss']>level['options']['max_silhouette_loss'] or q['excess_fraction']>level['options']['max_coverage_loss'] for q in quality.values()):raise ValueError('Native LOD wood silhouette/coverage budgets failed; revise radial sides/radius thresholds or explicit quality limits')
+            wood_grids={g['name']:wood_quality(reference_wood[g['name']],wood_masks(wood.data,wood_frame,g),g['resolution']) for g in selection['quality_grids']}
+            quality=wood_grids['BASE']
+            if number:
+                failed=[{'level':number,'grid':grid,'view':view,**q} for grid,rows in wood_grids.items() for view,q in rows.items() if q['coverage_loss']>level['options']['max_coverage_loss'] or q['silhouette_loss']>level['options']['max_silhouette_loss'] or q['excess_fraction']>level['options']['max_coverage_loss']]
+                if failed:
+                    report_progress({'phase':'rejected native wood quality','failures':failed})
+                    raise ValueError('Native LOD wood multigrid quality failed; retain more radial sides/branches: '+json.dumps(failed[:3],sort_keys=True))
             for obj in objects:obj.hide_viewport=number!=0;obj.hide_render=number!=0
-            levels.append({'level':number,'objects':[o.name for o in objects],'leaves':len(leaves),'branches':len(selected),'native_triangles':native_triangles,'wood_quality':quality})
+            levels.append({'level':number,'objects':[o.name for o in objects],'leaves':len(leaves),'branches':len(selected),'native_triangles':native_triangles,'wood_quality':quality,'wood_validation_quality':{k:v for k,v in wood_grids.items() if k!='BASE'},'wood_quality_frame':wood_frame['frame']})
             report_progress({'phase':'building native botanical LOD','completed':number+1,'total':len(selection['levels'])+1})
         from .vegetation_export import native_instances
         verification=[];where=dict(planned['source']['placement']);where['translation_m']=[a+b for a,b in zip(where['translation_m'],p.get('display_offset_m',[0,0,0]))]
@@ -171,7 +196,12 @@ def create(p):
                 obj=bpy.data.objects[object_name];obj.hide_viewport=current['level']!=0;obj.hide_render=current['level']!=0
         bpy.context.view_layer.update()
         if trees.inspect({'collection':p['collection']})['tree_sha256']!=planned['source']['tree_sha256']:raise ValueError('Source changed during botanical LOD creation')
-        text=bpy.data.texts.new(name+'_Semantics.json');text.use_fake_user=False;text.use_module=False;text.write(json.dumps({'model':source_model,'foliage':population,'selection':selection,'wind':planned['source']},sort_keys=True,allow_nan=False));col[TEXT]=text
+        text=bpy.data.texts.new(name+'_Semantics.json');text.use_fake_user=False;text.use_module=False
+        written=0
+        for chunk in json_text.chunks({'model':source_model,'foliage':population,'selection':selection,'wind':planned['source']}):
+            check_cancelled();text.write(chunk);written+=len(chunk)
+            report_progress({'phase':'writing botanical LOD semantics','written_bytes':written})
+        col[TEXT]=text
         owned=set(bpy.data.user_map())-before;owner=uuid.uuid4().hex
         for value in owned:value[OWNER]=owner
         meta={'format':solver.FORMAT,'content_signature_version':2,'owner':owner,'owned':[{'type':v.bl_rna.identifier,'name':v.name} for v in sorted(owned,key=lambda v:(v.bl_rna.identifier,v.name))],
@@ -181,7 +211,8 @@ def create(p):
         col[META]=json.dumps(meta,sort_keys=True);bpy.context.view_layer.update();meta['content_sha256']=signature(owned,version=meta.get('content_signature_version',1));col[META]=json.dumps(meta,sort_keys=True)
         report_progress({'phase':'verified botanical LODs before handoff'});check_cancelled();result=inspect({'lod_collection':col.name})[-1]
         if not result['valid']:raise ValueError('Owned botanical LODs failed native validation')
-        success=True;return result
+        global _planning_cache
+        _planning_cache=None;success=True;return result
     finally:
         if not success:bpy.data.batch_remove(ids=tuple(set(bpy.data.user_map())-before))
 

@@ -25,7 +25,7 @@ def test_quality_bake_adoption_and_standalone_delivery(assets_live):
             for row in (await tool(client,'inspect_vegetation_materials',collection='Source'))['contract']['materials']:
                 mat=await tool(client,'inspect_botanical_surface',material=row['name'])
                 await wait(client,'configure_botanical_surface',material=row['name'],settings={'profile':'OAK_LEAF' if row['model']=='MANAGED_THIN_FOLIAGE' else 'OAK_BARK'},expected_material=mat['material_sha256'])
-            args={'collection':'Source','levels':[{'leaf_budget':70,'radial_sides':6}]}
+            args={'collection':'Source','levels':[{'leaf_budget':110,'radial_sides':8,'min_branch_radius_m':0}]}
             plan=await wait(client,'inspect_botanical_lod_source',**args)
             original=await wait(client,'create_botanical_lods',**args,lod_collection='Lods',expected_plan=plan['plan_sha256'])
             args={'lod_collection':'Lods','assets':['lod-0-wood','leaf-0'],'missing_uv_policy':'BAKE_LAYOUT','texture_width':1024,'texture_height':1024,'tile_padding_pixels':16}

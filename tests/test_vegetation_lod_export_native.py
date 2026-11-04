@@ -19,7 +19,7 @@ plan=trees.plan({'recipe':recipe});source=trees.create({'collection':'DeliveryOa
 cfg=foliage.recipe({'shoots_per_bud':2,'attachment_nodes':5});pop=leaves.dispatch('plan_botanical_foliage',{'collection':'DeliveryOak','foliage':cfg})
 source=leaves.dispatch('configure_botanical_foliage',{'collection':'DeliveryOak','foliage':cfg,'expected_tree':source['tree_sha256'],'expected_foliage':pop['foliage_sha256']})
 root=bpy.data.objects[source['root']];root.rotation_euler.z=.3;root.scale*=1.2;bpy.context.view_layer.update()
-p=Source(collection='DeliveryOak',levels=[{'leaf_budget':70,'radial_sides':6},{'leaf_budget':35,'radial_sides':5,'min_branch_radius_m':.04,'max_coverage_loss':.55,'max_silhouette_loss':.55},{'leaf_budget':2,'radial_sides':5,'min_branch_radius_m':1,'max_coverage_loss':1,'max_silhouette_loss':1}]).model_dump()
+p=Source(collection='DeliveryOak',levels=[{'leaf_budget':110,'radial_sides':8,'min_branch_radius_m':0},{'leaf_budget':100,'radial_sides':8,'min_branch_radius_m':0,'max_coverage_loss':.55,'max_silhouette_loss':.55},{'leaf_budget':2,'radial_sides':5,'min_branch_radius_m':1,'max_coverage_loss':1,'max_silhouette_loss':1}]).model_dump()
 plan=lods.plan(p)[-1];state=lods.create(p|{'expected_plan':plan['plan_sha256'],'lod_collection':'DeliveryLods','display_offset_m':[8,0,0]})
 source=trees.inspect({'collection':'DeliveryOak'});trees.remove({'collection':'DeliveryOak','expected_tree':source['tree_sha256'],'discard_derived_edits':False})
 state=lods.inspect({'lod_collection':'DeliveryLods'})[-1];assert state['valid'];ids=set(bpy.data.user_map());frame=bpy.context.scene.frame_current;selected=list(bpy.context.selected_objects);active=bpy.context.view_layer.objects.active
@@ -56,9 +56,9 @@ finally:api.os.rename=original_rename;bridge.report_progress=lambda v:None
 assert (failed/'foreign.txt').read_bytes()==b'preserve unrelated data'
 assert set(bpy.data.user_map())==ids and lods.inspect(args)[-1]['lods_sha256']==state['lods_sha256']
 result=api.export(args);proof=files.validate(args['directory']);assert proof==result['proof']
-assert [l['leaf_instances'] for l in proof['levels']]==[140,70,35,2] and proof['shared_leaf_templates']==3 and len(proof['assets'])==11
-assert [l['expanded_triangles'] for l in proof['levels'][:3]]==[28548,14620,7608]
-assert proof['levels'][-1]['branches']==9
+assert [l['leaf_instances'] for l in proof['levels']]==[140,110,100,2] and proof['shared_leaf_templates']==3 and len(proof['assets'])==11
+assert [l['expanded_triangles'] for l in proof['levels'][:3]]==[28548,22668,20708]
+assert proof['levels'][-1]['branches']==10
 shown=api.export(args|{'directory':OUTPUT+'/displayed','placement':'DISPLAYED'});assert shown['proof']['placement_mode']=='DISPLAYED'
 a=json.loads((Path(OUTPUT)/'source/semantics.json').read_text());b=json.loads((Path(OUTPUT)/'displayed/semantics.json').read_text())
 assert abs(a['wind']['placement']['translation_m'][0]-3)<1e-5 and abs(b['wind']['placement']['translation_m'][0]-11)<1e-5

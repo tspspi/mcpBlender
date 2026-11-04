@@ -549,8 +549,14 @@ For near/mid tree LODs, inspect_botanical_lod_source with explicit descending le
 budgets/radial sides and nondecreasing branch-radius thresholds. Inspect losses
 before create_botanical_lods with expected_plan and a fresh lod_collection.
 Planning/creation default async; poll or use wait=true. Failed quality gates refuse;
-native wood quality is checked additionally during creation. Fixed-view pixel
-coverage can miss subpixel leaves; render levels with the same camera and restore
+native wood quality is checked additionally during creation. New plans use
+AREA_PRIORITY_MULTIGRID_V2: geometric-area/hash priorities independent of raster
+positions, with BASE, finer and quarter-pixel-shifted quality grids. Inspect both
+quality and validation_quality; every grid must pass. Native wood checks all grids
+in a frame including the trunk base. Work budgets count all grids; the default
+60 million projections stays unchanged, with an explicit maximum of 400 million.
+Retain more geometry when quality fails rather than silently raising loss limits.
+Fixed-view pixel coverage can still miss subpixel leaves; render levels with the same camera and restore
 any temporary source visibility changes. inspect_botanical_lods returns lods_sha256
 for activate_botanical_lod/remove_botanical_lods. Full LOD0 and reduced levels
 share copied templates, retain canonical wind IDs/parents and survive source

@@ -23,10 +23,13 @@ def test_structured_quality_gates_and_rendered_levels(assets_live):
             args={'collection':'SourceOak','levels':[{'leaf_budget':70,'radial_sides':6},{'leaf_budget':35,'radial_sides':5,'min_branch_radius_m':.04}]}
             failed=await wait(client,'inspect_botanical_lod_source',**args);assert not failed['valid']
             with pytest.raises(ToolError,match='quality budgets'):await wait(client,'create_botanical_lods',**args,lod_collection='RefusedLods',expected_plan=failed['plan_sha256'])
+            # Retain more actual leaves; preserve the requested quality limits.
+            args['levels'][0].update(leaf_budget=110,radial_sides=8,min_branch_radius_m=0)
+            args['levels'][1].update(leaf_budget=100,radial_sides=8,min_branch_radius_m=0)
             args['levels'][1].update(max_coverage_loss=.55,max_silhouette_loss=.55)
             planned=await wait(client,'inspect_botanical_lod_source',**args);assert planned['valid']
             created=await wait(client,'create_botanical_lods',**args,lod_collection='OakLods',expected_plan=planned['plan_sha256'],display_offset_m=[8,0,0])
-            assert created['valid'] and [v['leaves'] for v in created['levels']]==[140,70,35]
+            assert created['valid'] and [v['leaves'] for v in created['levels']]==[140,110,100]
             assert (await tool(client,'inspect_botanical_tree',collection='SourceOak'))['tree_sha256']==tree['tree_sha256']
             hidden=['Cube',*[v['object'] for v in tree['members']],*[tree['foliage']['roles'][k]['name'] for k in ('po','so')]]
             saved_visibility={}

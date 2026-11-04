@@ -27,7 +27,7 @@ tree=leaves.dispatch('configure_botanical_foliage',{'collection':'Source','folia
 source_objects=prep.objects({'collection':'Source'})[0]
 for row in vegetation_materials.contract(source_objects)['materials']:
     surfaces.configure(Configure(material=row['name'],settings={'profile':'OAK_LEAF' if row['model']=='MANAGED_THIN_FOLIAGE' else 'OAK_BARK'},expected_material=surfaces.inspect({'material':row['name']})['material_sha256']).model_dump())
-p=LodSource(collection='Source',levels=[{'leaf_budget':70,'radial_sides':6},{'leaf_budget':35,'radial_sides':5,'max_coverage_loss':.6,'max_silhouette_loss':.6},{'leaf_budget':20,'radial_sides':5,'max_coverage_loss':.75,'max_silhouette_loss':.75}]).model_dump()
+p=LodSource(collection='Source',levels=[{'leaf_budget':110,'radial_sides':8,'min_branch_radius_m':0},{'leaf_budget':100,'radial_sides':8,'min_branch_radius_m':0,'max_coverage_loss':.6,'max_silhouette_loss':.6},{'leaf_budget':60,'radial_sides':5,'max_coverage_loss':.75,'max_silhouette_loss':.75}]).model_dump()
 planned=lods.plan(p)[-1];profile=lods.create(p|{'expected_plan':planned['plan_sha256'],'lod_collection':'Lods','display_offset_m':[0,0,0]})
 p=Source(lod_collection='Lods',missing_uv_policy='BAKE_LAYOUT',texture_width=1024,texture_height=1024,tile_padding_pixels=8,chart_layout={'allow_stretch':True}).model_dump()
 bad=p|{'chart_layout':p['chart_layout']|{'max_charts':1}};planned=prep.plan(bad)[-1];ids=set(bpy.data.user_map())

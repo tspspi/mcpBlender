@@ -75,3 +75,34 @@ def test_rgb_opaque_inputs_and_predecode_size_admission():
     assert api.compare(image,image)['passed']
     oversized=bytearray(png(1,1,[0,0,0,255]));struct.pack_into('>I',oversized,16,5000)
     with pytest.raises(ValueError,match='4 megapixels'):api.decode_png(oversized)
+
+
+def test_foreground_colour_is_not_diluted_by_transparent_padding():
+    red=png(1,1,[255,0,0,255]);black=png(1,1,[0,0,0,255])
+    tight=api.compare(red,black,scales=[1])['levels'][0]
+    padded_red=png(16,16,[255,0,0,255]+[0,0,0,0]*255)
+    padded_black=png(16,16,[0,0,0,255]+[0,0,0,0]*255)
+    loose=api.compare(padded_red,padded_black,scales=[1])
+    row=loose['levels'][0]
+    assert loose['passed'] # Existing global colour gate alone misses this sparse error.
+    assert row['premultiplied_rgb_rmse']==pytest.approx(tight['premultiplied_rgb_rmse']/16)
+    assert row['reference_area_rgb_rmse']==pytest.approx(3**-.5)
+    assert row['overlap_rgb_rmse']==pytest.approx(tight['overlap_rgb_rmse'])==pytest.approx(3**-.5)
+    assert row['overlap_luminance_relative_bias']==-1
+    for key in ('max_reference_area_rgb_rmse','max_overlap_rgb_rmse'):
+        rejected=api.compare(padded_red,padded_black,scales=[1],policy={key:.2})
+        assert not rejected['passed'] and key in rejected['levels'][0]['failures']
+    missing=api.compare(red,png(1,1,[0,0,0,0]),scales=[1],policy={'max_overlap_rgb_rmse':.2})
+    assert missing['levels'][0]['overlap_rgb_rmse'] is None and 'max_overlap_rgb_rmse' in missing['levels'][0]['failures']
+
+
+def test_foreground_metrics_separate_alpha_from_shared_colour():
+    opaque=png(1,1,[255,255,255,255]);half=png(1,1,[255,255,255,128])
+    row=api.compare(opaque,half,scales=[1])['levels'][0]
+    assert row['reference_area_rgb_rmse']==pytest.approx(127/255)
+    assert row['overlap_rgb_rmse']==0 and row['overlap_luminance_relative_bias']==0
+    # Reference-normalized error can exceed one when excess coverage dominates.
+    ref=png(4,4,[0,0,0,255]+[0,0,0,0]*15);candidate=png(4,4,[255,255,255,255]*16)
+    row=api.compare(ref,candidate,scales=[1],policy={'max_reference_area_rgb_rmse':2})['levels'][0]
+    assert row['reference_area_rgb_rmse']==pytest.approx(4) and row['overlap_rgb_rmse']==1
+    assert row['overlap_luminance_relative_bias'] is None # Black reference has no relative luminance.

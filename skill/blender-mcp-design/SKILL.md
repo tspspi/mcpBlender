@@ -734,3 +734,12 @@ For review configure ORTHO then frame_objects on source plus that target using
 camera_frame_view (SIDE -> RIGHT), and keep the camera fixed between native/card/
 atlas renders. Alternatives do not provide angular selection/interpolation or
 an automatically safe crossed-card, wind or whole-tree far representation.
+
+Sparse foliage can hide large shading differences in whole-image RGB RMSE. Review
+reference_area_rgb_rmse and overlap_rgb_rmse, and set their optional quality gates
+explicitly when appearance matters. Reference-area error still includes coverage
+loss; overlap uses straight colour weighted by shared alpha and needs independent
+silhouette gates. Explicit null criteria disable those gates through MCP. Dark
+FRONT/SIDE cards remain a shading issue: flat normals improve the current uniform-
+world control, while flipping backward map normals only partially helps. Neither
+control is a native-optics or dynamic-lighting correction.

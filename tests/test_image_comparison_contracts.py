@@ -18,6 +18,7 @@ def test_contracts_readonly_and_input_path_policy(tmp_path):
     server,state=build_server(cfg)
     params={'reference':'a.png','candidate':'b.png'}
     prepared=state.prepare('compare_png_images',params)
+    assert state.prepare('compare_png_images',params|{'quality':{'min_mask_iou':None}})['quality']['min_mask_iou'] is None
     assert State.input_paths('compare_png_images',prepared)==[str(root/'a.png'),str(root/'b.png')]
     for patch in ({'reference':'../outside.png'},{'candidate':'c.jpg'}):
         with pytest.raises((ValueError,PermissionError,FileNotFoundError)):state.prepare('compare_png_images',params|patch)

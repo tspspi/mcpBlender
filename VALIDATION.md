@@ -4622,3 +4622,40 @@ interpolation, drawing the alternatives together, native optical equivalence,
 whole-tree far assets, shadows, wind, population performance or receiving-engine
 behavior. Sources and failed-resolution evidence remain preserved; no Blender
 rebuild, package installation or Godot operation was used.
+
+### Foreground colour diagnostics and normal-map controls
+
+PNG comparison now reports reference-alpha-normalized premultiplied RGB RMSE and
+shared-coverage straight-colour RMSE, with weighted image-luminance diagnostics.
+Optional explicit gates are disabled by default, preserving existing criteria.
+Empty/unavailable overlap is null and cannot pass an enabled overlap gate. Pure
+checks demonstrate that transparent padding dilutes the old whole-image error but
+not the new colour scores; alpha-only differences remain separate from shared
+colour. Reference-area error can exceed one for excess coverage. Explicit null
+criteria are preserved across both MCP serialization stages and actually disable
+the requested gate. Readonly scene equality, policy/path contracts, archive and
+server regressions passed 25 tests in 28.07 seconds.
+
+Controlled native renders reused the retained FRONT512/SIDE512 assets and the exact
+recorded cameras under the same uniform world/transparent-film protocol. Four
+variants were rendered: original map, flat geometric card normals, complete-vector
+negation where mapped tangent Z was negative, and Z-only reflection. Source assets
+and files were preserved. The original asset versus delivered GLB baseline has
+IoU 1.0 and global RGB RMSE about 0.0000198/0.0000146, so the large shading loss is
+already present before export.
+
+Shared-coverage RGB RMSE for FRONT is original 0.06254, flat 0.02450, full flip
+0.04170 and Z reflection 0.04200. SIDE is 0.06808, 0.03262, 0.05393 and 0.05495.
+Original shared-coverage image-luminance bias is -64.88%/-69.25%; flat controls
+reduce that to -8.86%/-8.96%. Full flips only reduce it to -42.41%/-52.08%.
+Silhouettes remain near the prior accepted values. These controls establish a
+large normal-dependent transport effect; they do not establish a correct normal
+projection algorithm or optical equivalence. No normal-processing fix was shipped.
+
+The same real control PNGs were read through the new code-disabled MCP metrics
+surface; its diagnostic test passed in 35.37 seconds. An illustrative optional
+0.03 overlap-colour gate rejects the original views and still rejects the flat
+SIDE control. That test criterion is a diagnostic example, not a chosen product
+optics tolerance or acceptance of flat-normal assets. Further work must examine
+normal facing, geometric-normal/shading-normal transport and self-occlusion under
+controlled lighting, rather than treating a partial flip as a complete solution.

@@ -179,7 +179,8 @@ class State:
     def prepare(self, command, params, request_id=None):
         if command not in COMMANDS:
             raise ValueError("Unknown operation command; use get_capabilities for supported operations")
-        params = COMMANDS[command][0].model_validate(params).model_dump(exclude_none=True)
+        # Null image-comparison criteria disable gates; they must survive transport.
+        params = COMMANDS[command][0].model_validate(params).model_dump(exclude_none=command!="compare_png_images")
         if command == "run_action":
             return self.compile_action(params["action"], params["inputs"], request_id or uuid.uuid4().hex)
         stable = hashlib.sha256((self.owner() + command + request_id).encode()).hexdigest()[:32] if request_id else uuid.uuid4().hex
@@ -462,7 +463,8 @@ def build_server(config: Config):
         default_wait = command not in ("inspect_foliage_card_views", "compare_png_images", "create_botanical_foliage_cluster", "inspect_botanical_foliage_clusters", "plan_botanical_asset_preset", "create_botanical_asset_preset", "inspect_texture_quality", "inspect_vegetation_bake_adoption", "adopt_vegetation_bakes", "prepare_vegetation_bake", "export_botanical_lods", "validate_botanical_lod_bundle", "inspect_botanical_lod_source", "create_botanical_lods", "create_botanical_tree", "regenerate_botanical_tree", "plan_botanical_tree", "inspect_botanical_coverage", "plan_botanical_foliage", "configure_botanical_foliage", "remove_botanical_foliage", "create_botanical_wind_preview", "render_animation", "render_video", "render_animation_preview", "render_camera_batch", "download_asset", "upload_asset", "request_asset_api", "sample_rigid_bodies", "bake_rigid_bodies", "sample_simulation", "bake_simulation", "bake_fluid", "bake_textures", "build_texture_atlas", "sample_constraint_animation", "bake_constraint_animation", "configure_nla_strip", "remove_nla_strip", "move_nla_track", "configure_nla_playback", "retarget_animation", "set_skin_weights", "repair_skin_weights", "smooth_skin_weights", "mirror_skin_weights", "edit_armature_rest", "generate_lod_chain", "export_lod_chain", "sample_lod_chain", "inspect_glb_deformation", "create_asset_assembly", "realize_asset_instances", "generate_asset_proxies", "export_asset_package", "rebuild_lod_chain", "adopt_lod_chain", "readopt_lod_chain", "recover_export_job", "cleanup_export_job", "list_export_jobs")
 
         async def operation(params=None, wait: bool = default_wait, request_id: str | None = None) -> dict:
-            values = params.model_dump(exclude_none=True) if params is not None else {}
+            # Preserve explicit disabled comparison criteria before State.prepare.
+            values = params.model_dump(exclude_none=command!="compare_png_images") if params is not None else {}
             queued = await state.submit(command, values, request_id)
             if not wait:
                 return queued

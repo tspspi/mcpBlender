@@ -12,6 +12,7 @@ def test_png_comparison_mcp(assets_live):
     source=png(4,4,[255,128,0,255,0,0,0,0]*8,filter=4)
     (library/'source.png').write_bytes(source)
     (library/'copy.png').write_bytes(source)
+    (library/'soft.png').write_bytes(png(4,4,[255,128,0,64]*16))
     (library/'lost.png').write_bytes(png(4,4,[0,0,0,0]*16))
     async def run():
         async with client_for(path) as client:
@@ -21,6 +22,8 @@ def test_png_comparison_mcp(assets_live):
             assert result['passed'] and 'recovery' not in result and result['levels'][0]['mask_iou']==1
             lost=await wait(client,'compare_png_images',reference='source.png',candidate='lost.png')
             assert not lost['passed'] and lost['levels'][0]['missing_fraction']==1 and 'recovery' not in lost
+            soft=await wait(client,'compare_png_images',reference='soft.png',candidate='soft.png',quality={'min_mask_iou':None,'max_overlap_rgb_rmse':.01})
+            assert soft['passed'] and soft['policy']['min_mask_iou'] is None and soft['levels'][0]['overlap_rgb_rmse']==0
             with pytest.raises(ToolError):await wait(client,'compare_png_images',reference='../private.png',candidate='copy.png')
             after=(await client.call_tool('get_scene_info',{})).data
             assert {k:v for k,v in before.items() if k!='operation_id'}=={k:v for k,v in after.items() if k!='operation_id'}

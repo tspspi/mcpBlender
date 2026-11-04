@@ -655,8 +655,25 @@ premultiplied pixels; partial edge blocks use their actual pixel counts. This
 measures that explicit filter, not receiving-engine mipmaps, alpha clipping,
 compression, anisotropy or runtime overdraw.
 
+For sparse subjects, also review `reference_area_rgb_rmse`: premultiplied RGB
+squared error divided by integrated reference alpha area before taking RMSE.
+Unlike the whole-image score, adding transparent border pixels does not dilute
+this value. It includes coverage error and can exceed one when excess coverage
+dominates a small reference.
+
+`overlap_rgb_rmse` instead compares straight RGB only on shared visible coverage,
+weighted by the minimum of reference/candidate alpha. It isolates colour differences
+from missing/excess silhouette, so keep independent alpha gates enabled. No overlap
+returns null, and an enabled overlap criterion then fails. Weighted overlap
+reference/candidate luminance and `overlap_luminance_relative_bias` help diagnose
+brightness loss; relative bias is null for a black reference. These are decoded
+image-colour diagnostics, not calibrated scene radiance or native BRDF equivalence.
+
 The `quality` defaults are minimum hard/soft IoU 0.8, maximum alpha MAE 0.05 and
-maximum premultiplied RGB RMSE 0.1. Set individual criteria to null to disable them.
+maximum premultiplied RGB RMSE 0.1. Optional `max_reference_area_rgb_rmse` and
+`max_overlap_rgb_rmse` default to null (disabled); choose them explicitly for the
+intended comparison. The latter is bounded to 0–1; reference-area error has no
+unit upper bound. Set individual criteria to null to disable them.
 Every selected scale must pass its available criteria. An empty reference cannot
 pass. If its base hard mask is empty, the enabled hard-mask criterion is unavailable
 and fails; lower the threshold or choose another criterion explicitly. At filtered

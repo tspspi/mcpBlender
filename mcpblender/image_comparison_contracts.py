@@ -8,6 +8,8 @@ class Quality(Model):
     min_soft_alpha_iou: FiniteFloat|None = Field(default=.8,ge=0,le=1)
     max_alpha_mae: FiniteFloat|None = Field(default=.05,ge=0,le=1)
     max_premultiplied_rgb_rmse: FiniteFloat|None = Field(default=.1,ge=0,le=1)
+    max_reference_area_rgb_rmse: FiniteFloat|None = Field(default=None,ge=0)
+    max_overlap_rgb_rmse: FiniteFloat|None = Field(default=None,ge=0,le=1)
 
 class Compare(Model):
     reference: str = Field(min_length=1)
@@ -27,4 +29,4 @@ class Compare(Model):
         return self
 
 COMMANDS={'compare_png_images':(Compare,(),
- 'Read two bounded ordinary RGB/RGBA PNG8/16 files and compare alpha silhouette/soft overlap, missing/excess coverage and premultiplied RGB error at explicit box-filtered scales. Default gates are configurable; empty reference coverage cannot pass. Uses library read policy, input hashes and cooperative cancellation; no native scene edits or automatic alignment. Explicit SRGB/LINEAR interpretation, not scene-radiance or receiving-renderer certification.')}
+ 'Read two bounded ordinary RGB/RGBA PNG8/16 files and compare alpha silhouette/soft overlap, missing/excess coverage and premultiplied/foreground RGB error at explicit box-filtered scales. Optional reference-alpha-normalized and shared-coverage straight-colour gates prevent transparent background from hiding shading losses. Default gates are configurable; empty reference coverage cannot pass. Uses library read policy, input hashes and cooperative cancellation; no native scene edits or automatic alignment. Explicit SRGB/LINEAR interpretation, not scene-radiance or receiving-renderer certification.')}

@@ -149,8 +149,9 @@ def repair_charts(obj,uv_map,margin,budget):
         repaired.update(faces)
 
 
-def content(owned):
-    return botany.digest({'native':wind_preview.signature(owned,metadata_key=META),
+def content(owned,*,version=1):
+    if type(version)!=int or version not in (1,2):raise ValueError('Unsupported preparation content signature version')
+    return botany.digest({'native':wind_preview.signature(owned,metadata_key=META,packed_images=version==2),
         'materials':{m.name:textures.material_signature(m,thin_foliage_mode='FRONT_PBR') for m in owned if isinstance(m,bpy.types.Material)}})
 
 
@@ -171,7 +172,7 @@ def inspect(p):
             if user in owned or user in embedded or value==col and isinstance(user,(bpy.types.Scene,bpy.types.Collection)) or isinstance(value,bpy.types.Object) and isinstance(user,bpy.types.Scene):continue
             blockers.append('External reference: '+value.name)
         if isinstance(value,bpy.types.Collection) and any(v not in owned for v in [*value.objects,*value.children]):blockers.append('Foreign collection member: '+value.name)
-    current=content(owned)
+    current=content(owned,version=meta.get('content_signature_version',1))
     guard=botany.digest({'meta':meta,'content':current,'users':sorted((v.bl_rna.identifier,v.name,sorted((u.bl_rna.identifier,u.name) for u in users.get(v,set()))) for v in owned)})
     return col,owned,meta,{'bake_collection':col.name,'preparation_sha256':guard,'valid':current==meta['content_sha256'] and not blockers,'content_changed':current!=meta['content_sha256'],
             'ownership_blockers':sorted(set(blockers)),'components':meta['components'],'source':meta['source'],'source_sampling_changes':meta['source']['source_sampling_changes'],'revision':meta.get('revision',0),'scope':meta['source']['scope']}
@@ -250,8 +251,8 @@ def create(p):
             if chart_layout is not None:components[role]['chart_layout']=chart_layout
         check_cancelled()
         if plan(p)[-1]['plan_sha256']!=p['expected_plan']:raise ValueError('Source changed during bake preparation')
-        meta={'format':FORMAT,'revision':0,'owner':owner,'source':source,'components':components,'owned':[{'type':v.bl_rna.identifier,'name':v.name} for v in sorted(owned,key=lambda v:(v.bl_rna.identifier,v.name))]}
-        meta['content_sha256']=content(owned);col[META]=json.dumps(meta,sort_keys=True,allow_nan=False)
+        meta={'format':FORMAT,'content_signature_version':2,'revision':0,'owner':owner,'source':source,'components':components,'owned':[{'type':v.bl_rna.identifier,'name':v.name} for v in sorted(owned,key=lambda v:(v.bl_rna.identifier,v.name))]}
+        meta['content_sha256']=content(owned,version=meta.get('content_signature_version',1));col[META]=json.dumps(meta,sort_keys=True,allow_nan=False)
         result=inspect({'bake_collection':col.name})[-1]
         if not result['valid']:raise ValueError('Created bake preparation failed owned content verification')
         success=True;return result
@@ -281,7 +282,7 @@ def refresh(p):
         updated[role]=dict(row)|{'initial_bake_sha256':info['bake_sha256'],'material_adapters':info['material_adapters']}
     check_cancelled();previous=col[META]
     try:
-        meta['components']=updated;meta['revision']=meta.get('revision',0)+1;meta['content_sha256']=content(owned);col[META]=json.dumps(meta,sort_keys=True,allow_nan=False)
+        meta['components']=updated;meta['revision']=meta.get('revision',0)+1;meta['content_sha256']=content(owned,version=meta.get('content_signature_version',1));col[META]=json.dumps(meta,sort_keys=True,allow_nan=False)
         result=inspect(p)[-1]
         if not result['valid']:raise ValueError('Refreshed preparation failed native verification')
         return result

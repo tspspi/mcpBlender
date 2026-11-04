@@ -16,6 +16,20 @@ REFERENCES=['https://landscapeplants.oregonstate.edu/plants/quercus-robur',
 
 
 def digest(value):return hashlib.sha256(json.dumps(value,sort_keys=True,separators=(',',':'),allow_nan=False).encode()).hexdigest()
+
+
+def digest_sequence(values):
+    """Hash the exact canonical JSON array while retaining only one entry."""
+    digest=hashlib.sha256();digest.update(b'[');first=True
+    for value in values:
+        if not first:digest.update(b',')
+        first=False
+        digest.update(json.dumps(value,sort_keys=True,separators=(',',':'),allow_nan=False).encode())
+        del value
+    digest.update(b']')
+    return digest.hexdigest()
+
+
 def uid(seed,key):return hashlib.sha256((GENERATOR+':'+str(seed)+':'+key).encode()).hexdigest()[:20]
 def rnd(seed,key,n=0):return int(hashlib.sha256((str(seed)+':'+key+':'+str(n)).encode()).hexdigest()[:16],16)/2**64
 def add(a,b):return tuple(x+y for x,y in zip(a,b))

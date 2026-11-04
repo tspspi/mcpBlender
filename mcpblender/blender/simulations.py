@@ -30,12 +30,12 @@ def plain(value):
     return [plain(item) for item in value]
 
 
-def props(value):
+def props(value,*,exclude=()):
     return {p.identifier:plain(getattr(value,p.identifier)) for p in value.bl_rna.properties
             if p.type in {"BOOLEAN","INT","FLOAT","ENUM","STRING"} and not p.is_readonly
             # Solver estimates are outputs. Legacy trail_count is rendering-only
             # and Blender normalizes its default 0 to 1 when loading a project.
-            and p.identifier not in {"name","tag","use_fake_user","location_mass_center","rotation_estimate","scale_estimate","trail_count"}}
+            and p.identifier not in exclude and p.identifier not in {"name","tag","use_fake_user","location_mass_center","rotation_estimate","scale_estimate","trail_count"}}
 
 
 def targets():

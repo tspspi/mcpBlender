@@ -3648,3 +3648,34 @@ regressions passed thirteen tests in 16.44 seconds. This is bounded observation
 resilience, not a guarantee against prolonged host/storage stalls or a diagnosis
 of the underlying stall. Clients must retain the operation ID after exhaustion;
 a timeout still does not imply terminal operation state.
+
+## Bounded native image ownership signatures
+
+Resuming the full 77-map adoption exposed a real memory failure: the OS killed
+Blender for failure to reclaim memory. Native ownership hashing had accumulated
+all writable RNA image-pixel arrays as Python lists, then serialized the entire
+graph. The metadata image inventory was only about 18 MiB on disk; that did not
+represent the decoded/Python working set. A process sample exceeded 5.5 GiB RSS
+before death, and the kernel identified the killed owned fixture PID.
+
+Legacy graph signatures now hash the identical canonical JSON array one data
+block at a time. Tests prove byte compatibility, release of prior generated
+records before requesting the next, nonfinite rejection and continued pixel-edit
+detection. A retained legacy eleven-component profile still validates unchanged.
+
+New vegetation LODs/preparations use content_signature_version=2; successful map
+adoption upgrades a verified profile to that version. Packed-image records hash
+encoded bytes, dimensions, color space, ordinary properties and custom ownership
+without materializing pixels. Dirty/unpacked/nonstatic images are refused. Legacy
+snapshots remain readable through the streamed version-1 path; unsupported
+versions refuse validation. Material image guards and native reference checks
+remain in force. Image-specific tests verify that the compact path excludes pixel
+properties, rejects dirty buffers and detects changed repacked content.
+
+The focused legacy/compact image, default-attribute, adoption/replacement and bake
+preparation gate passed six tests in 77.27 seconds. Final image/digest/add-on checks
+passed four tests in 14.06 seconds. The full retained 77-map case subsequently
+adopted, saved/reopened, exported and independently validated; a process sample
+during previews was about 966 MiB RSS. This sample is not a measured peak or a
+general memory bound for rendering; legacy verification still needs one complete
+data-block record and native image caches.

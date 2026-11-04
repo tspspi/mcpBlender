@@ -99,24 +99,37 @@ def leaf_graph(obj,collection):
     return group
 
 
-def signature(owned,metadata_key=META):
-    records=[]
-    for value in sorted(owned,key=lambda v:(v.bl_rna.identifier,v.name)):
-        if isinstance(value,bpy.types.Mesh):data=realization.mesh_record(value)
-        elif isinstance(value,bpy.types.Key):
-            data={'relative':value.use_relative,'animation':assemblies.animation(value),'blocks':[(k.name,k.relative_key.name,k.mute,k.vertex_group,lods.packed(k.data,'co',len(k.data)*3)) for k in value.key_blocks]}
-        elif isinstance(value,bpy.types.Object):
-            data={'data':value.data.name if value.data else None,'parent':value.parent.name if value.parent else None,'basis':lods.matrix(value.matrix_basis),'inverse':lods.matrix(value.matrix_parent_inverse),
-                  'flags':{k:getattr(value,k) for k in ('hide_viewport','hide_render','hide_select','show_only_shape_key','use_shape_key_edit_mode','instance_type','show_instancer_for_viewport','show_instancer_for_render')},'instance_collection':value.instance_collection.name if value.instance_collection else None,'animation':assemblies.animation(value),
-                  'constraints':[(c.name,c.type,assemblies.props(c),assemblies.pointers(c),assemblies.idprops(c)) for c in value.constraints],
-                  'physics':{k:assemblies.props(getattr(value,k)) for k in ('rigid_body','rigid_body_constraint','soft_body') if getattr(value,k,None)},
-                  'materials':[(s.link,s.material.name if s.material else None) for s in value.material_slots],
-                  'modifiers':[(m.name,m.type,assemblies.props(m),assemblies.pointers(m),assemblies.idprops(m)) for m in value.modifiers]}
-        elif isinstance(value,bpy.types.Collection):data={'objects':sorted(o.name for o in value.objects),'children':sorted(c.name for c in value.children),'hide_viewport':value.hide_viewport,'hide_render':value.hide_render,'instance_offset':list(value.instance_offset),'custom':{k:v for k,v in assemblies.idprops(value).items() if k!=metadata_key}}
-        elif isinstance(value,bpy.types.Text):data={'content':botany.digest(value.as_string()),'use_module':value.use_module}
-        else:data=assemblies.record(value)
-        records.append((value.bl_rna.identifier,value.name,data))
-    return botany.digest(records)
+def signature(owned,metadata_key=META,*,packed_images=False):
+    from . import bridge
+    import time
+    last=[0.]
+    def records():
+        for value in sorted(owned,key=lambda v:(v.bl_rna.identifier,v.name)):
+            now=time.monotonic()
+            if bridge._bridge is not None and now-last[0]>=1:
+                bridge.check_cancelled();bridge.report_progress({'phase':'hashing owned native content','datablock':value.name,'type':value.bl_rna.identifier});last[0]=now
+            if packed_images and isinstance(value,bpy.types.Image):
+                import hashlib
+                if value.is_dirty or not value.packed_file or value.source not in {'FILE','GENERATED'}:raise ValueError('Owned signature requires clean static packed images')
+                data={'type':type(value).__name__,'name':value.name,'properties':assemblies.props(value,exclude={'pixels'}),'custom':assemblies.idprops(value),'animation':assemblies.animation(value) if hasattr(value,'animation_data') else None,
+                      'packed_sha256':hashlib.sha256(value.packed_file.data).hexdigest(),'size':list(value.size),'color_space':value.colorspace_settings.name}
+            elif isinstance(value,bpy.types.Mesh):data=realization.mesh_record(value)
+            elif isinstance(value,bpy.types.Key):
+                data={'relative':value.use_relative,'animation':assemblies.animation(value),'blocks':[(k.name,k.relative_key.name,k.mute,k.vertex_group,lods.packed(k.data,'co',len(k.data)*3)) for k in value.key_blocks]}
+            elif isinstance(value,bpy.types.Object):
+                data={'data':value.data.name if value.data else None,'parent':value.parent.name if value.parent else None,'basis':lods.matrix(value.matrix_basis),'inverse':lods.matrix(value.matrix_parent_inverse),
+                      'flags':{k:getattr(value,k) for k in ('hide_viewport','hide_render','hide_select','show_only_shape_key','use_shape_key_edit_mode','instance_type','show_instancer_for_viewport','show_instancer_for_render')},'instance_collection':value.instance_collection.name if value.instance_collection else None,'animation':assemblies.animation(value),
+                      'constraints':[(c.name,c.type,assemblies.props(c),assemblies.pointers(c),assemblies.idprops(c)) for c in value.constraints],
+                      'physics':{k:assemblies.props(getattr(value,k)) for k in ('rigid_body','rigid_body_constraint','soft_body') if getattr(value,k,None)},
+                      'materials':[(s.link,s.material.name if s.material else None) for s in value.material_slots],
+                      'modifiers':[(m.name,m.type,assemblies.props(m),assemblies.pointers(m),assemblies.idprops(m)) for m in value.modifiers]}
+            elif isinstance(value,bpy.types.Collection):data={'objects':sorted(o.name for o in value.objects),'children':sorted(c.name for c in value.children),'hide_viewport':value.hide_viewport,'hide_render':value.hide_render,'instance_offset':list(value.instance_offset),'custom':{k:v for k,v in assemblies.idprops(value).items() if k!=metadata_key}}
+            elif isinstance(value,bpy.types.Text):data={'content':botany.digest(value.as_string()),'use_module':value.use_module}
+            else:data=assemblies.record(value)
+            yield (value.bl_rna.identifier,value.name,data)
+            del data
+    return botany.digest_sequence(records())
+
 
 
 def inspect(p):

@@ -132,13 +132,13 @@ def adopt(p):
         kept=set().union(*(dependencies(mesh) for mesh in replacements.values()),*(dependencies(obj.data) for role,obj in targets.items() if role not in replacements))
         obsolete.update((old_resources-kept)&owned)
         new_owned=(owned|staged)-obsolete
-        new_meta=dict(meta);new_meta['baked_materials']=dict(meta.get('baked_materials',{}))|info['entries']
+        new_meta=dict(meta);new_meta['content_signature_version']=2;new_meta['baked_materials']=dict(meta.get('baked_materials',{}))|info['entries']
         for role,mesh in replacements.items():
             obj=targets[role];old=obj.data;name=old.name;swaps.append((obj,old,mesh,name));obsolete.add(old);new_owned.remove(old)
             old.name='MCP_AdoptionOld_'+uuid.uuid4().hex;mesh.name=name;obj.data=mesh
         for value in staged:value[lods.OWNER]=meta['owner'];value.use_fake_user=False
         new_meta['owned']=[{'type':v.bl_rna.identifier,'name':v.name} for v in sorted(new_owned,key=lambda v:(v.bl_rna.identifier,v.name))]
-        bpy.context.view_layer.update();new_meta['content_sha256']=lods.signature(new_owned);col[lods.META]=json.dumps(new_meta,sort_keys=True,allow_nan=False)
+        bpy.context.view_layer.update();new_meta['content_sha256']=lods.signature(new_owned,version=2);col[lods.META]=json.dumps(new_meta,sort_keys=True,allow_nan=False)
         result=lods.inspect(p,ignore_users=obsolete)[-1]
         if not result['valid']:raise ValueError('Adopted LOD content/ownership verification failed')
         success=True;bpy.data.batch_remove(ids=tuple(obsolete));return result

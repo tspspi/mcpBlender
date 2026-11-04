@@ -32,8 +32,9 @@ def plan(p):
     return values,population,result,summary
 
 
-def signature(owned):
-    base=wind_preview.signature(owned,metadata_key=META)
+def signature(owned,*,version=1):
+    if type(version)!=int or version not in (1,2):raise ValueError('Unsupported LOD content signature version')
+    base=wind_preview.signature(owned,metadata_key=META,packed_images=version==2)
     private=[v for v in owned if isinstance(v,bpy.types.Material)]
     if not private:return base
     from . import textures
@@ -62,7 +63,7 @@ def inspect(p,*,ignore_users=None):
             if user in owned or user in embedded or value==col and isinstance(user,(bpy.types.Scene,bpy.types.Collection)) or isinstance(value,bpy.types.Object) and isinstance(user,bpy.types.Scene):continue
             blockers.append('External reference: '+value.name)
         if isinstance(value,bpy.types.Collection) and any(v not in owned for v in [*value.objects,*value.children]):blockers.append('Foreign collection member: '+value.name)
-    current=signature(owned);issues=[]
+    current=signature(owned,version=meta.get('content_signature_version',1));issues=[]
     if current!=meta['content_sha256']:issues.append('Botanical LOD contents changed')
     guard=botany.digest({'content':current,'meta':meta,'users':sorted((v.name,sorted((u.bl_rna.identifier,u.name) for u in users.get(v,set()))) for v in owned)})
     result={'lod_collection':col.name,'lods_sha256':guard,'valid':not issues and not blockers,'issues':issues,'ownership_blockers':sorted(set(blockers)),
@@ -163,9 +164,9 @@ def create(p):
         text=bpy.data.texts.new(name+'_Semantics.json');text.use_fake_user=False;text.use_module=False;text.write(json.dumps({'model':source_model,'foliage':population,'selection':selection,'wind':planned['source']},sort_keys=True,allow_nan=False));col[TEXT]=text
         owned=set(bpy.data.user_map())-before;owner=uuid.uuid4().hex
         for value in owned:value[OWNER]=owner
-        meta={'format':solver.FORMAT,'owner':owner,'owned':[{'type':v.bl_rna.identifier,'name':v.name} for v in sorted(owned,key=lambda v:(v.bl_rna.identifier,v.name))],
+        meta={'format':solver.FORMAT,'content_signature_version':2,'owner':owner,'owned':[{'type':v.bl_rna.identifier,'name':v.name} for v in sorted(owned,key=lambda v:(v.bl_rna.identifier,v.name))],
               'verification':verification,'plan':planned,'root':root.name,'levels':levels,'prototypes':population['recipe']['variants'],'active_level':0,'content_sha256':None}
-        col[META]=json.dumps(meta,sort_keys=True);bpy.context.view_layer.update();meta['content_sha256']=signature(owned);col[META]=json.dumps(meta,sort_keys=True)
+        col[META]=json.dumps(meta,sort_keys=True);bpy.context.view_layer.update();meta['content_sha256']=signature(owned,version=meta.get('content_signature_version',1));col[META]=json.dumps(meta,sort_keys=True)
         report_progress({'phase':'verified botanical LODs before handoff'});check_cancelled();result=inspect({'lod_collection':col.name})[-1]
         if not result['valid']:raise ValueError('Owned botanical LODs failed native validation')
         success=True;return result
@@ -188,5 +189,5 @@ def dispatch(command,p):
     for level in meta['levels']:
         for name in level['objects']:
             obj=bpy.data.objects[name];obj.hide_viewport=level['level']!=p['level'];obj.hide_render=level['level']!=p['level']
-    meta['active_level']=p['level'];meta['content_sha256']=signature(owned);col[META]=json.dumps(meta,sort_keys=True);bpy.context.view_layer.update()
+    meta['active_level']=p['level'];meta['content_sha256']=signature(owned,version=meta.get('content_signature_version',1));col[META]=json.dumps(meta,sort_keys=True);bpy.context.view_layer.update()
     return inspect(p)[-1]

@@ -14,7 +14,7 @@ def test_botanical_permissions_and_source_boundaries(tmp_path):
         async with Client(server) as client:
             names={t.name for t in await client.list_tools()}
             assert {'botanical_species_catalog','plan_botanical_tree','inspect_botanical_tree','list_botanical_elements'}<=names
-            assert not {'create_botanical_tree','regenerate_botanical_tree','remove_botanical_tree','export_botanical_model'}&names
+            assert not {'create_botanical_tree','regenerate_botanical_tree','remove_botanical_tree','export_botanical_model','create_botanical_secondary_uv'}&names
     asyncio.run(run())
     with pytest.raises(ValueError):Inspect.model_validate({'collection':'Oak','limit':129})
     with pytest.raises(ValueError):Recipe.model_validate({'light_direction':[0,0,0]})

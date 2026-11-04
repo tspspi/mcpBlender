@@ -53,3 +53,27 @@ def test_secondary_contracts_and_record_tamper():
         with pytest.raises(ValueError):uv.validate(changed)
     row['uv_map']='Tampered'
     with pytest.raises(ValueError,match='binding'):uv.validate(row)
+
+
+def test_master_records_and_regeneration_policy_contracts():
+    from mcpblender.botanical_contracts import SecondaryUV as MasterUV,Regenerate
+    from mcpblender.foliage_contracts import Configure,Remove
+    master=MasterUV(collection='Tree',expected_tree='a'*64,assets=['wood'])
+    assert not {'collection','expected_tree','lod_collection','expected_lods','assets','max_corners'}&set(master.uv_options())
+    base={'collection':'Tree','expected_tree':'a'*64,'expected_model':'b'*64}
+    assert Regenerate(**base).secondary_uv_policy=='PRESERVE'
+    for policy in ('PRESERVE','REPROJECT','DISCARD'):
+        assert Regenerate(**base,secondary_uv_policy=policy).secondary_uv_policy==policy
+        assert Remove(collection='Tree',expected_tree='a'*64,secondary_uv_policy=policy).secondary_uv_policy==policy
+        assert Configure(collection='Tree',expected_tree='a'*64,expected_foliage='b'*64,secondary_uv_policy=policy).secondary_uv_policy==policy
+    with pytest.raises(ValueError):Regenerate(**base,secondary_uv_policy='AUTODROP')
+    row=bound(['BarkUV','UV2'],{'BarkUV':'a'*64,'UV2':'b'*64})
+    row['format']=uv.MASTER_FORMAT;row['source_tree_sha256']=row.pop('source_lods_sha256')
+    row['options']={'uv_map':'UV2','texture_width':256,'texture_height':128,'angle_limit_degrees':66,'margin':.02,'rotate':True,'tile_padding_pixels':4,'chart_layout':None}
+    row['record_sha256']=botany.digest({k:v for k,v in row.items() if k!='record_sha256'})
+    assert uv.validate(row)==row['uv_witness']
+    changed=deepcopy(row);changed['options']['uv_map']='Wrong'
+    changed['record_sha256']=botany.digest({k:v for k,v in changed.items() if k!='record_sha256'})
+    with pytest.raises(ValueError,match='settings'):uv.validate(changed)
+    row.pop('source_tree_sha256');row['record_sha256']=botany.digest({k:v for k,v in row.items() if k!='record_sha256'})
+    with pytest.raises(ValueError,match='source guard'):uv.validate(row)

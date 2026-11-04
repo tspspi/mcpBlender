@@ -80,27 +80,9 @@ COMMANDS.update({
 })
 
 
-class SecondaryUV(Edit):
-    assets: list[str] = Field(min_length=1,max_length=32)
-    uv_map: SafeName = 'UV2'
-    texture_width: int = Field(default=1024,strict=True,ge=1,le=32768)
-    texture_height: int = Field(default=1024,strict=True,ge=1,le=32768)
-    angle_limit_degrees: FiniteFloat = Field(default=66,gt=0,le=89)
-    margin: FiniteFloat = Field(default=.02,ge=0,le=.25)
-    rotate: bool = True
-    tile_padding_pixels: FiniteFloat = Field(default=4,ge=0,le=4096)
-    chart_layout: ChartLayout | None = None
-    max_corners: int = Field(default=500000,strict=True,ge=1,le=1000000)
-
-    def uv_options(self):
-        return self.model_dump(exclude={'lod_collection','expected_lods','assets','max_corners'})
-
-    @model_validator(mode='after')
-    def options(self):
-        from .uv_contracts import UVSecondary
-        if len(set(self.assets))!=len(self.assets) or any(not a or len(a)>255 for a in self.assets):raise ValueError('Choose distinct nonempty vegetation asset roles')
-        UVSecondary(name='validation',expected_uv='0'*64,**self.uv_options())
-        return self
+from .secondary_uv_contracts import SecondaryLayout
+class SecondaryUV(Edit,SecondaryLayout):
+    pass
 
 
 COMMANDS['create_vegetation_secondary_uv']=(SecondaryUV,('allow_scene_edit',),'Guardedly add a new secondary UV map to explicit native botanical LOD wood/shoot or shared leaf-template roles. Stage the whole batch, preserve prior geometry/UVs/material sampling and bake records, then atomically update ownership. Report ordered channels and portable UV witnesses; independently verify them on export. Not a per-instance lightmap atlas or receiving-engine qualification. Older bake preparations lacking the map require re-preparation before adoption.')

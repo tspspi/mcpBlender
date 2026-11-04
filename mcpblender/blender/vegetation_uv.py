@@ -23,6 +23,29 @@ def verify(col,meta,objects=None):
         schema.verify_maps(entries,[l.name for l in mesh.uv_layers],hashes(mesh))
 
 
+def stage(obj,options,source_guard,*,master=False):
+    """Return a private mesh and verified UV record; never edit the source."""
+    mesh=obj.data.copy();mesh.use_fake_user=False;copy=None;success=False
+    try:
+        owner_tags={k:mesh[k] for k in mesh.keys() if k.startswith('mcpblender_') and 'owner' in k}
+        for k in owner_tags:del mesh[k]
+        copy=bpy.data.objects.new('MCP_SecondaryUV_Stage',mesh);bpy.context.scene.collection.objects.link(copy)
+        copy.matrix_world=preparation.static_matrix(obj);bpy.context.view_layer.update()
+        before=hashes(mesh);geometry=geometry_digest(mesh);target=options['uv_map']
+        args=options|{'name':copy.name,'expected_uv':uv.fingerprint(copy,target),'scale':True,'make_single_user':False,'island_limit':128,'overlap_budget':200000}
+        result=uv.dispatch('create_secondary_uv',args)
+        for k,value in owner_tags.items():mesh[k]=value
+        current=hashes(mesh)
+        if geometry_digest(mesh)!=geometry or any(current.get(n)!=h for n,h in before.items()):raise ValueError('Secondary UV staging changed source geometry or texture coordinates')
+        record={'format':schema.MASTER_FORMAT if master else schema.FORMAT,'uv_map':target,'uv_channel':result['uv_channel'],'uv_maps':result['uv_maps'],
+                'uv_witness':current,'texture_size':[options['texture_width'],options['texture_height']],
+                'source_tree_sha256' if master else 'source_lods_sha256':source_guard,'options':options,'instance_atlas':False}
+        record['record_sha256']=botany.digest(record);schema.validate(record);success=True;return mesh,record
+    finally:
+        if copy:bpy.data.objects.remove(copy,do_unlink=True)
+        if not success:bpy.data.meshes.remove(mesh)
+
+
 def create(p):
     from .bridge import check_cancelled,report_progress
     col,owned,meta,state=lods.inspect(p)
@@ -43,22 +66,10 @@ def create(p):
     try:
         replacements={};records=json.loads(json.dumps(meta.get('secondary_uv',{})))
         for role in roles:
-            check_cancelled();obj=objects[role];mesh=obj.data.copy();staged.add(mesh);mesh.use_fake_user=False
-            owner_tags={k:mesh[k] for k in mesh.keys() if k.startswith('mcpblender_') and 'owner' in k}
-            for k in owner_tags:del mesh[k]
-            copy=bpy.data.objects.new('MCP_SecondaryUV_Stage',mesh);scratch.append(copy);bpy.context.scene.collection.objects.link(copy)
-            copy.matrix_world=preparation.static_matrix(obj);bpy.context.view_layer.update()
-            before=hashes(mesh);geometry=geometry_digest(mesh)
-            report_progress({'phase':'authoring vegetation secondary UV','asset':role,'completed':len(replacements),'total':len(roles),'corners':len(mesh.loops)})
-            args=options|{'name':copy.name,'expected_uv':uv.fingerprint(copy,target),'scale':True,'make_single_user':False,'island_limit':128,'overlap_budget':200000}
-            result=uv.dispatch('create_secondary_uv',args)
-            for k,value in owner_tags.items():mesh[k]=value
-            current=hashes(mesh)
-            if geometry_digest(mesh)!=geometry or any(current.get(n)!=h for n,h in before.items()):raise ValueError('Secondary UV staging changed source geometry or texture coordinates')
-            record={'format':schema.FORMAT,'uv_map':target,'uv_channel':result['uv_channel'],'uv_maps':result['uv_maps'],
-                    'uv_witness':current,'texture_size':[p['texture_width'],p['texture_height']],
-                    'source_lods_sha256':p['expected_lods'],'options':options,'instance_atlas':False}
-            record['record_sha256']=botany.digest(record);schema.validate(record)
+            check_cancelled();obj=objects[role]
+            report_progress({'phase':'authoring vegetation secondary UV','asset':role,'completed':len(replacements),'total':len(roles),'corners':len(obj.data.loops)})
+            mesh,record=stage(obj,options,p['expected_lods'])
+            staged.add(mesh)
             records.setdefault(role,[]).append(record);replacements[role]=mesh
         # Scratch meshes reference owned materials, so ignore only these known
         # temporary users while rechecking the pre-edit guard.

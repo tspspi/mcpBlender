@@ -23,6 +23,7 @@ from . import animation_curves
 from . import drivers
 from . import nla
 from . import botanical_trees
+from . import botanical_uv
 from . import botanical_foliage
 from . import foliage_cards
 from . import texture_atlas
@@ -79,6 +80,7 @@ COMMANDS.update(skin_weights.COMMANDS)
 COMMANDS.update(rest_edit.COMMANDS)
 COMMANDS.update(lods.COMMANDS)
 COMMANDS.update(botanical_trees.COMMANDS)
+COMMANDS.update(botanical_uv.COMMANDS)
 COMMANDS.update(botanical_foliage.COMMANDS)
 COMMANDS.update(foliage_cards.COMMANDS)
 COMMANDS.update(texture_atlas.COMMANDS)
@@ -145,6 +147,7 @@ def dispatch(command, p):
     if command in attribute_export.COMMANDS:return attribute_export.dispatch(command,p)
     if command in attributes.COMMANDS:return attributes.dispatch(command,p)
     if command in botanical_trees.COMMANDS:return botanical_trees.dispatch(command,p)
+    if command in botanical_uv.COMMANDS:return botanical_uv.dispatch(command,p)
     if command=='render_camera_batch':return render_batches.launch(p)
     if command in compositing.COMMANDS:
         return compositing.dispatch(command,p)

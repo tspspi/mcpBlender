@@ -51,6 +51,9 @@ class Configure(LayoutPlan):
     expected_tree: Digest
     expected_foliage: Digest
     discard_derived_edits: bool = False
+    secondary_uv_policy: Literal['PRESERVE','REPROJECT','DISCARD'] = 'PRESERVE'
+class Remove(Guard):
+    secondary_uv_policy: Literal['PRESERVE','REPROJECT','DISCARD'] = 'PRESERVE'
 class Coverage(Tree):
     foliage: Foliage|None = None
     resolution: int = Field(default=128,strict=True,ge=32,le=256)
@@ -88,7 +91,7 @@ COMMANDS={
  'plan_leaf_template':(ShapePlan,(),'Inspect a portable lobed leaf blade/petiole template with curvature, raised midrib, UVs, triangle and area metrics. Return leaf guard; no native edits.'),
  'create_leaf_template':(Template,('allow_scene_edit',),'Create an editable metre-recipe leaf, converting through object scale for the current scene units without changing unit settings. Return normalized recipe, scene scale and physical world_bounds_m with the default thin-leaf material. This is individual blade geometry, not a cutout atlas or foliage LOD.'),
  'plan_botanical_foliage':(LayoutPlan,(),'Plan deterministic bud-attached shoots and alternate/opposite/whorled leaves on a valid botanical source. Report shared prototype and expanded geometry budgets plus attachment guard.'),
- 'configure_botanical_foliage':(Configure,('allow_scene_edit',),'Stage a full botanical master with shared leaf prototypes/Geometry Nodes instances and shoot geometry. Preserve root/bark, protect derived edits, include foliage in future growth regeneration and owned cleanup. Requires tree and foliage plan guards.'),
- 'remove_botanical_foliage':(Guard,('allow_scene_edit',),'Stage and verify the woody master without its foliage component, retaining materials and preserving guarded root placement. No unowned data deletion.'),
+ 'configure_botanical_foliage':(Configure,('allow_scene_edit',),'Stage a full botanical master with shared leaf prototypes/Geometry Nodes instances and shoot geometry. Preserve root/bark, protect derived edits, include foliage in future growth regeneration and owned cleanup. Requires tree and foliage plan guards. Authored secondary layouts default to compatible PRESERVE; choose REPROJECT or DISCARD explicitly when geometry changes.'),
+ 'remove_botanical_foliage':(Remove,('allow_scene_edit',),'Stage and verify the woody master without its foliage component, retaining materials and preserving guarded root placement. Authored leaf secondary UVs require explicit secondary_uv_policy=DISCARD. No unowned data deletion.'),
  'list_botanical_leaves':(Elements,(),'Page deterministic leaf IDs, source branch/shoot attachments, transforms, variation/phase and flutter metadata. Semantic motion inputs only; no wind animation certification.'),
 }

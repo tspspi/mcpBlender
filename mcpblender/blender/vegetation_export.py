@@ -26,6 +26,7 @@ def source(p):
     cfg={k:p[k] for k in ('collection','max_instances','max_corners')};cfg['wind']=info['wind']
     info={'format':schema.FORMAT,'wind':info,'options':cfg,'leaf_instances':count,'prototypes':population['recipe']['variants'] if count else 0,'corners':corners,
           'source_guard':values[-1]['tree_sha256'],'estimated_geometry_bytes':corners*200}
+    if values[-1].get('secondary_uv'):info['secondary_uv']=values[-1]['secondary_uv']
     if p.get('material_mode')=='PARAMETERS':
         from . import vegetation_materials
         objects={'wood':values[2][0]}
@@ -95,7 +96,7 @@ def export(p):
     if plan['export_sha256']!=p['expected_export']:raise ValueError('Botanical export fingerprint is stale; inspect again')
     destination=Path(p['directory'])
     if destination.exists():raise FileExistsError(destination)
-    data=schema.semantics(values[-2],population,plan['wind'],plan.get('materials'));encoded=(json.dumps(data,sort_keys=True,allow_nan=False)+'\n').encode()
+    data=schema.semantics(values[-2],population,plan['wind'],plan.get('materials'),plan.get('secondary_uv'));encoded=(json.dumps(data,sort_keys=True,allow_nan=False)+'\n').encode()
     estimate=len(encoded)*2+plan['estimated_geometry_bytes']*3+16*1024**2
     if len(encoded)>p['max_bytes']:raise ValueError('Botanical semantic data exceeds max_bytes')
     policy=_bridge.active.get('storage',{}) if _bridge and _bridge.active else {}

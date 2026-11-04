@@ -175,6 +175,10 @@ def inventory(p):
         if obj.data.shape_keys or obj.rigid_body or obj.rigid_body_constraint:blockers.append('Derived controls/physics prevent owned removal: '+obj.name)
         if any(max(abs(m[i][j]-(i==j)) for i in range(4) for j in range(4))>1e-6 for m in (obj.matrix_basis,obj.matrix_parent_inverse)):issues.append('Derived relative transform changed: '+obj.name)
         records.append({'role':entry['role'],'record':record,'native':assemblies.record(obj),'unsupported_attributes':unsupported})
+    if 'secondary_uv' in meta:
+        from . import botanical_uv
+        try:botanical_uv.verify(meta)
+        except ValueError as exc:issues.append(str(exc))
     content=text.as_string()
     if len(content)>8*1024**2:raise ValueError('Botanical model text exceeds profile limit')
     model=None;model_error=None
@@ -194,6 +198,9 @@ def inventory(p):
             'foliage':foliage_report,'geometry':meta['geometry'],'root_world_matrix':lods.matrix(root.matrix_world),'scene_unit_scale':bpy.context.scene.unit_settings.scale_length,'members':[{'role':e['role'],'object':o.name,'mesh':r['record']} for e,o,r in zip(meta['members'],members,records)],
             'metrics':botany.metrics(model) if model is not None and not model_error else None,'recipe':model['recipe'] if model is not None and not model_error else None,
             'scope':'Owned woody mesh and semantic bud points; materials remain shared. Sleeve junctions intersect but are not welded/unioned. Attributes are native semantic inputs, not qualified wind animation/export packing.'}
+    from . import botanical_uv
+    report['secondary_uv']=meta.get('secondary_uv',{})
+    report['mesh_assets']={role:{'name':obj.name,'uv_maps':[l.name for l in obj.data.uv_layers]} for role,obj in botanical_uv.objects(meta).items()}
     return col,root,members,text,owned,links,model,report
 
 
@@ -230,6 +237,8 @@ def regenerate(p):
         foliage_cfg=p.get('foliage',old_fol['recipe'] if old_fol else False)
         fresh=create(p|{'collection':private,'bark_material':p.get('bark_material') or state['geometry']['bark_material'],
                         'foliage':foliage_cfg,'_foliage_material':bpy.data.materials.get(old_fol['material']) if old_fol and foliage_cfg else None})
+        from . import botanical_uv
+        botanical_uv.regenerate(old_meta,bpy.data.collections[private],p.get('secondary_uv_policy','PRESERVE'),p['expected_tree'])
         new_col,new_root,new_objects,new_text,_,_,_,_=inventory({'collection':private});new_roles=role_map(new_col,new_root,new_objects,new_text,json.loads(new_col[META]));staged_roles=list(new_roles.values())
         if p['preserve_placement']:
             new_root.parent=root.parent;new_root.parent_type=root.parent_type;new_root.parent_bone=root.parent_bone;new_root.parent_vertices=tuple(root.parent_vertices)

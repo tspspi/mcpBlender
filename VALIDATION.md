@@ -3880,3 +3880,55 @@ are unsigned correspondence witnesses, not authenticated provenance.
 The final default-AABB append, malformed native metadata and portable-record
 checks passed three tests in 8.30 seconds. An empty list used in place of the
 secondary-record mapping is refused rather than treated as an absent record.
+
+## Authored secondary UVs on procedural botanical masters
+
+A code-disabled MCP fixture authors UV2 on a five-metre master's wood and shared
+leaf template without changing canonical growth data or primary sampling. An
+identical regeneration preserves exact recorded UV witnesses. A changed-height,
+changed-seed regeneration with default PRESERVE refuses and leaves the original
+master guard unchanged; explicit REPROJECT produces a valid new layout/baseline.
+Save/reopen retains those records. The independently decoded master bundle
+verifies two UV channels on wood/leaves and zero on unparameterized shoots.
+
+Native LOD creation inherits exact maps and master records on unchanged LOD0
+wood and shared templates; the reduced wood retains its original BarkUV and gets
+its own guarded secondary layout through the LOD tool. Both master and LOD bundle
+validators still succeed after source removal. Default foliage removal refuses
+when it would lose an authored leaf role; explicit DISCARD removes the foliage
+and all master secondary layouts. This complete MCP workflow passed in 46.47
+seconds. It qualifies encoded coordinate correspondence, not engine lightmap use.
+
+Native fault tests cancel after the first master mesh is staged and after the
+new UV mesh bindings and content metadata are verified. They also cancel both
+PRESERVE and REPROJECT regeneration at public-name handoff before final deletion.
+Every failure restores original ID inventory, names, metadata and tree guards.
+Recomputed record hashes cannot conceal mismatched actual UV coordinates. These
+checks, owned-LOD secondary rollback/repeated append, add-on import without
+frontend dependencies, existing master/foliage lifecycle and complex-placement
+regressions passed seven tests in 63.51 seconds. Pure policy/model/discovery,
+portable-record and canonical-interchange tests passed six in 9.51 seconds.
+
+Master records use their own format/source-tree guard while sharing float32 UV
+witness validation with owned LOD delivery. Original bare/foliated bundle formats
+remain readable with no optional secondary records. Compatible preservation
+requires identical local geometry and original UV baselines; pose/physical-unit
+changes still require renewed density/padding inspection. Reprojection runs the
+saved structured settings on fresh canonical geometry; its numerical layout is
+new. Missing authored roles refuse unless DISCARD is explicit. No policy bypasses
+canonical-model or discard_derived_edits protections.
+
+The fixtures do not qualify a mature oak, dense canopy/population, unique
+per-instance/whole-tree lighting atlas, lighting bake, filtering/mips/physical
+optics or receiving-engine behavior. Cooperative rollback is qualified, including
+a late handoff; hard-crash rollback at native deletion remains unqualified. Keep
+the editable project, review actual layout quality after changes, and supply
+separate secondary maps for reduced geometry rather than transferring coordinates
+across different topology. The bundled design skill is schema-valid.
+Existing real PBR bake/rebake/adoption through the shared staging helper, legacy
+bare/foliated and LOD export placement/cancellation, and the rendered three-seed
+master regeneration workflow passed four regressions in 194.49 seconds. No
+installation, dependencies, service configuration or installed skills changed.
+The final native master rollback and saved-setting/record/policy/discovery checks
+passed five tests in 10.20 seconds. Master records require saved projection
+settings that agree with the declared map and texture dimensions.

@@ -230,4 +230,4 @@ def dispatch(command,p):
         if botany.digest(foliage.compact(layout))!=p['expected_foliage']:raise ValueError('Foliage plan fingerprint is stale')
     return trees.regenerate({'collection':p['collection'],'recipe':state['recipe'],'expected_model':state['model_sha256'],'expected_tree':p['expected_tree'],
         'location':[0,0,0],'radial_sides':state['geometry']['radial_sides'],'bark_tile_length':state['geometry']['bark_tile_length'],
-        'preserve_placement':True,'discard_derived_edits':p.get('discard_derived_edits',False),'foliage':cfg})
+        'preserve_placement':True,'discard_derived_edits':p.get('discard_derived_edits',False),'foliage':cfg,'secondary_uv_policy':p.get('secondary_uv_policy','PRESERVE')})

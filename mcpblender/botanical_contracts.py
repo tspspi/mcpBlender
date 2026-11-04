@@ -59,6 +59,7 @@ class Regenerate(Create):
     expected_tree: Digest
     preserve_placement: bool = True
     discard_derived_edits: bool = False
+    secondary_uv_policy: Literal['PRESERVE','REPROJECT','DISCARD'] = 'PRESERVE'
 class Export(Guard):
     path: str = Field(min_length=1)
     overwrite: bool = False
@@ -68,7 +69,13 @@ COMMANDS={
  'create_botanical_tree':(Create,('allow_scene_edit',),'Build a managed woody tree master from the inspected model guard: tapered sleeve geometry, growth-aligned bark UVs, branch/anchor/stiffness/phase attributes, semantic buds and persistent canonical JSON. Owns only its new data and rolls back cooperative failures.'),
  'inspect_botanical_tree':(Tree,(),'Inspect managed woody tree geometry/model validity, ownership, dependencies, structural metrics, recipe and current-content guard. Leaf area, wind and watertight junction quality remain separate.'),
  'list_botanical_elements':(Inspect,(),'Page stable branch or bud identifiers, parents, orders, age/radii/anchors and directions from a verified canonical model without returning an unbounded graph.'),
- 'regenerate_botanical_tree':(Regenerate,('allow_scene_edit',),'Stage a fresh seeded botanical master before guarded public-name handoff. Preserve static root placement by default, refuse external native references and edited model text; discarding edited derived meshes requires explicit opt-in. Roll back before final native deletion.'),
+ 'regenerate_botanical_tree':(Regenerate,('allow_scene_edit',),'Stage a fresh seeded botanical master before guarded public-name handoff. Preserve static root placement by default, refuse external native references and edited model text; discarding edited derived meshes requires explicit opt-in. Secondary UVs default to PRESERVE on compatible geometry; choose REPROJECT or DISCARD explicitly for changed layouts. Roll back before final native deletion.'),
  'remove_botanical_tree':(Guard,('allow_scene_edit',),'Remove an unambiguously owned botanical master using a current guard, retaining materials and refusing shared/externally referenced native IDs.'),
  'export_botanical_model':(Export,('allow_library_write',),'Export guarded canonical branch/bud model JSON for reuse without Blender. Retains generator/version/recipe/IDs; this is semantic data, not a GLB/foliage/wind export adapter.'),
 }
+
+from .secondary_uv_contracts import SecondaryLayout
+class SecondaryUV(Guard,SecondaryLayout):
+    pass
+
+COMMANDS['create_botanical_secondary_uv']=(SecondaryUV,('allow_scene_edit',),'Guardedly author a new secondary UV on master wood or shared leaf-template roles. Preserve canonical growth model, geometry, attributes, original UVs and material sampling; publish the staged batch with updated native content guards. Regeneration explicitly preserves compatible maps, reprojects saved settings or discards them. Shared templates do not form an instance lightmap atlas.')

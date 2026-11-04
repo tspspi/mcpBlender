@@ -54,7 +54,8 @@ same chart_layout and tile_padding_pixels controls. Check inspect_texture_qualit
 on the new map separately; a name or layer index does not certify engine lightmap
 use. Decode exported channels with export_attribute_bundle when numeric-field
 delivery applies. For owned native vegetation LODs use the dedicated transaction
-below; botanical master UV2 and instance atlases remain separate workflows.
+below. Use create_botanical_secondary_uv for masters; instance lightmap atlases
+remain separate workflows.
 For an explicit texture-edge border, pack with tile_padding_pixels and matching
 texture_width/texture_height. scale=true uniformly shrinks/translates the packed
 layout; scale=false only translates and refuses layouts too large for the inset.
@@ -504,6 +505,21 @@ decodes fields/positions/triangles/UVs/metre placement. Scalar lanes preserve ra
 components; they do not auto-convert anchor vectors into GLB axes/metres. UV2 stays
 available for lightmaps. Integers outside +/-2^24 refuse. Save the .blend separately;
 complete botanical wind packing and downstream engine behavior remain separate.
+
+For master secondary UVs, inspect_botanical_tree supplies mesh_assets and
+expected_tree. create_botanical_secondary_uv accepts wood and leaf-N roles with
+a new map name, actual texture dimensions and the same chart/border controls as
+the LOD secondary tool. It preserves canonical geometry/attributes/primary UVs
+and material sampling and updates owned content guards transactionally.
+Regeneration and configure_botanical_foliage default secondary_uv_policy=PRESERVE:
+exact maps survive only compatible local geometry and original UV baselines.
+Choose REPROJECT explicitly for changed geometry using saved layout settings,
+then recheck density/padding. DISCARD explicitly removes all authored secondary
+maps; removing authored foliage roles requires it. No policy bypasses invalid
+canonical models or discard_derived_edits protections. Master GLB bundles verify
+all authored UV channels. Native LOD0 and shared leaves inherit exact maps;
+reduced wood requires its own create_vegetation_secondary_uv. Shared UVs do not
+constitute unique leaf/tree instance lighting atlases.
 
 For owned tree wind interchange, inspect_botanical_export with collection/wind,
 then export_botanical_bundle with the same options, expected_export and a new

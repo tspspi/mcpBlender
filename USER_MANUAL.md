@@ -1532,6 +1532,45 @@ are preserved by default; `preserve_placement=false` uses the new initial transf
 Existing bark material is reused unless explicitly replaced. Materials remain
 shared; shader/image contents are not frozen by the tree guard.
 
+For an authored secondary layout, inspect the master's `mesh_assets` and call
+`create_botanical_secondary_uv` with its current `expected_tree`, explicit
+`assets` such as `["wood", "leaf-0"]`, and a fresh `uv_map` (default `UV2`).
+Projection, packing, texture dimensions, tile borders, optional `chart_layout`
+and batch `max_corners` match the owned LOD secondary tool. Wood and shared leaf
+templates are supported; point-only buds and unparameterized shoot meshes are
+not secondary-layout targets. All selected maps are staged before native mesh
+bindings and content guards change. Canonical growth/foliage JSON, geometry,
+semantic attributes, original UVs, materials and active/render maps are preserved.
+The resulting `secondary_uv` records bind exact float32 map/baseline hashes and
+saved projection settings to the original tree guard. Ordinary raw mesh/UV edits
+do not update these ownership/content records; use the dedicated transaction.
+
+`regenerate_botanical_tree` and `configure_botanical_foliage` take an explicit
+`secondary_uv_policy`:
+
+- `PRESERVE` (default) copies exact secondary coordinates only if local geometry
+  and the original UV baseline remain compatible. Incompatible geometry, changed
+  baseline coordinates or a missing authored role refuse before source deletion.
+- `REPROJECT` generates new layouts from the recorded settings on the regenerated
+  geometry and records new witnesses. Preserved texture coordinates come from
+  the new canonical geometry. Reinspect secondary density/padding afterward.
+  Removing an authored role still refuses.
+- `DISCARD` explicitly drops all master secondary layouts during regeneration.
+  It does not bypass `discard_derived_edits` or canonical-model protections.
+
+`remove_botanical_foliage` uses the same policy: removing authored leaf layouts
+requires `DISCARD`. A master carrying only woody secondary maps can preserve
+those through a compatible foliage change. Cooperative failures during layout
+publication and regenerated public-name handoff restore the prior IDs, names,
+metadata and guards. Save the editable project separately from file delivery.
+
+Master botanical bundles retain these records and independently verify encoded
+UV channels. Creating native LODs copies exact source wood layouts to unchanged
+LOD0 and keeps secondary maps on shared leaf templates. Reduced wood is rebuilt
+with different topology, so use `create_vegetation_secondary_uv` for those roles.
+No unique per-instance/whole-tree lightmap atlas or actual lighting bake follows
+from these shared secondary maps.
+
 Manual derived mesh edits block regeneration unless
 `discard_derived_edits=true` explicitly authorizes replacing them. Edited/invalid
 canonical model Text still blocks regeneration under that flag. Root authored
@@ -3686,9 +3725,9 @@ provenance, a runtime shader test or continuous-motion certification.
 Sources must satisfy managed botanical ownership/content checks and frozen positive
 uniform placement. Manually edited derived meshes require a separate delivery
 workflow; this export does not bypass master ownership validation. The woody mesh
-retains BarkUV; shared templates retain LeafUV. The general numeric exporter also
-qualifies UV2 preservation, but authored lightmap UV2 on managed botanical masters
-has not been qualified by this fixture. Bud points remain in canonical semantic
+retains BarkUV; shared templates retain LeafUV. Authored master secondary layouts
+are carried by their separate records and verified against decoded numeric UVs.
+Their role as receiving-engine lightmaps is not qualified. Bud points remain in canonical semantic
 organs, without a separate point-only GLB. Bare trees produce only the wood asset.
 
 Default budgets are 30,000 leaf instances, 500,000 total corners and 512 MiB output;
@@ -3766,7 +3805,7 @@ views and margin fixed for comparisons. Pixel-center estimates can miss subpixel
 blades and exclude alpha/translucency, perspective, lighting and shadow behavior.
 
 The current profile preserves existing bark/leaf materials and generated UVs;
-managed-master authored UV2, texture budgets, combined engine scene import,
+texture budgets, combined engine scene import,
 collision/shadow proxies, cluster cards/impostors and native animated LOD playback
 remain separate work. Cooperative cancellation removes owned staged IDs; hard-crash
 recovery during native staging is not independently qualified here. The generic
@@ -3813,7 +3852,8 @@ dimensions, density and padding before using it for lighting. A secondary map
 on a shared leaf template is reused by every leaf; it is not a unique per-instance
 or whole-tree lightmap atlas. The fixtures qualify shared-template and reduced
 wood coordinates, retained real texture bakes, a subsequent rebake/adoption,
-save/reopen and independent file delivery. Managed botanical master UV2,
+save/reopen and independent file delivery. Master UV authoring and regeneration
+use `create_botanical_secondary_uv` and its policies above;
 receiving-engine lightmap import, actual lighting bakes, deformation-dependent
 lightmaps, filtering and mature-tree/population quality remain separate work.
 
@@ -3866,7 +3906,7 @@ staging cleanup use the shared export-job tools below. Older unjournaled partial
 destinations remain operator-reviewed; they are never automatically adopted.
 
 Shared native materials pass through Blender's glTF exporter. PBR/texture-budget,
-backlighting/vein/alpha fidelity, authored managed-tree UV2, animated LOD playback,
+backlighting/vein/alpha fidelity, lightmap lighting/instance atlases, animated LOD playback,
 combined engine scenes, optical/shadow/GPU behavior and cards/impostors/collision
 are not certified by these file proofs. Keep the editable source and use the
 existing bake/atlas workflow for portable PBR material delivery.

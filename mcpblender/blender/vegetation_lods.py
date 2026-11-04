@@ -141,6 +141,9 @@ def create(p):
             mesh=trees.wood_mesh(model,{'collection':prefix,'radial_sides':level['options']['radial_sides'],'bark_tile_length':values[-1]['geometry']['bark_tile_length']});mesh.materials.append(bark)
             for v in mesh.attributes['bot_branch_index'].data:v.value=selected[v.value]
             wood=bpy.data.objects.new(prefix+'_Wood',mesh);col.objects.link(wood);wood.parent=root;objects.append(wood)
+            if number==0 and values[-1].get('secondary_uv',{}).get('wood'):
+                from .botanical_uv import copy_maps
+                copy_maps(values[2][0],wood,values[-1]['secondary_uv']['wood'])
             mesh=shoots_mesh(prefix+'_ShootMesh',source_model,population,level['shoot_indices'],bark);shoots=bpy.data.objects.new(prefix+'_Shoots',mesh);col.objects.link(shoots);shoots.parent=root;objects.append(shoots)
             leaves=[population['leaves'][i] for i in level['leaf_indices']];mesh=bpy.data.meshes.new(prefix+'_LeafPoints');mesh.from_pydata([v['position'] for v in leaves],[],[]);mesh.update()
             leaf_obj=bpy.data.objects.new(prefix+'_Leaves',mesh);col.objects.link(leaf_obj);leaf_obj.parent=root;objects.append(leaf_obj)
@@ -173,6 +176,8 @@ def create(p):
         for value in owned:value[OWNER]=owner
         meta={'format':solver.FORMAT,'content_signature_version':2,'owner':owner,'owned':[{'type':v.bl_rna.identifier,'name':v.name} for v in sorted(owned,key=lambda v:(v.bl_rna.identifier,v.name))],
               'verification':verification,'plan':planned,'root':root.name,'levels':levels,'prototypes':population['recipe']['variants'],'active_level':0,'content_sha256':None}
+        if values[-1].get('secondary_uv'):
+            meta['secondary_uv']={('lod-0-wood' if role=='wood' else role):entries for role,entries in values[-1]['secondary_uv'].items()}
         col[META]=json.dumps(meta,sort_keys=True);bpy.context.view_layer.update();meta['content_sha256']=signature(owned,version=meta.get('content_signature_version',1));col[META]=json.dumps(meta,sort_keys=True)
         report_progress({'phase':'verified botanical LODs before handoff'});check_cancelled();result=inspect({'lod_collection':col.name})[-1]
         if not result['valid']:raise ValueError('Owned botanical LODs failed native validation')

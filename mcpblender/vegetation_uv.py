@@ -5,6 +5,7 @@ import struct
 from . import botany
 
 FORMAT='mcpblender-vegetation-secondary-uv-v1'
+MASTER_FORMAT='mcpblender-botanical-secondary-uv-v1'
 
 
 def uv_digest(rows):
@@ -14,13 +15,18 @@ def uv_digest(rows):
 
 
 def validate(record):
-    if not isinstance(record,dict) or record.get('format')!=FORMAT or record.get('record_sha256')!=botany.digest({k:v for k,v in record.items() if k!='record_sha256'}):raise ValueError('Secondary UV record binding changed')
+    if not isinstance(record,dict) or record.get('format') not in {FORMAT,MASTER_FORMAT} or record.get('record_sha256')!=botany.digest({k:v for k,v in record.items() if k!='record_sha256'}):raise ValueError('Secondary UV record binding changed')
     names=record.get('uv_maps');hashes=record.get('uv_witness');channel=record.get('uv_channel');size=record.get('texture_size')
     if not isinstance(names,list) or not 2<=len(names)<=8 or any(not isinstance(n,str) or not n for n in names) or len(set(names))!=len(names):raise ValueError('Invalid secondary UV channel inventory')
     if type(channel)!=int or channel!=len(names)-1 or record.get('uv_map')!=names[-1]:raise ValueError('Secondary UV must be the recorded appended channel')
     if not isinstance(hashes,dict) or set(hashes)!=set(names) or any(not isinstance(v,str) or not re.fullmatch('[a-f0-9]{64}',v) for v in hashes.values()):raise ValueError('Invalid secondary UV coordinate witness')
     if not isinstance(size,list) or len(size)!=2 or any(type(v)!=int or not 1<=v<=32768 for v in size):raise ValueError('Invalid secondary UV texture dimensions')
-    if not re.fullmatch('[a-f0-9]{64}',str(record.get('source_lods_sha256',''))):raise ValueError('Invalid secondary UV source guard')
+    source='source_tree_sha256' if record['format']==MASTER_FORMAT else 'source_lods_sha256'
+    if not re.fullmatch('[a-f0-9]{64}',str(record.get(source,''))):raise ValueError('Invalid secondary UV source guard')
+    if record['format']==MASTER_FORMAT:
+        options=record.get('options')
+        if not isinstance(options,dict) or options.get('uv_map')!=record['uv_map'] or [options.get('texture_width'),options.get('texture_height')]!=size:raise ValueError('Master secondary UV saved settings changed')
+        if not {'angle_limit_degrees','margin','rotate','tile_padding_pixels','chart_layout'}<=set(options):raise ValueError('Master secondary UV lacks projection settings')
     if record.get('instance_atlas') is not False:raise ValueError('Shared secondary UVs cannot claim an instance lightmap atlas')
     return hashes
 

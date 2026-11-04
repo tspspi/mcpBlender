@@ -20,6 +20,9 @@ from mcpblender.storage import require_space,snapshot
 
 COMMANDS={'inspect_asset_assembly_source','create_asset_assembly','inspect_asset_assembly','place_asset_instance','set_asset_assembly_editing','inspect_asset_instance','remove_asset_instance'}
 META='mcpblender_asset_assembly';INSTANCE='mcpblender_asset_instance';MARKER='mcpblender-asset-assembly-v1'
+IMAGE_FILE_LIMIT=512*1024**2
+IMAGE_TOTAL_LIMIT=2*1024**3
+GRAPH_VERSION=2
 
 
 def metadata(collection):
@@ -158,7 +161,43 @@ def record(block):
     return result
 
 
+def image_record(block,checkpoint=lambda:None):
+    """Snapshot the saved static image contract, never writable pixel arrays."""
+    row={'type':type(block).__name__,'name':block.name,'properties':props(block,exclude={'pixels'}),'custom':idprops(block),
+         'size':list(block.size),'color_space':block.colorspace_settings.name,'alpha_mode':block.alpha_mode}
+    if not 0<row['size'][0]*row['size'][1]<=64*1024**2:return row,0,'Assembly image exceeds 64 megapixels or has no pixels: '+block.name
+    if block.source not in {'FILE','GENERATED'}:return row,0,'Static FILE/GENERATED image required: '+block.name
+    if block.is_dirty:return row,0,'Save or pack unsaved image edits before guarded assembly use: '+block.name
+    if block.packed_file:
+        size=block.packed_file.size
+        if not 0<size<=IMAGE_FILE_LIMIT:return row,0,'Packed assembly image exceeds 512 MiB: '+block.name
+        checkpoint();row.update(content_sha256=hashlib.sha256(block.packed_file.data).hexdigest(),storage='PACKED')
+        return row,size,None
+    if block.source=='GENERATED':
+        row.update(storage='GENERATED_PARAMETERS',content_sha256=lods.digest(row))
+        return row,0,None
+    path=Path(bpy.path.abspath(block.filepath,library=block.library))
+    try:
+        import os,stat
+        with os.fdopen(os.open(path,os.O_RDONLY|os.O_NONBLOCK),'rb') as stream:
+            before=os.fstat(stream.fileno())
+            if not stat.S_ISREG(before.st_mode) or not 0<before.st_size<=IMAGE_FILE_LIMIT:return row,0,'Missing/nonregular/oversized assembly image: '+block.name
+            content=hashlib.sha256();total=0
+            while chunk:=stream.read(1024**2):
+                checkpoint();total+=len(chunk)
+                if total>IMAGE_FILE_LIMIT:return row,0,'Growing assembly image exceeds 512 MiB: '+block.name
+                content.update(chunk)
+            after=os.fstat(stream.fileno());current=path.stat()
+        if (before.st_dev,before.st_ino,before.st_size,before.st_mtime_ns)!=(after.st_dev,after.st_ino,after.st_size,after.st_mtime_ns) or (current.st_dev,current.st_ino,current.st_size,current.st_mtime_ns)!=(after.st_dev,after.st_ino,after.st_size,after.st_mtime_ns) or total!=before.st_size:return row,0,'Assembly image changed while hashing: '+block.name
+        row.update(content_sha256=content.hexdigest(),storage='EXTERNAL',resolved_path=str(path.resolve()))
+        return row,total,None
+    except OSError as exc:return row,0,'Unreadable assembly image: '+block.name+' ('+type(exc).__name__+')'
+
+
 def graph(objects,extras=(),trail=()):
+    from mcpblender.graph_digest import digest_records
+    from . import bridge
+    import time
     refs=references();data,nested,issues=dependencies(set(objects)|set(extras),refs)
     external={d for d in data if isinstance(d,bpy.types.Object)}-set(objects)
     issues.extend('Object dependency must be included: '+o.name for o in sorted(external,key=lambda o:o.name))
@@ -171,9 +210,25 @@ def graph(objects,extras=(),trail=()):
     for d in data:
         anim=getattr(d,'animation_data',None)
         if anim and any(c.driver.type=='SCRIPTED' and not c.driver.is_simple_expression for c in anim.drivers):issues.append('Non-simple Python driver cannot be audited as a closed asset: '+d.name)
-    records=[record(d) for d in sorted(data,key=lambda d:(type(d).__name__,d.name)) if not isinstance(d,(bpy.types.Collection,bpy.types.Library,bpy.types.Scene,bpy.types.World))]
     edges=sorted((type(user).__name__,user.name,type(ref).__name__,ref.name) for user in data for ref in refs.get(user,()) if ref in data)
-    digest=lods.digest({'records':records,'references':edges,'nested':nested_records,'frame':bpy.context.scene.frame_current+bpy.context.scene.frame_subframe})
+    last=[0.]
+    def checkpoint():
+        now=time.monotonic()
+        if bridge._bridge is not None and now-last[0]>=1:
+            bridge.check_cancelled();bridge.report_progress({'phase':'hashing assembly graph','datablocks':len(data)});last[0]=now
+    def records():
+        encoded=0
+        for d in sorted(data,key=lambda d:(type(d).__name__,d.name)):
+            if isinstance(d,(bpy.types.Collection,bpy.types.Library,bpy.types.Scene,bpy.types.World)):continue
+            checkpoint()
+            if isinstance(d,bpy.types.Image):
+                row,size,issue=image_record(d,checkpoint);encoded+=size
+                if issue:issues.append(issue)
+                if encoded>IMAGE_TOTAL_LIMIT:raise ValueError('Assembly encoded image dependencies exceed two GiB')
+            else:row=record(d)
+            yield row
+            del row
+    digest=digest_records({'graph_signature_version':GRAPH_VERSION,'references':edges,'nested':nested_records,'frame':bpy.context.scene.frame_current+bpy.context.scene.frame_subframe},records())
     return data,nested,sorted(set(issues)),digest
 
 
@@ -204,10 +259,11 @@ def source(p):
     if vertices>2000000:issues.append('Assembly source exceeds two million unique raw mesh vertices')
     estimate+=vertices*192+sum(max(1024,d.size[0]*d.size[1]*16) for d in all_data if isinstance(d,bpy.types.Image))
     return objects,actions,{'can_create':not issues,'blockers':issues,'source_sha256':signature,'objects':[o.name for o in objects],
+                            'graph_signature_version':GRAPH_VERSION,
                             'dependencies':[{'type':type(d).__name__,'name':d.name} for d in sorted(data,key=lambda d:(type(d).__name__,d.name))][p.get('dependency_offset',0):p.get('dependency_offset',0)+p.get('dependency_limit',100)],'total_dependencies':len(data),
                             'next_dependency_offset':p.get('dependency_offset',0)+p.get('dependency_limit',100) if p.get('dependency_offset',0)+p.get('dependency_limit',100)<len(data) else None,
                             'nested_assemblies':[c.name for c in sorted(nested,key=lambda c:c.name)],'bounds':source_bounds(objects),'estimated_transfer_bytes':estimate,
-                            'scope':'Known current object/data/action/reference state. Image pixel buffers, external files and arbitrary Python dependencies are not frozen.'}
+                            'scope':'Current local graph, clean saved packed/external bytes and clean generated-image parameters. Unsaved pixel buffers require save/pack. External files remain shared and are not frozen; arbitrary Python dependencies are not captured.'}
 
 
 def _inspect_asset(p,trail=()):
@@ -224,12 +280,13 @@ def _inspect_asset(p,trail=()):
     data,nested,other,signature=graph(objects,[a for a in actions if a],trail+ (meta['id'],));issues.extend(other)
     signature=lods.digest({'metadata':meta,'graph':signature,'offset':list(collection.instance_offset),'issues':issues})
     return {'collection':collection.name,'id':meta['id'],'valid':not issues,'issues':sorted(set(issues)),'assembly_sha256':signature,
+            'graph_signature_version':GRAPH_VERSION,'source_signature_version':meta.get('source_signature_version',1),
             'origin':list(collection.instance_offset),'members':[{'name':o.name,'type':o.type,'data':o.data.name if o.data else None,'parent':o.parent.name if o.parent else None} for o in objects],
             'actions':[a.name for a in actions if a],'nested_assemblies':[c.name for c in sorted(nested,key=lambda c:c.name)],
             'editing':collection.name in bpy.context.scene.collection.children,
             'instances':[o.name for o in bpy.data.objects if o.instance_type=='COLLECTION' and o.instance_collection==collection][p.get('offset',0):p.get('offset',0)+p.get('limit',100)],
             'total_instances':sum(o.instance_type=='COLLECTION' and o.instance_collection==collection for o in bpy.data.objects),
-            'scope':'Instances share this graph and active animation. Membership is owned; geometry/controls may be edited while linked for editing. Image pixel buffers and external files are not frozen.'}
+            'scope':'Instances share graph/animation. Current clean image bytes/generated parameters are guarded; unsaved pixel buffers require save/pack. External files remain shared and are not frozen.'}
 
 
 
@@ -348,6 +405,7 @@ def create(p):
         unused=(set(bpy.data.user_map())-before)-keep
         if unused:bpy.data.batch_remove(ids=tuple(unused))
         collection[META]=json.dumps({'format':MARKER,'id':uuid.uuid4().hex,'members':sorted(o.name for o in copies),'actions':sorted(a.name for a in actions),
+                                     'source_signature_version':GRAPH_VERSION,
                                      'source_objects':sorted(o.name for o in objects),'source_sha256':p['expected_source'],
                                      'source_frame':bpy.context.scene.frame_current+bpy.context.scene.frame_subframe},sort_keys=True)
         bpy.context.view_layer.update();check_cancelled();result=inspect_asset({'collection':collection.name})

@@ -3729,3 +3729,47 @@ bindings before adoption without replaying texture workers. This is not automati
 replay after an observation timeout. The resumed post-fix path passed separately
 in 70.88 seconds. All fixture-owned applications and brokers were stopped; no
 installed runtime or service was changed. Both bundled skills validate.
+
+## Bounded assembly image graph guards
+
+Assembly current guards now use graph signature version 2. Image records exclude
+writable pixel arrays, hash clean packed bytes or saved external bytes in bounded
+chunks, and snapshot clean generated-image parameters. Dirty image edits block
+copying/guarded use until the image is saved or packed. External files remain
+shared dependencies; hashing does not force cache reload or freeze them. Fixed
+limits are 64 megapixels per image, 512 MiB per encoded file and 2 GiB of encoded
+inputs per graph. The existing geometry/dependency/shape/action bounds remain.
+
+The graph digest streams one record at a time. Tests compare its exact JSON/hash
+against an eager reference and prove previous records are released before asking
+for the next. An initial test caught `enumerate` retaining the previous yielded
+record; the hasher now avoids that retention.
+
+A native fixture creates seven packed 1024x1024 images, prevents any generic image
+pixel-property traversal, then copies its textured object into a prototype and
+places two shared instances. It proves source/prototype image independence,
+dirty-edit refusal before mutation, changed/repacked source guards, generated
+parameter support, external byte changes without cache reload, missing/dynamic
+input blockers, per-file/aggregate bounds, save/reopen and unchanged instance
+bounds. Limit refusal uses reduced constants, not actual multi-GiB allocations.
+Additional cases change an external file while hashing and reference a FIFO from
+an already cached image; racing input is refused and nonregular open does not
+block. Focused checks passed six tests in 9.32 seconds, followed by three final
+image/digest checks in 7.00 seconds. The final focused contract/capability/image/
+hash gate passed eight tests in 18.20 seconds.
+
+Existing code-disabled textured-building/render/reopen and skeletal/shared
+prototype tests, nested native graph copying, realization and add-on packaging/
+import regressions passed seven tests in 53.37 seconds. The generated add-on
+includes the stdlib graph hasher and imports it with frontend dependencies blocked.
+An independent read-only probe opens two pre-upgrade projects retained under
+`/tmp/mb-assembly-20261103/`: all three saved prototypes validate, their historical
+metadata is unchanged, and current guards use version 2 with historical source
+version 1. Probe evidence is `/tmp/mb-assembly-images-20261104/legacy-proof.json`.
+
+Current guards intentionally change once after this upgrade; callers reinspect
+rather than replaying old expected guards. Newly created prototypes record their
+source-signature version, while old metadata keeps its original source SHA.
+Native decoding/cache allocations are not bounded by the Python streaming
+working set. This is current content/provenance qualification, not shader/optical
+or receiving-engine equivalence. The bundled design skill remains schema-valid.

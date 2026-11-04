@@ -37,6 +37,29 @@ Progress reports free storage in the configured output filesystem and the native
 transfer's temporary filesystem. The result includes a final `temporary_storage`
 snapshot. The estimate is a heuristic, not a guaranteed allocation ceiling.
 
+Current assembly guards report `graph_signature_version=2`. Clean packed images
+are guarded by encoded bytes; clean unpacked FILE images also hash the external
+file in bounded chunks, without serializing their writable pixel arrays. Clean
+unpacked GENERATED images use their generation parameters. Unsaved image edits
+are a blocker: save the image file or pack it before creating/using a guarded
+prototype. Saving only the blend project is not an image-save operation.
+Ordinary textured-PBR presets pack their inputs by default.
+
+Image limits are 64 megapixels per image, 512 MiB per encoded file and 2 GiB of
+encoded dependencies per graph. Missing, unsupported dynamic or changing files
+are reported as blockers; oversized aggregate input is refused. External files
+remain shared dependencies: the guard detects byte changes, but copying the
+assembly does not freeze those files or force Blender's image cache to reload.
+Use packed inputs for a self-contained transfer. Hashing reports progress and
+supports cooperative cancellation between blocks/chunks. Native decoding/cache
+memory is separate from the bounded Python hash working set.
+
+Existing prototypes retain their IDs, placements and historical `source_sha256`.
+Their current guard is recomputed under version 2, so reinspect after upgrading.
+`source_signature_version` identifies the historical source guard (implicit 1
+for older prototypes, 2 for newly created ones). A current guard is not a replay
+of the historical source snapshot.
+
 Creation copies native objects, data, materials and clips into a persistent,
 initially unlinked collection. Parents and native references follow the copied
 graph. `copied_objects` maps original names to new component names. Existing managed
@@ -72,8 +95,9 @@ Limits include 128 direct members, eight nesting levels, 20,000 dependency IDs,
 two million raw mesh vertices, four million shape-key entries, and two million
 curve points in total (200,000 per action). Instance inspection caps evaluated
 records at 2,048 and mesh vertices at two million. Guards cover the documented
-current native state; image pixel buffers, external file contents and arbitrary
-Python dependencies are not frozen. Native write/append calls are not interruptible;
+current native state and the saved-image contract above; unsaved pixel buffers
+are not captured, external files remain shared, and arbitrary Python dependencies
+are not frozen. Native write/append calls are not interruptible;
 cooperative cancellation and ordinary failure clean owned transfer data. External
 linked-library loading, animated realization/export and independent
 instance simulation are not covered by these prototype tools. Static mesh

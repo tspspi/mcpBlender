@@ -313,6 +313,15 @@ viewport leaves/bounds; camera framing and preview setup accept managed placemen
 Save the scene for editable delivery. No independent instance timing or external
 library loading is implied. Static realization is described below; consult
 USER_MANUAL.md for ownership, dependency and guard limits.
+Current assembly graph guards use version 2: clean packed/saved external image
+bytes and clean generated-image parameters, without expanding pixel arrays.
+Unsaved image edits block guarded transfer/use; save the image or pack it first
+(saving the blend alone is insufficient). PBR presets pack input images by
+default. External files remain shared and are not forced to reload; their byte
+changes invalidate cached guards. Existing prototypes remain usable, but obtain
+fresh guards after the signature upgrade. Limits include 64 megapixels/image,
+512 MiB/encoded file and 2 GiB total encoded dependencies, separate from native
+decode/cache memory and the existing graph/geometry budgets.
 
 For static assembly delivery, `inspect_asset_realization` takes managed placement
 names in `instances`. Carry `source_sha256` as `expected_source` into

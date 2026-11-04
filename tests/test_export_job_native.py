@@ -84,6 +84,8 @@ assert 'get_capabilities' in domains.COMMANDS and 'rebuild_lod_chain' in domains
 assert 'inspect_texture_quality' in domains.COMMANDS
 from mcpblender import uv_chart_layout
 assert callable(uv_chart_layout.pack)
+from mcpblender import graph_digest
+assert len(graph_digest.digest_records({'frame':1},iter([])))==64
 assert not any(n.split('.')[0] in {'pydantic','fastmcp'} for n in sys.modules)
 print('ADDON_DEPENDENCY_FREE_OK')
 ''')

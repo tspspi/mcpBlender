@@ -662,3 +662,21 @@ configure_color_management for exposure. film_transparent controls camera
 background without removing illumination. Keep asset guards, check macro leaf
 front/back transmission and bark scale, then review the whole asset. Save/reopen
 packed inputs. These controls do not establish physical optics or engine parity.
+
+For tree collision, inspect_botanical_collision_source selects trunk/major branches
+by canonical start radius and branch order, with ancestor closure and explicit
+piece/triangle budgets. create_botanical_collisions uses the fresh expected_plan
+and a new collision_collection; it encloses selected native woody sleeves with
+closed convex pieces without realizing foliage. Inspect mappings, containment,
+volumes and actual renders. Root scaling is included in world_volume_m3; piece
+volumes can overlap. hide_render defaults true, wire viewport display is used.
+parent_to_root defaults true for asset editing. Set it false at creation for the
+existing rigid-body tools, then attach PASSIVE/CONVEX_HULL physics explicitly with
+fresh physics guards. The unparented mode's root is only an origin marker. Source
+and collision snapshots remain independent. Inspect fresh collision guards before
+removal; physics, foreign references and persistent IDs block deletion. Edited
+owned data additionally needs explicit discard. Save/reopen and inspect again;
+source tree session guards are not portable content hashes. Generic GLB export
+supports root plus meshes up to its 64-object limit and uses displayed placement.
+No wind-swept collision, automatic engine binding or collision bundle sidecar is
+implied. See USER_MANUAL.md for numeric, source and lifecycle limits.

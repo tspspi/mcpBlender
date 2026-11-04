@@ -4149,3 +4149,77 @@ evidence is `/tmp/mb-canopy-wind-20261104/`, including operation/storage journal
 the MP4. Temporary native readback objects are removed before final guard checks;
 all owned applications/brokers stop. No packages, virtual environments, installed
 runtimes/skills, services, user GUI sessions or engine adapters were changed.
+
+## Semantic trunk/major-branch collision snapshots — 2026-11-04
+
+Typed `inspect_botanical_collision_source`, `create_botanical_collisions`,
+`inspect_botanical_collisions` and guarded removal now select canonical trunk and
+major branches without realizing foliage. Each selected native woody sleeve,
+including shared rings/root flare, becomes a closed convex piece. Selection is
+ancestor-closed and bounded by explicit count/triangle limits. Source geometry,
+selection, frame and placement remain unchanged. Independent saved snapshots
+report source geometry/semantic/placement freshness separately from their validity.
+
+The initial native-hull implementation was refused by its containment gate on
+an actual mature source: near-coplanar face merging left a selected vertex about
+4.88e-6 m outside a face (tolerance 1.18e-6 m). The final implementation uses a
+bounded deterministic double-precision hull builder for at most 32 points. It
+retains original native coordinate values, checks every input vertex against
+all outward triangular halfspaces, verifies closed oriented edges/positive volume,
+and uses translated coordinates for stable plane/volume calculations. No extra
+numerical package, Blender rebuild or environment change was required.
+
+Final pure hull, schema/readonly, native lifecycle and add-on-without-frontend
+checks passed four tests in 24.90 seconds. They include shuffled inputs,
+near-coplanar 32-point sleeves, random spherical hulls, large translations,
+degenerate/oversized input refusal, count/triangle/stale guards, early/late exact
+ID rollback, source/frame/selection preservation, rotation/nonuniform placement
+at scene-unit scale .01, reflection/shear refusal, unit/branch-mapping guards,
+source movement, save/reopen, source removal and blocked foreign references,
+collection members, persistent IDs and attached physics. Native mesh topology,
+volume and source-vertex containment are independently checked after publication.
+Both parented and explicitly unparented placement modes are covered.
+
+The Python-disabled three-source workflow passed in 133.75 seconds using retained
+Canopy1/2/3 sources with 92,136 / 90,288 / 88,704 leaves. Default radius .12 m and
+maximum order 1 produced 25 / 30 / 21 convex pieces, with 700 / 840 / 588 triangles.
+Maximum reported source-vertex outside distances were below 8.4e-17 m in these
+fixtures. No extra geometric padding was applied. Summed piece volumes were
+2.67033 / 2.74817 / 2.58337 cubic metres; these are sums, not union volumes.
+All three fixed-camera renders were actually viewed. Closed pieces meet/overlap
+at joints; this is collision geometry, not a welded render surface.
+
+All three profiles save/reopen, report unchanged source content after refreshing
+session guards, and can be removed without changing the live editable-source
+guard. Existing explicit-object GLB export delivers the root and all pieces.
+The file-only decoder traverses node transforms and checks names/counts, triangle
+counts, closed welded-position edges and positive per-piece world volumes against
+native plans. It repeats validation after owned profile removal. This establishes
+static count/closedness/volume checks, not engine collision-resource or canonical
+sidecar delivery; dedicated large-profile collision packaging remains open.
+
+A further five-second saved-project check (one test passed in 5.27 seconds)
+independently compares every exported piece's Z-up metre world bounds with its
+native saved project. All three sources pass placement tolerances, including the
+20 m display offset. The fixture now records native bounds during the full
+workflow and enforces the same check on subsequent delivery validation. Storage
+journals also confirm positive free bytes, a >=4 MiB collision estimate and space
+admission on completed creations. No geometry/render regeneration was needed to
+perform these extra file/native comparisons.
+
+The native rigid-body API correctly refused the default parented pieces. An
+explicit `parent_to_root=false` creation option supplies independent world-placed
+pieces while retaining an origin marker. A targeted Python-disabled contact test
+passed in 50.63 seconds: a .1 m box falls onto a generated convex trunk piece,
+with sampled centre heights 1.74447, .71111, .59962 and .60065 m at frames
+1/12/36/60. The piece top is .54447 m. Attached physics blocks owned deletion;
+removing both controllers restores a valid unmodified collision profile, permits
+cleanup and preserves the source guard. This is one native Bullet contact,
+not wind-swept, compound, engine, broad-phase load or biomechanical qualification.
+
+Evidence is `/tmp/mb-canopy-collision-20261104/`: three editable projects/renders/
+GLBs and branch/geometry proofs in `library`, contact/ownership proof in `contact`,
+and operation/storage journals. Progress reports current free bytes and a
+collision checkpoint heuristic. All owned applications/brokers are stopped.
+No packages, virtual environments, installed runtimes/skills, services, normal
+GUI sessions, engine adapters, tags or pushes changed.

@@ -1980,6 +1980,79 @@ cancellation before publication preserves the original. Reinspect after source,
 placement or settings changes. The JSON carries semantic data for later adapters;
 GPU packing and target-engine validation remain open.
 
+### Trunk and major-branch collision snapshots
+
+Use `inspect_botanical_collision_source` with a valid owned tree `collection`,
+then `create_botanical_collisions` with the matching options, fresh
+`expected_plan` and a new `collision_collection`. This workflow selects canonical
+branches without expanding or realizing leaf instances:
+
+```json
+{
+  "collection": "Oak",
+  "min_radius_m": 0.12,
+  "max_branch_order": 1,
+  "collision_collection": "OakCollision",
+  "expected_plan": "<plan_sha256 from inspection>",
+  "parent_to_root": true
+}
+```
+
+The radius threshold applies to each segment's **start radius in canonical
+metres**, before root scaling; the complete sleeve is retained. Order 0 is the
+trunk, order 1 includes its major branch axes. Selection closes over ancestors;
+inspect `requested_branches` and `ancestor_added`. Default limits allow 128 pieces
+and 10,000 triangles; explicit maxima are 256 pieces and 100,000 triangles.
+Empty selection and count/triangle overflow refuse. Planning creates no persistent
+native IDs. A supported woody sleeve contains at most 32 native corner vertices.
+
+Each selected sleeve becomes its own closed convex triangle mesh, including
+shared rings and the root flare. A bounded double-precision hull builder checks
+all source vertices against all outward triangle halfspaces, closed oriented
+edges, convexity and positive volume. It avoids the native hull operator's
+near-coplanar face merging. Returned containment tolerances and volumes refer to
+the actual stored native vertex coordinates. `volume_local_m3` is in canonical
+metres; `world_volume_m3` includes root scaling and scene units. Summed piece
+volumes are not a union volume. Separate hulls can overlap at joints and fill
+within-sleeve concavities; leaves and shoots are omitted. No wind-swept collision,
+compound union, biomechanical accuracy or receiving-engine resources are created.
+
+The copy freezes positive invertible source placement. Nonuniform scale and
+rotation are supported; shear/reflection and controlled roots refuse. A physical
+`display_offset_m` is optional. Geometry is hidden from renders by default and
+uses wire display in the viewport. Set `hide_render=false` explicitly for a
+camera preview. Source visibility, selection, frame and geometry stay unchanged.
+Cooperative failures remove staged IDs; normal checkpoints/saves remain the
+application-crash recovery boundary. Progress includes current free storage and
+a new-geometry/checkpoint heuristic, not a full-scene save or peak-memory bound.
+
+By default pieces are parented to a common root for asset editing/export.
+Use `parent_to_root=false` when preparing pieces for the existing native
+rigid-body tools, which deliberately refuse parented meshes. Each piece then
+keeps its own frozen world transform; the returned root is an origin marker and
+does not move those unparented pieces. Physics attachment remains explicit:
+`configure_rigid_world`, then `configure_rigid_body` with a fresh physics guard,
+`type=PASSIVE` and `collision_shape=CONVEX_HULL` for the chosen pieces. Follow the
+physics tools' scale/cache rules and inspect actual contacts. Attached physics
+or external collection references block owned collision deletion until removed.
+
+`inspect_botanical_collisions` returns the independent snapshot's current
+`collision_sha256`, validity, paginated per-piece branch mappings, all object
+names and source geometry/semantic/placement freshness. It remains valid after
+source removal; changed/missing sources are reported separately. Changed native
+geometry, units or branch mappings invalidate qualification. A fresh inspection
+is required before `remove_botanical_collisions`; derived edits additionally
+require `discard_derived_edits=true`. Foreign references/members, linked or
+persistent IDs and attached physics cannot be bypassed with this flag.
+
+Save/reopen the editable project and inspect fresh guards. Session-bound tree
+guards can change on reopen even when source content is unchanged. For small
+profiles, existing `export_objects_glb` can export the root plus returned mesh
+objects (64 objects total maximum); it preserves displayed placement, including
+any offset. Native source profiles remain available independently. Larger
+collision-specific bundle packaging and canonical sidecars remain separate work;
+a generic GLB does not attach engine physics or certify semantic import.
+
 ### Sampled native wind previews
 
 Use `inspect_botanical_wind_preview_source` with the source tree, `wind` settings

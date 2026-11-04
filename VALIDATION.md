@@ -1,5 +1,32 @@
 # Local validation: 0.2.0
 
+## Full-density multigrid vegetation LOD file delivery — 2026-11-04
+
+The Python-disabled MCP delivery workflow passed **1 test in 1563.99s** from the
+saved dense native project. Its three levels retain 88,704/70,000/60,000 leaves
+and 1,176 branches each. Nine GLBs contain six wood/shoot assets and three shared
+leaf templates; the template geometry occurs once. Expanded triangle totals are
+17,457,216 / 13,791,232 / 11,831,232, not measured GPU workload or memory use.
+The complete bundle is 184,327,467 bytes, of which 33,454,128 are GLB files;
+the remainder includes explicit semantic tables and independent numeric witnesses.
+
+Export plus staged verification/publication took 1031.38s. The source and native
+profile guards stayed unchanged, and the durable journal reported published
+ownership with the expected material binding. SOURCE placement omits the native
+20m display offset. The test then removed both native LOD profile and original
+tree and validated the files again in 449.67s, obtaining the same proof. This
+recomputes canonical foliage, grid-independent nested selections and all quality
+grids, and independently decodes branch/wind fields, ancestry, oriented triangles,
+UV channels and metre placement. Native source files are not inputs to that
+validator; the original saved project remains retained as an editable checkpoint.
+
+Original procedural materials use PARAMETERS delivery with recorded conversion
+limits. This fixture does not establish baked PBR/optical fidelity, filtered alpha,
+shadows, animated LOD playback, far cards/impostors or an engine shader. Those
+requirements remain open. Native and file proofs, renders, the three source-seed
+projects and copied-file hashes are preserved in the ignored workspace under
+`tmp/qualification/multigrid-20261104` for relocation.
+
 ## Independent vegetation LOD sampling grids — 2026-11-04
 
 New plans use `AREA_PRIORITY_MULTIGRID_V2`: nested geometric-area/hash priorities
@@ -73,7 +100,7 @@ source study's overall crown, with sparse front-facing foliage; they do not clos
 the mature-oak habit/junction/material reference, optical/filtered coverage,
 shadow, continuous-wind, distant-card/impostor or receiving-renderer requirements.
 Dense native proof and image hashes are retained locally. Full-density GLB
-delivery is being qualified separately. No packages, virtual environments,
+delivery is qualified separately above. No packages, virtual environments,
 installed runtime/services, installed skills, Godot or remote Git state changed.
 
 ## Complete mapped-profile coverage and mip-budget inspection — 2026-11-04

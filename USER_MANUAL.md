@@ -4706,6 +4706,13 @@ while Blender is busy; frame/download progress also carries it. Renders, downloa
 saves and checkpoints check capacity before admission and execution. Frame renders
 and streaming downloads recheck as output grows.
 
+For an operation being polled, read the top-level `storage` for current free and
+available bytes: the broker refreshes it independently of Blender. The snapshot
+inside `progress.storage` belongs to the last worker progress event and may be
+older during a long native call. Use `checked_at` to distinguish their ages.
+Initial output estimates are retained separately; a worker's refined output
+estimate is a heuristic total, not a measured remaining-space requirement.
+
 `storage.reserve_bytes` defaults to 256 MiB; `storage.warn_below_bytes` to 2 GiB.
 Estimates identify conservative pixel bounds, configured download limits,
 heuristics, or unknown sizes. They cannot predict arbitrary Python output or quotas;

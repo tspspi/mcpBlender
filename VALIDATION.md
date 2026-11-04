@@ -3679,3 +3679,53 @@ adopted, saved/reopened, exported and independently validated; a process sample
 during previews was about 966 MiB RSS. This sample is not a measured peak or a
 general memory bound for rendering; legacy verification still needs one complete
 data-block record and native image caches.
+
+## Full quality-bearing texture delivery and render review
+
+```sh
+MCPBLENDER_TEST_BLENDER=1 MCPBLENDER_FULL_QUALITY_EVIDENCE_DIR=/tmp/mb-full-quality-final-20261104 python3.11 -m pytest -q -s tests/test_vegetation_quality_full_delivery.py
+```
+
+The uninterrupted run passed in 680.34 seconds with arbitrary Python execution
+absent from the MCP tool surface. It creates a fresh procedural five-metre tree,
+four native LOD levels and three shared leaf templates, prepares every role with
+the pixel chart allocator, and actually bakes all seven maps for all eleven
+components at 1024x1024, four samples and two-pixel margin. Every self-bake carries
+the same declared quality policy: minimum 32 directional texels/metre, four chart
+pixel-centre samples, two pixels of padding and mip levels 0–1. Source/preparation
+witnesses remain unchanged through baking. All eleven emission maps are black
+for the non-emissive source materials.
+
+The guarded batch adoption and `require_quality=true` delivery inspection both
+pass. The input estimate is exactly 322961408 base RGBA8 bytes (308 MiB) and
+430615108 full-mip bytes (about 410.67 MiB), within explicit 384/512 MiB budgets.
+No quality-report, scene-unit, map or resolution gaps remain for this fixture.
+The test removes preparation and original bake directories after packing,
+saves/reopens the project, exports every component, removes the native profile
+and independently validates all eleven exported assets and semantic witnesses.
+The final retained library occupies about 34 MiB on disk; this is not a runtime
+memory measurement. Recorded free temporary storage remained above 8.95 GiB.
+
+Four 384x384 Cycles previews were opened and visually reviewed: leaf detail with
+and without its baked normal link, plus LOD 0 and LOD 3 at the same camera. An
+independent RGB decode found 15854 changed pixels among 147456 in the leaf
+comparison, mean absolute channel difference about 0.089/255 and maximum 33/255.
+The normal effect is subtle under this lighting, while the baked normal image
+itself shows vein detail. The whole-tree previews show bark texture and sparse
+foliage; LOD 3 visibly loses foliage. These are functional renders of a young
+scaffold, not mature-oak visual acceptance. The explicit FRONT_PBR optical
+omissions and copy-only missing-UV fallback remain in the delivery report.
+Per-component self-bake AO excludes other canopy components and cutout-aware
+occlusion; no physical thin-leaf parity, deep-mip filtering, generated mip image
+chain, large population, animation or receiving-engine qualification is implied.
+
+`/tmp/mb-full-quality-final-20261104/` retains operation/storage observations,
+per-role bake proof, `library/prepared.blend`, packed `quality-profile.blend`,
+quality report, four PNG previews, `visual-review.json` and standalone delivery.
+Earlier attempts and the successful retained-checkpoint resume remain separate.
+Optional `MCPBLENDER_FULL_QUALITY_RESUME_DIR` points to a retained prepared library
+with already successful matching bundles; it verifies their source/report/file
+bindings before adoption without replaying texture workers. This is not automatic
+replay after an observation timeout. The resumed post-fix path passed separately
+in 70.88 seconds. All fixture-owned applications and brokers were stopped; no
+installed runtime or service was changed. Both bundled skills validate.

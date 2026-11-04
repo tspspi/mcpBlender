@@ -1134,7 +1134,8 @@ PBR defaults. This does not reproduce arbitrary shader lobes, glass or HDR outpu
 Maps are 8-bit PNG: normal/AO/roughness/metallic/alpha use Non-Color, base color
 and emission use sRGB. Normal maps are tangent-space with positive Y. AO measures
 opaque geometry occlusion; alpha is transferred separately, without cutout-aware
-AO. Native normal transfer retains a connected source normal/bump input. The
+AO. Self-bake workers retain the target mesh and exclude unrelated scene objects,
+so a component AO map does not include the other canopy components. Native normal transfer retains a connected source normal/bump input. The
 baked material includes the glTF occlusion settings group, so AO, normal and PBR
 textures can be embedded by `export_objects_glb`. `maps` returns paths, dimensions,
 color spaces and channel statistics; `material` names the new material.
@@ -4050,6 +4051,37 @@ changed project; scene replacement retains the same cooperative rollback and
 crash-recovery limits as initial adoption.
 
 ### Check full-profile textured delivery coverage
+
+For a complete quality-bearing delivery, prepare NEW target UVs with the actual
+texture dimensions, tile border and optional chart allocation. For example,
+`texture_width=1024`, `texture_height=1024`, `tile_padding_pixels=8` and
+`chart_layout={"min_area_pixels":64,"min_span_pixels":2,"gutter_pixels":4,
+"allow_stretch":true}` support the qualified sparse five-metre fixture. Check
+every generated component rather than assuming the same numbers suit all trees.
+Review any explicit missing-source-UV fallback before creating the preparation.
+
+For each returned component, pass its bake inputs plus the same `quality` policy
+to inspection and baking: `width=1024`, `height=1024`,
+`min_texels_per_meter=32`, `min_chart_pixels=4`, `padding_pixels=2`,
+`mip_levels=1`. Carry the resulting guarded bake hash, use matching bake dimensions
+and `margin=2`, choose the required maps and create a distinct output directory.
+Use asynchronous submission and retain the operation ID; poll until terminal
+success before consuming its result. A synchronous wait can expire while the
+operation remains running. Do not repeat a bake solely because observation timed
+out. Progress includes current storage snapshots and the native output estimate
+in `progress.storage`; the top-level snapshot can retain the admission estimate.
+
+Adopt all role/directory entries together after the guarded adoption inspection,
+with explicit optical-loss acceptance where needed. Inspect delivery with
+`require_quality=true` and explicit map/resolution/budget criteria. Eleven roles
+with seven 1024x1024 input maps require 308 MiB of base RGBA8 and approximately
+410.67 MiB for hypothetical full mip chains; the default 64/96 MiB budgets
+intentionally refuse that target. For this case, explicit budgets of 384 MiB
+base and 512 MiB full mip allow the declared inputs. These are calculated input
+image estimates, not compressed file sizes or measured runtime allocations.
+Save/reopen the packed project, export and independently validate its bundle,
+then review representative close and distant renders. Retained geometric reports
+do not establish actual image filtering, appearance or engine behavior.
 
 `inspect_vegetation_delivery` reads a valid native `lod_collection` and reports
 all expected per-level wood/shoot components plus each shared leaf template.

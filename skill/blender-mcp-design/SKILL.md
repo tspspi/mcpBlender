@@ -73,6 +73,13 @@ export. inspect_vegetation_delivery(require_quality=true) requires a report for
 every component and matching scene units; review quality_policies because each
 report covers only its declared thresholds/mip sizes and prepared placement.
 It does not rerun sampling or qualify every scaled shared-template instance.
+Plan whole-profile budgets explicitly: eleven roles with seven 1024-square maps
+need 308 MiB base RGBA8 and about 410.67 MiB for hypothetical full mips. A budget
+refusal is a delivery decision; do not silently drop maps or reduce resolution.
+Submit long operations asynchronously and keep their operation IDs; an observation
+timeout does not prove failure or authorize replay. Save/reopen the packed result
+and independently validate export after guarded source cleanup. Review actual
+material and LOD renders separately from the declared geometric quality policy.
 
 For high-to-low textures, inspect `inspect_texture_bake` with the low `name`,
 high `sources`, target `uv_map` and optional topology-matched `cage`. Carry its

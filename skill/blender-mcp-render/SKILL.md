@@ -46,6 +46,13 @@ adoption. Their reports travel with packed maps and semantic exports. Use
 inspect_vegetation_delivery(require_quality=true) to flag missing reports or
 changed scene units, then inspect each recorded policy; mip_levels=0 certifies
 only the declared base footprint. This does not repeat sampling or render review.
+Calculate whole-profile input budgets before all-role adoption: eleven roles
+with seven 1024x1024 maps need 308 MiB base RGBA8 and about 410.67 MiB for full
+hypothetical mip chains, exceeding default delivery budgets. Declare appropriate
+limits, then require every role's retained quality report. Render close detail
+and multiple LODs afterward; the sparse scaffold qualification is not a mature
+canopy or deep-mip appearance certificate. Self-bake AO excludes other scene
+components and does not establish whole-canopy occlusion.
 The isolated worker preserves
 the editing scene, producing PNGs plus a static current-frame PBR asset. Check
 `projection.fraction`, map statistics and an actual render; a completed job is

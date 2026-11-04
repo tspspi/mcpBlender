@@ -56,6 +56,16 @@ For vegetation, request tile_padding_pixels at declared texture_width/height
 when planning and creating a NEW bake preparation instead of editing its frozen
 UVs afterward. Original source maps stay intact. EXISTING forbids nonzero inset.
 Check each resulting component's full geometric quality policy before baking.
+For narrow charts or mip-gap failures, optional chart_layout on NEW vegetation
+preparation or pack_uv_islands allocates pixel rectangles before freezing UVs.
+Declare the actual texture dimensions, min_area_pixels, min_span_pixels and
+gutter_pixels (per side at base resolution). Default floors are 64 pixels of
+area, two pixels of mean width and four-pixel gutters. Ordinary packing requires
+scale=true. Explicit allow_stretch=true permits anisotropic target UV scaling;
+otherwise charts retain pixel-space aspect ratios and may refuse to fit. Source
+shader UV pins and geometry stay intact. Inspect chart_layout.stretched_charts
+and independently require complete/passed quality at intended mip sizes; the
+shelf heuristic and mean-width floors do not certify coverage or physical density.
 Quality-gated vegetation self-bakes retain source inspection witnesses so
 adoption can verify both the original preparation and policy-bearing bake hashes.
 Their geometric reports survive packed adoption, source cleanup and semantic

@@ -35,6 +35,12 @@ padding at declared base/mip sizes. A shared `quality` policy on inspection and
 baking enforces complete/pass and records the report; use matching dimensions
 and margin no larger than policy padding_pixels. Incomplete budgets cannot pass.
 It does not test actual mip kernels, colors, dilation or optical appearance.
+If chart coverage or mip gaps fail, NEW vegetation preparation can opt into
+chart_layout with pixel-area/mean-span floors and per-side gutters at declared
+texture dimensions. Generic pack_uv_islands supports the same staged layout.
+allow_stretch=true must be explicit; it changes target UV anisotropy while source
+sampling maps stay pinned. Reinspect physical density/coverage/padding afterward,
+then bake and review actual colors/normal transfer and filtering separately.
 Quality-gated vegetation self-bakes also retain the source witness needed for
 adoption. Their reports travel with packed maps and semantic exports. Use
 inspect_vegetation_delivery(require_quality=true) to flag missing reports or

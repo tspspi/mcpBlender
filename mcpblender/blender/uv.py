@@ -78,6 +78,30 @@ def overlaps(triangles,budget):
     return checked_overlaps(triangles,budget)
 
 
+def pixel_pack(obj,uv_map,width,height,border,policy,*,rotate=True,budget=200000):
+    import time
+    from mcpblender.uv_chart_layout import pack
+    from . import bridge
+    mesh=obj.data;layer=mesh.uv_layers[uv_map]
+    coords,islands,_=layout(mesh,layer,obj.matrix_world,width,height)
+    last=[0.]
+    def checkpoint():
+        now=time.monotonic()
+        if now-last[0]>1:
+            if bridge._bridge is not None:bridge.check_cancelled()
+            bridge.report_progress({'phase':'allocating pixel UV charts','charts':len(islands),'texture_size':[width,height]});last[0]=now
+    charts=[{'points':[coords[i] for i in row['loops']],'area':row['uv_area']} for row in islands]
+    points,report=pack(charts,width,height,border,policy,rotate=rotate,checkpoint=checkpoint)
+    values=[v for point in coords for v in point]
+    for row,positions in zip(islands,points):
+        for loop,point in zip(row['loops'],positions):values[2*loop:2*loop+2]=point
+    layer.data.foreach_set('uv',values);mesh.update()
+    _,after,triangles=layout(mesh,layer,obj.matrix_world,width,height);result=overlaps(triangles,budget)
+    if not result['complete'] or result['face_pair_count'] or len(after)!=len(islands):raise ValueError('Pixel chart packing failed complete clear overlap/island verification')
+    report['overlap']=result
+    return report
+
+
 def inspect(p):
     obj=mesh_object(p['name']);mesh=obj.data;check_size(mesh)
     layer=mesh.uv_layers.get(p['uv_map'])
@@ -125,6 +149,7 @@ def dispatch(command,p):
     bpy.context.scene.collection.objects.link(staged)
     settings=bpy.context.scene.tool_settings
     select_mode=tuple(settings.mesh_select_mode);sync=settings.use_uv_select_sync
+    layout_report=None
     try:
         layer=temporary.uv_layers.get(p['uv_map']) or temporary.uv_layers.new(name=p['uv_map'])
         temporary.uv_layers.active=layer
@@ -135,6 +160,8 @@ def dispatch(command,p):
                 center=[sum(coords[i][a] for i in island['loops'])/len(island['loops']) for a in (0,1)]
                 factor=p['pixels_per_unit']/island['pixels_per_unit']
                 for i in island['loops']:layer.data[i].uv=[center[a]+(coords[i][a]-center[a])*factor for a in (0,1)]
+        elif command=='pack_uv_islands' and p.get('chart_layout'):
+            layout_report=pixel_pack(staged,p['uv_map'],p['texture_width'],p['texture_height'],p['tile_padding_pixels'],p['chart_layout'],rotate=p['rotate'],budget=p['overlap_budget'])
         else:
             with active_object(staged):
                 settings.mesh_select_mode=(False,False,True);settings.use_uv_select_sync=False
@@ -147,7 +174,7 @@ def dispatch(command,p):
                 finished(bpy.ops.object.mode_set(mode='OBJECT'))
         values=[value for item in temporary.uv_layers[p['uv_map']].data for value in item.uv]
         if not all(math.isfinite(v) for v in values):raise ValueError('Native UV edit produced non-finite coordinates')
-        if command=='pack_uv_islands' and p.get('tile_padding_pixels',0):
+        if command=='pack_uv_islands' and p.get('tile_padding_pixels',0) and not p.get('chart_layout'):
             from mcpblender.uv_math import inset_tile
             values=inset_tile(values,p['texture_width'],p['texture_height'],p['tile_padding_pixels'],p['scale'])
         if mesh.users>1:obj.data=mesh.copy();mesh=obj.data
@@ -156,4 +183,4 @@ def dispatch(command,p):
     finally:
         settings.mesh_select_mode=select_mode;settings.use_uv_select_sync=sync
         bpy.data.objects.remove(staged,do_unlink=True);bpy.data.meshes.remove(temporary)
-    return inspect(p)
+    return inspect(p)|({'chart_layout':layout_report} if layout_report is not None else {})

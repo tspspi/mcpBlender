@@ -997,6 +997,40 @@ sampling pins, and enters the frozen preparation witness. This option requires
 `uv_strategy="NEW"`; `EXISTING` keeps authored UV coordinates unchanged. Zero
 retains the ordinary preparation layout. It reserves edge space only; inspect
 the prepared component's quality before baking at the declared dimensions.
+
+For small/thin charts that ordinary packing undersamples, optionally pass a
+`chart_layout` object to `pack_uv_islands`, or to NEW vegetation bake planning
+and preparation. This selects a bounded pixel-rectangle shelf layout instead of
+the native packer. Specify the actual texture dimensions. The default policy
+is `{"min_area_pixels":64,"min_span_pixels":2,"gutter_pixels":4,
+"allow_stretch":false,"max_charts":4096}`. `gutter_pixels` is reserved on each
+side of each chart, giving twice that distance between its rectangle and the
+next; `tile_padding_pixels` reserves additional space at the tile boundary.
+These are base-resolution pixels. Four-pixel gutters retain two pixels per side
+at mip 1; the quality inspector still decides whether actual coverage passes.
+
+Charts align to their principal axes in pixel space when `rotate=true`, then
+pack without further rotation. An allocation floor increases small charts before
+a bounded search retains as much original density as the shelf heuristic finds
+feasible, up to the original chart scale. `min_span_pixels` means chart area
+divided by its longest rectangle side, an average width rather than a guarantee
+about every local neck or triangle. With `allow_stretch=false`, each chart retains
+its pixel-space aspect ratio. Explicit `allow_stretch=true` permits independent
+axis scales to allocate thin charts without making their long axes enormous.
+It changes target UV anisotropy and can reduce physical directional density;
+it preserves geometry and the original source shader's pinned sampling maps.
+`scale=true` is required for ordinary UV packing with this option. For vegetation,
+EXISTING layouts refuse it and the requested policy enters the source-plan guard.
+
+The response includes `chart_layout` with method, search attempts, retained
+density factor, allocation statistics, stretch count and clear overlap results;
+vegetation preparation stores it per component. Count-budget, degenerate chart,
+failed overlap/island checks or shelf-fit failures refuse publication and discard
+staged copies. Failure of this heuristic does not prove that no possible packing
+exists. Reinspect `inspect_texture_quality` at base and intended mip dimensions:
+rectangle allocation does not certify pixel-centre coverage, actual density,
+baked maps or filtering. The option defaults to absent, preserving native packing.
+
 `activate_uv_map` selects an existing map for editing and rendering/export.
 UV edits preserve vertex geometry, shape keys, skin weights, object selection
 and unrelated UV map coordinates. Native unwrap/packing operates on a temporary

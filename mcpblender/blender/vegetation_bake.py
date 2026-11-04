@@ -84,6 +84,7 @@ def plan(p):
     contract=vegetation_materials.contract(selected)
     options={k:p[k] for k in ('uv_map','margin','missing_uv_policy','max_corners')};options['uv_strategy']=p.get('uv_strategy','NEW');options['max_uv_repairs']=p.get('max_uv_repairs',64)
     if p.get('tile_padding_pixels',0):options.update({k:p[k] for k in ('tile_padding_pixels','texture_width','texture_height')})
+    if p.get('chart_layout'):options.update({k:p[k] for k in ('chart_layout','texture_width','texture_height')})
     images={n.image for obj in selected.values() for mat in obj.data.materials for n in mat.node_tree.nodes if n.type=='TEX_IMAGE' and n.image and n.image.get(vegetation_lods.OWNER)}
     result={'format':FORMAT,'source_guard':guard,'source_materials':contract,'assets':rows,'available_assets':list(available),'options':options,'corners':corners,
             'private_images_copied':len(images),'estimated_copy_bytes':corners*128+sum(i.size[0]*i.size[1]*4+(i.packed_file.size if i.packed_file else 0) for i in images),'source_sampling_changes':changes,'can_prepare':not reasons,'unsupported_reasons':reasons,
@@ -222,7 +223,8 @@ def create(p):
             # Edit-mode operators rebuild CustomData; reacquire the RNA layer
             # instead of writing through a pre-edit UV wrapper.
             layer=mesh.uv_layers[p['uv_map']]
-            if p.get('tile_padding_pixels',0):
+            chart_layout=uv.pixel_pack(target,p['uv_map'],p['texture_width'],p['texture_height'],p.get('tile_padding_pixels',0),p['chart_layout']) if p.get('chart_layout') else None
+            if p.get('tile_padding_pixels',0) and chart_layout is None:
                 from mcpblender.uv_math import inset_tile
                 values=[v for item in layer.data for v in item.uv]
                 layer.data.foreach_set('uv',inset_tile(values,p['texture_width'],p['texture_height'],p['tile_padding_pixels'],True))
@@ -245,6 +247,7 @@ def create(p):
             if not info['complete']:raise ValueError('Prepared bake UVs did not qualify: '+'; '.join(info['unsupported_reasons']))
             target.hide_render=True
             components[role]={'name':target.name,'source_object':obj.name,'inspect_texture_bake':inputs,'initial_bake_sha256':info['bake_sha256'],'material_adapters':info['material_adapters'],'repaired_uv_faces':repairs,'prepared_mesh':copied,'prepared_attributes':[v for v in attributes.values() if not v['name'].startswith('.')]}
+            if chart_layout is not None:components[role]['chart_layout']=chart_layout
         check_cancelled()
         if plan(p)[-1]['plan_sha256']!=p['expected_plan']:raise ValueError('Source changed during bake preparation')
         meta={'format':FORMAT,'revision':0,'owner':owner,'source':source,'components':components,'owned':[{'type':v.bl_rna.identifier,'name':v.name} for v in sorted(owned,key=lambda v:(v.bl_rna.identifier,v.name))]}

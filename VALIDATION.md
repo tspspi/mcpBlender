@@ -3474,6 +3474,43 @@ distances, not measurements of Cycles dilation, generated mip image quality,
 self-padding within one chart, HDR/material optics, target-engine filtering or
 visual maturity. Existing prepared layouts are not automatically modified.
 
+## Pixel-based chart allocation
+
+Optional `chart_layout` on UV packing and NEW vegetation preparation allocates
+bounded pixel rectangles with area/mean-span floors, gutters and tile borders.
+Pure tests check deterministic layouts, unmodified inputs, float32 area/border/
+spacing readback, preserved pixel aspect without stretching, explicit stretch
+for an otherwise unplaceable sliver, count/interior refusal and cancellation.
+A code-disabled MCP fixture separates two overlapping source charts, refuses an
+oversized allocation without isolating shared data, preserves geometry and its
+sibling, passes density/coverage/two-pixel padding at base and mip 1, and retains
+its UV guard after save/reopen (one test passed in 12.49 seconds).
+
+A native fresh seeded 5 m tree fixture creates four LOD levels and three shared
+leaf templates, with procedural bark/leaf materials. NEW preparation uses a
+1024x1024 pixel layout, minimum area 64, mean span two, four-pixel per-side
+gutters, eight-pixel outer border and explicitly allowed chart stretching. Every
+wood/shoot/template component passes the independent geometric quality policy:
+minimum 32 directional texels/metre, four chart pixel-centre samples and two
+pixels of padding at base and mip 1. The eleven reports have minimum directional
+density approximately 49.18 texels/metre, minimum mip-1 coverage twelve pixels,
+and minimum mip-1 tile-edge margin approximately six pixels. Seven roles use
+some anisotropic chart allocation; all three leaf templates preserve their chart
+aspect ratios. Geometry, normals, original UVs and numeric attributes satisfy
+the existing exact preparation witnesses, and the source LOD guard is unchanged.
+A max_charts=1 refusal leaves the original ID inventory unchanged. Save/reopen
+preserves valid preparation ownership/content. This test passed in 111.23 seconds.
+
+`/tmp/mb-chart-layout-20261104/profile/` retains `quality.json` and the editable
+`prepared-profile.blend`. An earlier three-role probe shows that 512-pixel wood
+coverage/spacing can pass while physical density remains below 32; 1024 resolves
+that density requirement. The native add-on dependency/import, default-attribute
+and targeted contracts/math gate passed eleven tests in 15.63 seconds. These
+checks qualify layout geometry on FreeBSD Blender 5.0.1, without claiming actual
+new image bakes, normal-map transfer, mip image filtering, mature-oak appearance,
+large populations or receiving-engine behavior. The shelf method is a bounded
+heuristic, not an optimal packing proof; mean width is not minimum local width.
+
 ## Retained quality through vegetation adoption
 
 Quality-bearing self-bakes carry canonical source inspection content. Removing

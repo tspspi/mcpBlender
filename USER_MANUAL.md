@@ -1624,6 +1624,85 @@ These are independent static alternatives. Drawing all planes together changes
 opacity/occlusion; no automatic angular selection, interpolation, crossed-card
 union, wind binding or whole-tree far representation is provided by this planner.
 
+### Persistent card families and explicit view selection
+
+After baking alternatives (and optionally building an atlas), open the unchanged
+bundle's `asset.blend`. `inspect_foliage_card_family_source` takes `directory` and
+`entries`, for example:
+
+```json
+{"directory":"cluster-atlas","entries":[
+  {"view":"TOP","object":"top"},
+  {"view":"FRONT","object":"front"},
+  {"view":"SIDE","object":"side"}
+],"accept_front_pbr":true,"max_angle_degrees":30}
+```
+
+One to three distinct views/objects are allowed. Entries must belong to that
+validated bundle and be static, single-material, camera-visible meshes
+with canonical planar geometry and winding (+Z for TOP, -Y for FRONT, +X for SIDE).
+Static Object-parent chains, including bake placement anchors, are supported up to
+32 objects, with finite invertible transforms bound into the creation guard and
+retained as provenance. Other parenting types and animated/constrained ancestors
+refuse. Copying freezes current world placement; it does not retain those parents.
+BASE_COLOR and ALPHA are required. When conversion declarations include lossy
+thin-leaf PBR, explicitly set `accept_front_pbr=true`; the declarations remain in
+family provenance. Defaults bound all alternatives to 1024 triangles (maximum
+4096), base RGBA8 texture memory to 256 MiB (maximum 512 MiB), each mesh to 8192
+vertices/32768 corners, and metadata to 1 MiB. Texture memory is shared across the
+family; these figures do not measure GPU residency, overdraw or frame time.
+
+Call `create_foliage_card_family` with those same parameters, a new
+`family_collection` and `expected_plan=plan_sha256`. It copies meshes, private
+materials/groups and packed PNG images, preserving sampling, constants, UVs,
+custom normals and ray-visibility flags. Creation reports progress and checks a
+heuristic checkpoint-space estimate. Failed/cancelled staging is removed. The
+family's root is at the combined bounds centre, with children preserving world
+placement. All copies start hidden. Original objects and files are preserved;
+hide the originals separately with `configure_render_visibility` before reviewing
+the selected family, to avoid drawing duplicate surfaces.
+
+`inspect_foliage_card_family` takes `family_collection`. It validates the owned
+native content, packed bytes, hierarchy, units, visibility and external users.
+It works after saving/reopening and without the source bundle. Keep the collection
+a direct visible child of the current scene and view layer. Move/rotate or
+uniformly scale its returned `root` with `set_object_transform`; nonuniform scale,
+shear, animation, modifiers, constraints, physics and edited child geometry or
+materials invalidate this static snapshot. Reinspect after placement changes.
+
+Call `inspect_foliage_card_family_selection` with `family_collection` and exactly
+one of `camera` or `view_direction`. The latter is a world-space parallel direction
+from asset toward viewer, for example `[0,0,1]` for the original TOP direction.
+ORTHO cameras use their viewing axis; PERSP cameras use the direction from the root
+to the camera and conservatively check all eight corners of the union world AABB.
+A perspective camera inside the bounds is refused. Framing, clipping, lens and
+occlusion still need separate camera/render review.
+
+Selection chooses the nearest centre direction, using canonical TOP/FRONT/SIDE
+order for exact ties. Its maximum angular deviation must fit the family's fixed
+`max_angle_degrees` (default 30, allowed >0 through 80). A nearest view outside that
+cone reports `supported=false` and `selected_view=null`; it does not synthesize a
+reverse view or substitute another alternative. These cones are declared support
+limits, not measured image-quality acceptance. Intermediate-angle renders must
+be reviewed for the intended use.
+
+Apply a supported result with `select_foliage_card_family_view`, the same direction
+or camera and `expected_selection=selection_sha256`. The guard binds relevant
+camera pose, family placement/content and selection policy. Exactly one owned
+card becomes visible for viewport/render; other owned cards are hidden. Stale or
+unsupported requests leave the previous selection intact. Repeat explicitly when
+the camera or family moves. There is no automatic playback handler, interpolation
+or crossed-card union. Generic `export_objects_glb` can export the returned selected
+`object` with embedded textures; it exports that static selection, not the family
+selection algorithm or its visibility transitions.
+
+To remove the snapshot, reinspect and call `remove_foliage_card_family` with
+`expected_family=family_sha256`. Changed contents, foreign collection members,
+external mesh/material/image users and persistent/linked owned IDs block removal.
+Only private owned data is removed; original bake objects and files remain.
+Packed families do not resolve flat-card optical loss, shadows/wind, whole-tree
+impostors or receiving-engine behavior.
+
 ### Shared PBR texture atlases
 
 Use `inspect_texture_atlas` with `entries=[{"id":"leaf","directory":"leaf-bake"},

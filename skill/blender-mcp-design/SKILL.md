@@ -735,6 +735,31 @@ camera_frame_view (SIDE -> RIGHT), and keep the camera fixed between native/card
 atlas renders. Alternatives do not provide angular selection/interpolation or
 an automatically safe crossed-card, wind or whole-tree far representation.
 
+For persistent alternatives, open the unchanged baked/atlas asset and use
+inspect_foliage_card_family_source with directory and explicit view/object entries.
+Accept lossy FRONT_PBR explicitly when declared; keep angular/triangle/texture
+budgets. create_foliage_card_family consumes expected_plan and a new collection,
+packing private images/materials and preserving original objects. Copies start
+hidden. Hide originals separately for matched review. Inspect the family after
+save/reopen; it is independent of source files. Move/rotate/uniformly scale only
+its root and keep its collection directly visible in the current scene/view layer.
+
+Use inspect_foliage_card_family_selection with exactly one camera or world-space
+direction from asset toward viewer, then select_foliage_card_family_view with the
+fresh selection_sha256. Unsupported/reverse directions are unmeasured coverage,
+not permission to reuse a back view. The fixed cone (default30degrees) is declared
+support, not a quality certificate. Perspective checks the whole bounds envelope.
+Selection shows one owned alternative; repeat explicitly when camera/root changes.
+No playback handler, interpolation or automatic far-LOD switch is installed.
+Export only the returned visible object for a static GLB selection; glTF does not
+receive the selector. Remove only a valid fresh family guard; edits/external users
+block deletion. Keep native sources and original optics declarations.
+
+Use inspect_projected_normal_transfer on the unchanged original projected bake,
+not an atlas, to inspect covered backward/grazing tangent normals and geometric
+context. It validates binding, changes no maps and infers no optical pass/fail.
+A flipped normal map cannot restore missing true-geometry transport by itself.
+
 Sparse foliage can hide large shading differences in whole-image RGB RMSE. Review
 reference_area_rgb_rmse and overlap_rgb_rmse, and set their optional quality gates
 explicitly when appearance matters. Reference-area error still includes coverage

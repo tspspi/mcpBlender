@@ -133,6 +133,8 @@ def test_addon_archive_has_no_external_dependencies(tmp_path):
         names = set(archive.namelist())
         assert "mcpblender/__init__.py" in names
         assert "mcpblender/wire.py" in names
+        assert "mcpblender/card_family.py" in names
+        assert "mcpblender/blender/card_families.py" in names
         assert "mcpblender/normal_transfer.py" in names
         assert "mcpblender/atlas_pixels.py" in names
         assert "mcpblender/image_comparison.py" in names

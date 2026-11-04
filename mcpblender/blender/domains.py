@@ -29,6 +29,7 @@ from . import botanical_collisions
 from . import botanical_uv
 from . import botanical_presets
 from . import botanical_foliage
+from . import card_families
 from . import foliage_cards
 from . import texture_atlas
 from . import botanical_wind
@@ -88,6 +89,7 @@ COMMANDS.update(botanical_trees.COMMANDS)
 COMMANDS.update(botanical_uv.COMMANDS)
 COMMANDS.update(botanical_presets.COMMANDS)
 COMMANDS.update(botanical_foliage.COMMANDS)
+COMMANDS.update(card_families.COMMANDS)
 COMMANDS.update(foliage_cards.COMMANDS)
 COMMANDS.update(texture_atlas.COMMANDS)
 COMMANDS.update(botanical_wind.COMMANDS)
@@ -143,6 +145,7 @@ def dispatch(command, p):
         return run(command,p)
     if command in botanical_surfaces.COMMANDS:return botanical_surfaces.dispatch(command,p)
     if command in botanical_foliage.COMMANDS:return botanical_foliage.dispatch(command,p)
+    if command in card_families.COMMANDS:return card_families.dispatch(command,p)
     if command in foliage_cards.COMMANDS:return foliage_cards.dispatch(command,p)
     if command in texture_atlas.COMMANDS:return texture_atlas.dispatch(command,p)
     if command in botanical_wind.COMMANDS:return botanical_wind.dispatch(command,p)

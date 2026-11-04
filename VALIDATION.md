@@ -4706,3 +4706,58 @@ successful self-bake was refused. The two native MCP tests passed in 35.21 secon
 29 focused pure/contract/server/archive regressions passed in 18.35 seconds.
 This qualifies diagnostics and their boundaries, not a normal-map correction or
 receiving-engine lighting behavior. All owned native jobs finished normally.
+
+### Persistent packed card families and guarded view selection
+
+A family can be created from an unchanged validated original bake or atlas with
+one to three declared canonical TOP/FRONT/SIDE alternatives. Source hash/map,
+geometry, static placement-chain and option guards bind creation. It copies
+private meshes/materials/groups and packs verified PNG bytes, retaining optical
+conversion declarations. The original source objects/files are preserved.
+Bake placement anchors are supported through bounded static Object-parent chains;
+creation freezes world placement rather than retaining those source parents.
+Families start hidden and select one alternative explicitly for viewport/render.
+
+Pure angular checks cover canonical directions, deterministic exact ties, reverse
+and diagonal refusal, conservative perspective-corner limits, non-finite/zero
+inputs, large finite vector normalization and declared policy bounds. Discovery
+checks keep inspectors available to read-only clients and gate mutations; source
+paths remain library bounded and tracked for retention. The standalone add-on
+archive includes the selector and native family implementation.
+
+Code-disabled native MCP qualification copied the retained 116-triangle,
+three-view cluster atlas into an independent packed family with four native maps.
+Six matched 512x512 Cycles renders at 16 samples compared each original atlas view
+against its selected packed copy. Every TOP/FRONT/SIDE comparison had hard and
+soft IoU 1.0 and shared-coverage RGB RMSE zero at scales 1, 2 and 4. This run passed
+in 150.13 seconds. This demonstrates the measured copy fidelity; the prior dark
+FRONT/SIDE shading relative to native foliage is unchanged and remains open.
+
+Native checks also exercised independent source-file absence after save/reopen,
+selected-object GLB exports with embedded textures, camera-pose staleness,
+unsupported-direction nonmutation, root rotation, rejection/restoration of
+nonuniform scale, conservative perspective-envelope refusal, edited-content and
+external linked-copy deletion blockers, and removal preserving original objects.
+The four native maps export as three GLB images because base colour and alpha
+are combined. No family selection controller is encoded by generic GLB export.
+
+A fresh 32x32 seven-map projection exercised ordinary bake-anchor compatibility,
+private AO group copying, packed save/reopen with the source bundle absent, and
+GLB material bindings for base colour, normal, metallic/roughness, occlusion and
+emission. Copied AO groups retain the `glTF Material Output` name prefix required
+by the installed Blender exporter. File embedding and material references were
+checked; this is not receiving-engine lighting qualification.
+
+The angular cone is an explicit support policy, not a calibrated quality gate.
+Intermediate-angle visual quality, angular blending, automatic playback/camera
+following, whole-tree far/impostor delivery, wind, shadows and population costs
+remain outside this milestone. Cancellation cleanup follows owned staging, but
+this milestone does not add a live crash or cancellation-injection qualification.
+
+After bake-anchor support was added, the final two native MCP workflows passed
+in 73.92 seconds. Reparenting with unchanged world geometry preserved the base
+bake validation but invalidated the family creation plan; an animated ancestor
+was refused and reopening restored the original guard. The final 24 focused
+pure/contract/server/archive regressions passed in 45.20 seconds. All owned test
+workers finished normally. No package, environment or installed runtime changes
+were required.

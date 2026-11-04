@@ -1675,7 +1675,9 @@ one of `camera` or `view_direction`. The latter is a world-space parallel direct
 from asset toward viewer, for example `[0,0,1]` for the original TOP direction.
 ORTHO cameras use their viewing axis; PERSP cameras use the direction from the root
 to the camera and conservatively check all eight corners of the union world AABB.
-A perspective camera inside the bounds is refused. Framing, clipping, lens and
+Bounds include hidden alternatives through their static parent/local transforms,
+including after reload and root placement changes. A perspective camera inside
+the bounds is refused. Framing, clipping, lens and
 occlusion still need separate camera/render review.
 
 Selection chooses the nearest centre direction, using canonical TOP/FRONT/SIDE

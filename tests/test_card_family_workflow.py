@@ -104,6 +104,14 @@ def test_packed_family_lifecycle_and_selection(assets_live):
             shutil.move(str(library/'input'),str(root/'absent-source'))
             await client.call_tool('open_blend',{'path':'packed-family.blend'})
             family=await state();assert family['valid'] and not family['source_files_required']
+            # Hidden matrices can be stale after reload. Perspective envelopes
+            # must use the static hierarchy and be invariant under view toggles.
+            envelope=(await choose(camera='Perspective'))['bounds_world_native']
+            for view,direction in [('TOP',[0,0,1]),('FRONT',[0,-1,0]),('SIDE',[1,0,0])]:
+                planned=await choose(view_direction=direction)
+                await apply(planned,view_direction=direction)
+                assert (await choose(camera='Perspective'))['bounds_world_native']==envelope
+            for key in ('min','max'):assert envelope[key]==pytest.approx(plan['bounds_world'][key],abs=2e-5)
             info=await choose(view_direction=[0,0,1]);family=await apply(info,view_direction=[0,0,1])
             await wait(client,'export_objects_glb',objects=[family['selection']['object']],path='selected.glb')
             if dest:=os.environ.get('MCPBLENDER_CARD_FAMILY_EVIDENCE'):

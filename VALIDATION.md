@@ -4761,3 +4761,19 @@ was refused and reopening restored the original guard. The final 24 focused
 pure/contract/server/archive regressions passed in 45.20 seconds. All owned test
 workers finished normally. No package, environment or installed runtime changes
 were required.
+
+### Hidden family placement and perspective envelopes
+
+A moved-family delivery check exposed stale cached `matrix_world` values on
+hidden alternatives after reload: two hidden cards still reported identity while
+the visible card followed its root. Static family placement now composes the
+root world matrix, child parent inverse and child basis directly. Perspective
+bounds use those transforms and actual mesh vertices, rather than cached hidden
+object matrices/bounding boxes. Non-Object child parenting is refused.
+
+The code-disabled native lifecycle regression reopens the packed family, switches
+through TOP/FRONT/SIDE, and verifies that the reported perspective envelope is
+identical in every visibility state and agrees with the original source bounds.
+It passed in 77.92 seconds, including existing lifecycle, placement, stale-selection
+and deletion-blocker checks. This corrects geometric bounds; it adds no angular
+appearance, optical-equivalence or automatic-playback claim.

@@ -86,6 +86,21 @@ def source(p):
     return result|{'plan_sha256':botany.digest(result)}
 
 
+def world_matrix(obj,root):
+    # Globally hidden objects may retain stale/identity matrix_world after load.
+    # Families are static Object-parented children; compose their guarded data.
+    if obj.parent!=root or obj.parent_type!='OBJECT':raise ValueError('Static family root parenting required')
+    return root.matrix_world@obj.matrix_parent_inverse@obj.matrix_basis
+
+
+def world_bounds(root,entries):
+    points=[]
+    for entry in entries:
+        obj=bpy.data.objects[entry['object']];matrix=world_matrix(obj,root)
+        points.extend(matrix@v.co for v in obj.data.vertices)
+    return {key:[fn(v[a] for v in points) for a in range(3)] for key,fn in (('min',min),('max',max))}
+
+
 def content(owned,root):
     resources={v for v in owned if not isinstance(v,(bpy.types.Object,bpy.types.Collection))}
     objects=[]
@@ -117,7 +132,7 @@ def inspect(p):
     if col.name not in bpy.context.scene.collection.children or layer is None or layer.exclude or layer.hide_viewport or bpy.context.view_layer.objects.get(root.name)!=root:issues.append('Family must remain a direct visible collection in the current scene/view layer')
     if root.hide_get():issues.append('Family root is locally hidden')
     if set(col.objects)!=objects or col.children:blockers.append('Foreign or missing family collection membership')
-    if root.parent or root.type!='EMPTY' or any(o.parent!=root for o in objects if o!=root):issues.append('Family root/child hierarchy changed')
+    if root.parent or root.type!='EMPTY' or any(o.parent!=root or o.parent_type!='OBJECT' for o in objects if o!=root):issues.append('Family root/child hierarchy changed')
     if col.hide_render or col.hide_viewport or root.hide_render or root.hide_viewport:issues.append('Family collection or root is hidden')
     if bpy.context.scene.unit_settings.scale_length!=meta['unit_scale']:issues.append('Family scene unit scale changed')
     matrix=root.matrix_world
@@ -213,7 +228,7 @@ def create(p):
 def selection(p):
     col,owned,meta,state=inspect(p)
     if not state['valid']:raise ValueError('Valid unchanged card family required: '+str(state['issues']+state['ownership_blockers']))
-    root=bpy.data.objects[meta['root']];matrix=root.matrix_world;camera=None;witness=None
+    root=bpy.data.objects[meta['root']];matrix=root.matrix_world;camera=None;witness=None;bounds=None
     if p.get('camera'):
         camera=bpy.data.objects.get(p['camera'])
         if camera is None or camera.library or camera.override_library or camera.type!='CAMERA' or camera.data.type not in {'ORTHO','PERSP'}:raise ValueError('Local ORTHO/PERSP camera required')
@@ -222,15 +237,14 @@ def selection(p):
         else:
             eye=camera.matrix_world.translation;origin=matrix.translation;directions=[list(eye-origin)]
             # Native bounds of every alternative cover the family envelope.
-            points=[bpy.data.objects[e['object']].matrix_world@Vector(c) for e in meta['entries'] for c in bpy.data.objects[e['object']].bound_box]
-            low=[min(v[a] for v in points) for a in range(3)];high=[max(v[a] for v in points) for a in range(3)]
+            bounds=world_bounds(root,meta['entries']);low=bounds['min'];high=bounds['max']
             directions.extend(list(eye-Vector((x,y,z))) for x in (low[0],high[0]) for y in (low[1],high[1]) for z in (low[2],high[2]));projection='PERSPECTIVE_ENVELOPE'
             if all(low[a]<=eye[a]<=high[a] for a in range(3)):raise ValueError('Perspective camera is inside family bounds')
     else:directions=[p['view_direction']];projection='PARALLEL_WORLD_DIRECTION'
     normals={e['view']:list(matrix.to_3x3()@Vector(card_family.DIRECTIONS[e['view']])) for e in meta['entries']}
     result=card_family.choose(normals,directions,meta['max_angle_degrees'])
     selected=next((e['object'] for e in meta['entries'] if e['view']==result['selected_view']),None)
-    info=result|{'family_collection':col.name,'family_sha256':state['family_sha256'],'object':selected,'projection':projection,'camera':witness,'view_direction':p.get('view_direction')}
+    info=result|{'family_collection':col.name,'family_sha256':state['family_sha256'],'object':selected,'projection':projection,'camera':witness,'view_direction':p.get('view_direction'),'bounds_world_native':bounds}
     return col,owned,meta,info|{'selection_sha256':botany.digest(info)}
 
 

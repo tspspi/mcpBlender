@@ -1360,6 +1360,33 @@ quality. Fitted targets and verified-bundle atlases are available below; runtime
 overdraw, multi-view representations and
 wind-aware delivery remain separate work.
 
+### Botanical foliage cluster workload planning
+
+Use `inspect_botanical_foliage_clusters` on a valid, uncontrolled botanical master
+with foliage. It groups leaves at `anchor_order` (default 2), retains the first
+segment of each selected axis, then splits oversized groups at the median along
+the longest leaf-centre axis. Stable leaf IDs break spatial ties. Every canonical
+leaf belongs to exactly one cluster; woody sleeves and shoots are excluded.
+
+The independent limits are `max_leaves` (default 512, maximum 1024),
+`max_triangles` (default 100000, maximum 250000), and `max_clusters` (default 1024,
+maximum 4096). Triangle costs include all faces of the actual native leaf templates,
+including petioles. A single over-budget template or excessive partition count
+refuses the plan. No instances are realized and no source geometry is edited.
+
+Results contain total populations/costs and paged `clusters` (`offset`, `limit`,
+maximum 64 rows). Each row reports its semantic anchor, leaf count, triangle cost,
+leaf-identity digest and leaf-centre bounds in source-local metres. These bounds
+exclude blade extents and are not fitted card bounds. `plan_sha256` binds the full
+partition and current native tree guard, independent of pagination; reinspection
+is required after source changes or reloading Blender. The tool defaults to an
+asynchronous operation: poll its operation ID for progress/cancellation.
+
+This tool plans bounded workloads only. It does not yet create cluster source
+meshes or cards, reconcile variant UV schemas, preserve object-dependent material
+sampling through merging, or establish alpha/optical/shadow/wind/far-LOD quality.
+Existing fitted-card tools below still require ordinary realized mesh sources.
+
 ### Fitted leaf and mesh-cluster cards
 
 Use `inspect_foliage_card` with `sources` (1–16 distinct local mesh objects), then

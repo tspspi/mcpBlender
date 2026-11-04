@@ -686,3 +686,11 @@ source tree session guards are not portable content hashes. Generic GLB export
 supports root plus meshes up to its 64-object limit and uses displayed placement.
 No wind-swept collision, automatic engine binding or collision bundle sidecar is
 implied. See USER_MANUAL.md for numeric, source and lifecycle limits.
+
+For dense botanical foliage, `inspect_botanical_foliage_clusters` plans bounded
+semantic-axis/spatial workloads without realizing the full tree. Poll the operation;
+page summaries with offset/limit, and retain its page-independent plan guard.
+Actual native template triangles and leaf/count budgets apply. Bounds cover leaf
+centres only. This planner does not create merge-safe sources or qualify cards,
+UV/material equivalence, optics, wind or far LODs; ordinary realized mesh sources
+are still required by the existing fitted-card tools.

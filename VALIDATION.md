@@ -4370,3 +4370,26 @@ Local exploratory evidence is `/tmp/mb-canopy-lod-20261104/` (`plan.json`, optio
 progress and `validation128.json`). The broad mature-tree and workflow goal
 remains incomplete; this counterexample takes priority over accepting an easier
 coarse-grid gate.
+
+### Bounded botanical foliage cluster planning
+
+`inspect_botanical_foliage_clusters` has code-disabled typed MCP coverage for
+read-only planning, pagination with a stable full-plan guard, count-budget refusal
+and exact source preservation. Pure tests independently check exhaustive disjoint
+membership, ancestor anchors, deterministic identity groups under leaf-list
+reordering, unequal variant costs, coincident centres, invalid inputs and
+cooperative cancellation. Contract/archive checks cover readonly discovery,
+asynchronous defaults, bounds and dependency-free add-on packaging.
+
+A retained dense 88,704-leaf, 1,176-branch native source was reopened in stock
+Blender 5.0.1. Anchor order 2, maximum 512 leaves and 100,000 actual template
+triangles per cluster produced 296 clusters across 171 anchor groups. Every leaf
+was assigned once; maximum cluster size was 462 leaves / 90,552 triangles.
+The pure membership check took 0.79 seconds; native source inspection, repeated
+paged planning and preservation checks took 30.66 seconds. Source guard, selected
+objects, active object, current frame and datablock inventory were unchanged.
+
+These results qualify workload partitioning only. Leaf-centre bounds exclude
+blade extents. No native cluster source, UV/material merge, fitted card, alpha
+bake, shadow/optical/wind/far-LOD or population performance qualification follows
+from this milestone. Existing generic card/bake tests retain their narrower scope.

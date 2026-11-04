@@ -1,5 +1,25 @@
 # Local validation: 0.2.0
 
+## Durable validation progress and recovery cancellation — 2026-11-04
+
+Vegetation LOD staged verification and broker-only recovery now forward the
+canonical validator's detailed observations. Generic heartbeats retain the latest
+detail; other file formats retain their existing generic heartbeat. Recovery
+propagates `InterruptedError` as cancellation before the invalid-file handlers,
+preserving stage/journal state and preventing publication on both dry reconciliation
+and `publish=true` cancellation paths. This does not replay application edits.
+
+Focused journal/progress/ownership, contract and storage checks passed **17 tests
+in 6.71s**. Five new tests stub geometry verification to isolate callback forwarding,
+heartbeat retention, callback-triggered cancellation, recovery publication and
+cancellation with/without publication. Their stubs do not qualify geometry.
+Native and broker-only regressions passed **14 tests in 84.61s**, including killed
+writers, completed botanical/vegetation recovery with Blender closed, numeric and
+nested-stage cleanup, late cancellation, guarded publication and dependency-free
+add-on import. Geometry/selection/GLB proof algorithms are unchanged; the full-size
+delivery qualification below precedes this observation-only change. These focused
+checks are not a fresh full-project suite.
+
 ## Full-density multigrid vegetation LOD file delivery — 2026-11-04
 
 The Python-disabled MCP delivery workflow passed **1 test in 1563.99s** from the

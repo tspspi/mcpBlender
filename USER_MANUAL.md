@@ -4631,6 +4631,13 @@ still need filesystem space for small journal updates; a completely full or
 read-only filesystem can prevent those updates. Independent LOD validation has
 coarse cancellation boundaries; publication is checked again before rename.
 
+Durable vegetation LOD verification and recovery forward the canonical validator's
+ranking, projection-grid and per-level progress when available. Heartbeats retain
+the last detailed observation; formats without detailed callbacks keep the generic
+validation heartbeat. Cancelling recovery stops at a cooperative boundary and
+preserves the owned stage and journal for a later guarded retry. It does not
+publish the stage or classify a cancelled check as invalid file contents.
+
 Cleanup deletes only registered staging with recognized package/LOD layouts and
 matching identities/inventory. It anchors deletion through directory descriptors
 and refuses symlinks, replaced data, unknown files, active writers and structured

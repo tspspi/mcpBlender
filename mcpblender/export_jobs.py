@@ -119,7 +119,7 @@ def inventory(root,record):
     return sorted(rows,key=lambda r:r['path']),sorted(dirs),total
 
 
-def validate_output(path,record,check_cancelled=lambda:None):
+def validate_output(path,record,check_cancelled=lambda:None,progress=None):
     from .lod_files import validate as validate_lods
     from .package_files import validate as validate_package
     check_cancelled();inventory(path,record)
@@ -134,7 +134,8 @@ def validate_output(path,record,check_cancelled=lambda:None):
             if result!=manifest['proof']:raise ValueError('Numeric export proof changed')
         else:
             from . import vegetation_interchange,vegetation_lod_files
-            result=(vegetation_interchange.validate if record['kind']=='BOTANICAL' else vegetation_lod_files.validate)(path,cancelled=check_cancelled)
+            if record['kind']=='VEGETATION_LOD':result=vegetation_lod_files.validate(path,cancelled=check_cancelled,progress=progress)
+            else:result=vegetation_interchange.validate(path,cancelled=check_cancelled)
     else:result=validate_package(path,check_cancelled) if record['kind']=='PACKAGE' else validate_lods(path)
     check_cancelled()
     manifest=json.loads((path/'manifest.json').read_text())
@@ -191,12 +192,16 @@ class ExportJob:
         self.record['stage_identity']=identity(self.stage);write_record(self.root,self.record)
     def verify(self,check_cancelled=lambda:None,progress=None):
         if self.record.get('stage_identity')!=identity(self.stage):raise ValueError('Export stage ownership changed')
-        last=[time.monotonic()]
+        last=[time.monotonic()];details=[None]
+        def report(value):
+            details[0]=dict(value)
+            if progress:progress(dict(value))
+            last[0]=time.monotonic()
         def check():
             check_cancelled()
             if progress and time.monotonic()-last[0]>=1:
-                progress({'phase':'validating durable export stage'});last[0]=time.monotonic();check_cancelled()
-        result=validate_output(self.stage,self.record,check)
+                progress(dict(details[0]) if details[0] is not None else {'phase':'validating durable export stage'});last[0]=time.monotonic();check_cancelled()
+        result=validate_output(self.stage,self.record,check,report if progress else None)
         self.record['state']='verified';self.record['verified_at']=time.time();write_record(self.root,self.record)
         if progress:progress({'phase':'verified durable export before publication'});check_cancelled()
         return result
@@ -209,7 +214,7 @@ class ExportJob:
             self.lock.__exit__(kind,error,traceback);self.lock=None
 
 
-def recover(directory,owner,expected_job,*,publish=False,check_cancelled=lambda:None):
+def recover(directory,owner,expected_job,*,publish=False,check_cancelled=lambda:None,progress=None):
     directory=Path(directory).absolute();root=job_root(directory)
     with locked(root):
         current=inspect(directory,owner)
@@ -218,9 +223,10 @@ def recover(directory,owner,expected_job,*,publish=False,check_cancelled=lambda:
         record=current['record'];stage=root/record['stage']
         if current['stage_error']:raise ValueError(current['stage_error'])
         if current['target_is_original_stage']:
-            validate_output(directory,record,check_cancelled);record['state']='published'
+            validate_output(directory,record,check_cancelled,progress);record['state']='published'
         elif current['stage_exists']:
-            try:validate_output(stage,record,check_cancelled)
+            try:validate_output(stage,record,check_cancelled,progress)
+            except InterruptedError:raise
             except (ValueError,OSError,KeyError) as exc:
                 if publish:raise ValueError('Incomplete/invalid export cannot be published: '+str(exc)) from exc
                 record['state']='interrupted';record['validation_error']=str(exc);record.pop('verified_at',None)
@@ -325,15 +331,18 @@ COMMANDS={'list_export_jobs','inspect_export_job','recover_export_job','cleanup_
 
 
 def execute(command,params,progress,cancelled):
+    details=[None]
+    def report(value):
+        details[0]=dict(value);progress(dict(value))
     def check():
-        progress({'phase':'checking export job recovery','directory':params['directory']})
+        progress(dict(details[0]) if details[0] is not None else {'phase':'checking export job recovery','directory':params['directory']})
         if cancelled():raise InterruptedError('Export job recovery cancelled before a cooperative boundary')
     check();owner=params['_job_owner']
     if command=='list_export_jobs':
         result=list_jobs(params['directory'],owner,depth=params.get('depth',2),limit=params.get('limit',20),offset=params.get('offset',0),include_finished=params.get('include_finished',False),check_cancelled=check)
     elif command=='inspect_export_job':result=inspect(params['directory'],owner)
     elif command=='recover_export_job':
-        result=recover(params['directory'],owner,params['expected_job'],publish=params.get('publish',False),check_cancelled=check)
+        result=recover(params['directory'],owner,params['expected_job'],publish=params.get('publish',False),check_cancelled=check,progress=report)
     else:
         result=cleanup(params['directory'],owner,params['expected_job'],dry_run=params.get('dry_run',True),discard_ready=params.get('discard_ready',False),references=params.get('_references',()),check_cancelled=check)
     policy=params.get('_storage_policy',{});storage={'reserve_bytes':policy.get('reserve_bytes',256*1024**2),'warn_below_bytes':policy.get('warn_below_bytes',2*1024**3)}

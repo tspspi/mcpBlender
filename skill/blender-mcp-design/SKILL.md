@@ -715,3 +715,13 @@ Do not reuse an old operation ID/directory expecting a corrected rebake. Compare
 matched transparent-film renders after any padding/resolution change. The corrected
 dense selected-cluster example passes its fixed TOP-view gates, not multi-view,
 shadow, wind, GPU alpha/mip or whole-tree population acceptance.
+
+For multiple cards, inspect/build_texture_atlas on distinct successful corrected
+bake bundles; retain native source placement and review all outputs. New plans
+require RGBA8_CORE_AND_CLAMPED_GUTTER_V1: exact core/gutter channel checks include
+transparent RGB, with source/file/layout-bound sealed evidence. Reopen/validate
+asset.blend before GLB export. Retained evidence can be validated after input
+bundles are removed; rebuilding cannot. Compare individual delivered cards versus
+the atlas under the same fixed camera before comparing the atlas with native
+geometry. An exact copy witness does not certify mipmaps, angular views, shadows,
+wind or whole-tree/population budgets.

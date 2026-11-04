@@ -1578,6 +1578,24 @@ nonsingular transforms and matching untextured PBR constants. Per-mesh bounds ar
 1,000,000 vertices and 2,000,000 corners. Unsupported inputs fail with their owned
 partial job preserved for inspection/cleanup. Bake or simplify sources first.
 
+New atlas plans include `pixel_copy_method=RGBA8_CORE_AND_CLAMPED_GUTTER_V1`.
+Before publishing a map, the worker independently decodes source and emitted PNGs
+and checks every RGBA8 channel in the tile core and its clamped gutter. This
+includes RGB hidden beneath zero alpha; premultiplied render comparison alone
+cannot check those values. The verifier converts bottom-origin UV rectangles to
+top-origin PNG rows explicitly. Any difference fails the owned worker without
+publishing a successful bundle.
+
+`pixel_copy_proof` reports per-map/per-tile checked core/gutter counts, source and
+atlas PNG hashes and zero maximum channel error. The job marker seals the retained
+witness digest. Completion, finished-file recovery and validation check its method,
+layout/counts/hash bindings and seal. Validation also verifies current deliverable
+file hashes and native bindings; it does not rerun the original pixel-copy check
+against missing source files. The standalone `asset.blend` can therefore validate
+and export after input bundles are removed, while rebuilding still needs those
+inputs. Legacy atlases without the new method retain their original checks and
+return no verified pixel-copy witness.
+
 Output `asset.blend` contains one mesh per ID, one shared material, `AtlasUV` and
 the atlas maps. Physical source placement is converted to metre scene units;
 editable source bundles and the connected editor remain unchanged. The manifest

@@ -36,6 +36,32 @@ def validate_map_policy(record,saved,job):
         if type(row.get('bake_margin'))!=int or row['bake_margin']!=margin:raise ValueError('Texture map padding differs from declared policy')
     return expected
 
+
+def validate_atlas_pixels(record,saved,*,seal=False):
+    """Bind retained worker copy evidence to source/atlas file hashes and layout."""
+    import json
+    from .atlas_pixels import METHOD
+    atlas=saved.get('atlas')
+    if not atlas or 'pixel_copy_method' not in atlas:return None
+    if atlas['pixel_copy_method']!=METHOD:raise ValueError('Unsupported atlas pixel-copy method')
+    proof=saved.get('pixel_copy_proof');layout=atlas['layout'];inputs={e['id']:e for e in atlas['inputs']}
+    if not isinstance(proof,list) or [p.get('map') for p in proof]!=layout['maps']:raise ValueError('Atlas pixel-copy map inventory mismatch')
+    files={r['path']:r['sha256'] for r in saved['files']}
+    for p in proof:
+        relative='textures/'+p['map'].lower()+'.png'
+        if p.get('method')!=METHOD or p.get('atlas_png_sha256')!=files.get(relative) or not isinstance(p.get('tiles'),list) or [t.get('id') for t in p['tiles']]!=[t['id'] for t in layout['tiles']]:raise ValueError('Atlas pixel-copy file/tile binding mismatch')
+        for row,tile in zip(p['tiles'],layout['tiles']):
+            source=next(f['sha256'] for f in inputs[tile['id']]['files'] if f['path']==relative)
+            w,h=tile['pixel_rect'][2:];g=layout['gutter'];core=w*h;outside=(w+2*g)*(h+2*g)-core
+            if row.get('source_png_sha256')!=source:raise ValueError('Atlas pixel-copy source hash mismatch')
+            for key,value in {'source_core_pixels':core,'gutter_pixels':outside,'checked_channels':(core+outside)*4,'max_channel_error':0}.items():
+                if type(row.get(key))!=int or row[key]!=value:raise ValueError('Atlas pixel-copy counts/errors mismatch')
+    digest=hashlib.sha256(json.dumps(proof,sort_keys=True,separators=(',',':'),allow_nan=False).encode()).hexdigest()
+    if record.get('pixel_copy_sha256') is not None and record['pixel_copy_sha256']!=digest:raise ValueError('Atlas pixel-copy witness changed')
+    if seal:record['pixel_copy_sha256']=digest
+    elif record.get('pixel_copy_sha256')!=digest:raise ValueError('Atlas pixel-copy witness is not sealed')
+    return proof
+
 def bake_content(info,*,without_quality=False):
     """Canonical source content; preserve the original bake fingerprint recipe."""
     import copy

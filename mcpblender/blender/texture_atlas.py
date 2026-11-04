@@ -1,6 +1,6 @@
 """Verified texture-bake inputs and guarded atlas plans."""
 from pathlib import Path
-from mcpblender import atlas_layout,botany
+from mcpblender import atlas_layout,botany,atlas_pixels
 from mcpblender.texture_files import inventory,verify_steps,read_json,MARKER,validate_map_policy
 from mcpblender.package_files import image_info
 
@@ -37,7 +37,7 @@ def inspect(p,*,cancelled=None,progress=None):
                          'asset_sha256':saved['asset_sha256'],'files':saved['files'],'material_adapters':saved.get('material_adapters',[])})
         if map_policy is not None:bindings[-1]['map_policy']=map_policy
     layout=atlas_layout.pack(entries,p['width'],p['height'],p['gutter'],p['max_texture_bytes'])
-    plan={'layout':layout,'inputs':sorted(bindings,key=lambda e:e['id'])};signature=botany.digest(plan)
+    plan={'layout':layout,'inputs':sorted(bindings,key=lambda e:e['id']),'pixel_copy_method':atlas_pixels.METHOD};signature=botany.digest(plan)
     return {'complete':True,'bake_sha256':signature,'atlas_sha256':signature,'atlas':plan,'input_bytes':total,
             'estimated_output_bytes':total+layout['base_rgba8_bytes']*3+16*1024**2,
             'material_adapters':[a for e in bindings for a in e['material_adapters']],

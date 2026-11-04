@@ -4,6 +4,7 @@ from pathlib import Path
 import bpy
 from . import textures
 from .assets import finished
+from mcpblender import atlas_pixels
 from mcpblender.texture_files import read_json,write_json,manifest
 
 
@@ -36,7 +37,7 @@ def run(job,root,status):
     bpy.ops.wm.read_factory_settings(use_empty=True);scene=bpy.context.scene;scene.unit_settings.scale_length=1
     scene.render.image_settings.file_format='PNG';scene.render.image_settings.color_depth='8';scene.render.image_settings.color_mode='RGBA'
     bpy.context.preferences.filepaths.save_version=0
-    (root/'textures').mkdir();images={};maps=[];w=layout['width'];h=layout['height'];g=layout['gutter']
+    (root/'textures').mkdir();images={};maps=[];pixel_proof=[];w=layout['width'];h=layout['height'];g=layout['gutter']
     inputs={e['id']:e for e in plan['inputs']}
     for kind in layout['maps']:
         pixels=array('f',[0])*(w*h*4);space='sRGB' if kind in {'BASE_COLOR','EMISSION'} else 'Non-Color'
@@ -53,7 +54,9 @@ def run(job,root,status):
                 offset=((y+row)*w+x-g)*4;pixels[offset:offset+len(line)]=line
         image=bpy.data.images.new('Atlas_'+kind,width=w,height=h,alpha=True);image.colorspace_settings.name=space;image.pixels.foreach_set(pixels)
         image.file_format='PNG';image.filepath_raw=str(root/'textures'/(kind.lower()+'.png'));image.save()
-        path=image.filepath_raw;bpy.data.images.remove(image);image=bpy.data.images.load(path,check_existing=False);image.colorspace_settings.name=space
+        path=image.filepath_raw;bpy.data.images.remove(image)
+        pixel_proof.append(atlas_pixels.verify(Path(path).read_bytes(),layout,inputs,kind,lambda entry,relative:(Path(entry['directory'])/relative).read_bytes(),progress=lambda v:status(v['phase'],map=v['map'],entry=v['entry'])))
+        image=bpy.data.images.load(path,check_existing=False);image.colorspace_settings.name=space
         image.filepath='//textures/'+kind.lower()+'.png';images[kind]=image
         maps.append({'map':kind,'path':'textures/'+kind.lower()+'.png','width':w,'height':h,'color_space':space})
     mat=bpy.data.materials.new('AtlasPBR');mat.use_nodes=True;tree=mat.node_tree;surface=tree.nodes.get('Principled BSDF');surface.name='Surface';tree.nodes.get('Material Output').name='Output'
@@ -79,5 +82,6 @@ def run(job,root,status):
     finished(bpy.ops.wm.save_as_mainfile(filepath=str(root/'asset.blend'),check_existing=False,relative_remap=False))
     saved={'version':1,'job_id':job['job_id'],'source':job['expected_bake'],'name':objects[0],'objects':objects,'material':mat.name,'maps':maps,'projection':None,
            'atlas':plan,'object_signatures':{name:textures.output_signature(name) for name in objects},'material_adapters':info['material_adapters'],'blender_version':bpy.app.version_string}
+    saved['pixel_copy_proof']=pixel_proof
     saved['files']=manifest(root);write_json(root/'manifest.json',saved)
     write_json(root/'result.json',{'job_id':job['job_id'],'state':'succeeded','phase':'complete','completed_maps':len(maps)})

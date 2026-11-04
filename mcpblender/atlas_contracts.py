@@ -30,5 +30,5 @@ class Build(Plan):
 
 COMMANDS={
  'inspect_texture_atlas':(Plan,(),'Verify successful texture-bake bundles and plan nonrotating, unresampled atlas tiles with explicit gutters and RGBA8 base/full-mip memory budgets. Returns source/layout guard; no scene edits.'),
- 'build_texture_atlas':(Build,('allow_scene_edit','allow_library_write'),'Build a shared PBR atlas and separate editable UV-remapped meshes in an isolated owned texture worker. Requires verified matching-map bake bundles and guarded plan. Preserves editor scene; reuses texture-job progress/storage/cancellation/recovery/cleanup.'),
+ 'build_texture_atlas':(Build,('allow_scene_edit','allow_library_write'),'Build a shared PBR atlas and separate editable UV-remapped meshes in an isolated owned texture worker. Requires verified matching-map bake bundles and guarded plan. Checks every decoded RGBA8 tile/gutter channel and records a sealed source/file-bound copy witness. Preserves editor scene; reuses texture-job progress/storage/cancellation/recovery/cleanup.'),
 }

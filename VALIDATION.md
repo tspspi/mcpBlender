@@ -4523,3 +4523,51 @@ resolution/filter scales. It does not establish multi-view/whole-tree, GPU mip o
 alpha mode, compression, shadows, wind, population, calibrated optics or Godot
 behavior. The original padded render remains rejected evidence; gates were not
 relaxed. Atlas optical comparisons and far representations remain open.
+
+### Exact atlas pixels and two-cluster source-free delivery
+
+New atlas plans require `RGBA8_CORE_AND_CLAMPED_GUTTER_V1`. The isolated worker
+independently decodes source/emitted PNGs and compares every RGBA8 channel in tile
+cores and clamped gutters, including RGB beneath zero alpha. It converts
+bottom-origin UV rectangles to top-origin PNG rows. An initial verifier-origin
+mismatch was corrected and covered with an asymmetric 4x6 test before accepting
+native results. No packing algorithm or image-transfer tolerance was loosened.
+
+Per-map source/output PNG hashes and per-tile counts/zero error form a retained
+copy witness sealed by the owned job marker. Completion, validation and
+finished-file recovery check the declared method, source/layout/file bindings,
+counts and seal. Validation verifies current file hashes/native bindings and the
+retained evidence; it does not repeat source pixel comparisons when inputs are
+missing. Historical atlases without the method keep their original checks.
+
+A code-disabled typed MCP run reused the corrected dense cluster 167 and created
+cluster 168 from the retained master. Each has 462 leaves / 90,552 source triangles;
+all 924 canonical leaf IDs are distinct. Cluster 168's maximum native normal
+readback error is 0.03822 degrees, within the existing 0.05-degree gate. Their
+34/33-triangle TOP-view cards use four corrected 256px PBR/alpha maps. A 1024x512
+atlas with eight-pixel gutters retains two editable meshes and one shared material.
+For each map, 131,072 core and 16,896 gutter pixels passed exact RGBA checks.
+
+Copied input bundles were removed after assembly. The standalone atlas asset
+reopened, validated its retained witness and exported a 203,412-byte GLB with two
+meshes, one BLEND material and embedded textures. Native clusters, individual
+card GLBs and atlas GLB were rendered with one fixed TOP orthographic camera at
+512px/Cycles16/transparent film/white world0.5, hiding other meshes and lights.
+Camera readback was unchanged. Native and atlas images were visually inspected.
+
+Individual-card versus atlas hard silhouette IoU is 1.0 at box factors 1/2/4/8;
+soft IoU exceeds 0.999997 at every level. Full-size premultiplied RGB RMSE is
+0.0000221. All levels pass the stricter copy-render gates (hard/soft IoU >=0.99,
+alpha MAE <=0.005, RGB RMSE <=0.01). Native versus atlas passes the existing
+approximation gates: hard IoU 0.92485/0.93946/0.95533/0.96641 and soft IoU
+0.91257/0.93088/0.95170/0.97140; full RGB RMSE 0.00521. Native versus separate
+cards also passes. The full measurement/delivery sequence took 198.23 seconds;
+its test passed in 211.36 seconds. The metre card/atlas regression passed in
+38.43 seconds; final pixel/PNG/contracts/layout/archive/centimetre checks passed
+23 tests in 72.99 seconds. All owned workers terminated.
+
+This qualifies two distinct selected clusters in one fixed view and an exact
+unresampled atlas transfer. It does not qualify all 296 clusters, multi-view or
+whole-tree far representations, GPU mip/alpha/compression behavior, shadows, wind,
+population budgets, mature-tree biology or receiving-engine behavior. Base/full-mip
+planning numbers remain estimates, not measured GPU memory or runtime performance.

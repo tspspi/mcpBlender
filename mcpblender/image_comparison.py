@@ -10,7 +10,7 @@ MAX_PIXELS=4*1024**2
 MAX_BYTES=64*1024**2
 
 
-def decode_png(data,*,color_space='SRGB',cancelled=lambda:None,progress=lambda v:None):
+def decode_png(data,*,color_space='SRGB',premultiply=True,cancelled=lambda:None,progress=lambda v:None):
     if color_space not in {'SRGB','LINEAR'}:raise ValueError('Unknown image comparison colour interpretation')
     if len(data)>MAX_BYTES or len(data)<33 or data[:16]!=b'\x89PNG\r\n\x1a\n\0\0\0\rIHDR':raise ValueError('Bounded ordinary PNG input required')
     w,h,depth,color,compression,filter_method,interlace=struct.unpack_from('>IIBBBBB',data,16)
@@ -48,7 +48,7 @@ def decode_png(data,*,color_space='SRGB',cancelled=lambda:None,progress=lambda v
             values=list(row[start:start+bpp]) if depth==8 else list(struct.unpack_from('>'+str(channels)+'H',row,start))
             rgb=[table[v] if table is not None else transfer(v/maximum) if color_space=='SRGB' else v/maximum for v in values[:3]]
             alpha=values[3]/maximum if channels==4 else 1.
-            output.extend([*(v*alpha for v in rgb),alpha])
+            output.extend([*(v*alpha if premultiply else v for v in rgb),alpha])
         previous=row
     cancelled();return w,h,output
 

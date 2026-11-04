@@ -14,9 +14,11 @@ from mcpblender.storage import require_space
 COMMANDS={'render_camera_batch'}
 
 
-def launch(p):
+def launch(p,*,scene=None,snapshot_writer=None,resource_ids=None,scene_name=None):
     from .bridge import _bridge,check_cancelled,report_progress
-    scene=compositing.guard(p)
+    scene=scene or compositing.guard(p)
+    scene_name=scene_name or scene.name
+    resources=set(bpy.data.user_map()) if resource_ids is None else resource_ids
     for name in p['cameras']:
         obj=scene.objects.get(name)
         if not obj or obj.type!='CAMERA':raise ValueError('Render camera not found in current scene: '+name)
@@ -25,23 +27,23 @@ def launch(p):
     # blend_paths also includes weak references to bundled brush asset files,
     # even in a factory-startup scene. Those are editing metadata, not render
     # inputs. Inspect actual render-resource datablocks instead.
-    external=[i.filepath for i in bpy.data.images if i.source!='VIEWER' and (not i.packed_file or i.is_dirty)]
-    external += [v.filepath for collection in (bpy.data.libraries,bpy.data.movieclips,bpy.data.cache_files) for v in collection]
-    external += [v.filepath for v in bpy.data.fonts if v.filepath!='<builtin>' and not v.packed_file]
-    external += [v.filepath for v in bpy.data.sounds if not v.packed_file]
+    external=[i.filepath for i in resources if isinstance(i,bpy.types.Image) and i.source!='VIEWER' and (not i.packed_file or i.is_dirty)]
+    external += [v.filepath for v in resources if isinstance(v,(bpy.types.Library,bpy.types.MovieClip,bpy.types.CacheFile))]
+    external += [v.filepath for v in resources if isinstance(v,bpy.types.VectorFont) and v.filepath!='<builtin>' and not v.packed_file]
+    external += [v.filepath for v in resources if isinstance(v,bpy.types.Sound) and not v.packed_file]
     if external:raise ValueError('Independent render snapshots require packed/self-contained inputs; external project dependencies remain')
-    for tree in bpy.data.node_groups:
+    for tree in (v for v in resources if isinstance(v,bpy.types.NodeTree)):
         if tree.bl_idname=='CompositorNodeTree' and any(n.bl_idname in {'CompositorNodeOutputFile','CompositorNodeImage','CompositorNodeMovieClip'} for n in tree.nodes):raise ValueError('Independent renders refuse file-output/external-image compositor nodes')
-    for obj in bpy.data.objects:
+    for obj in (v for v in resources if isinstance(v,bpy.types.Object)):
         if any(mod.type=='FLUID' for mod in obj.modifiers) or obj.type=='VOLUME':raise ValueError('External fluid/volume caches require a separate frozen-cache snapshot workflow')
     if scene.compositing_node_group and scene.render.use_compositing:compositing.validate(scene.compositing_node_group)
     root=Path(p['directory'])
     if root.exists() or root.is_symlink():raise FileExistsError('Render output directory already exists')
     active=_bridge.active if _bridge and _bridge.active else {}
-    if active.get('command')!='render_camera_batch' or not active.get('operation_id') or not active.get('owner'):raise RuntimeError('Independent rendering requires broker operation ownership')
+    if active.get('command') not in {'render_camera_batch','capture_botanical_views'} or not active.get('operation_id') or not active.get('owner'):raise RuntimeError('Independent rendering requires broker operation ownership')
     count=len(p['cameras'])*len(range(p['frame_start'],p['frame_end']+1,p['frame_step']))
     channels=4+sum(4 for layer in scene.view_layers for key in compositing.PASSES if getattr(*compositing.pass_owner(layer,key)))
-    scene_bytes=sum(len(m.vertices)*64+len(m.loops)*64 for m in bpy.data.meshes)+sum(i.packed_file.size for i in bpy.data.images if i.packed_file)
+    scene_bytes=sum(len(m.vertices)*64+len(m.loops)*64 for m in resources if isinstance(m,bpy.types.Mesh))+sum(i.packed_file.size for i in resources if isinstance(i,bpy.types.Image) and i.packed_file)
     estimate=max(16*1024**2,scene_bytes*2)+count*p['width']*p['height']*(9+4*channels*('OPEN_EXR_MULTILAYER' in p['formats']))
     if estimate>p['max_bytes']:raise ValueError('Render batch estimate exceeds max_bytes')
     policy=active.get('storage',{});reserve=policy.get('reserve_bytes',256*1024**2)
@@ -60,8 +62,9 @@ def launch(p):
         record={'kind':'mcpblender-render-job','version':1,'id':job_id,'operation_id':active['operation_id'],'owner':active['owner'],'identity':[identity.st_dev,identity.st_ino]}
         write_json(root/MARKER,record);write_json(root/'status.json',{'job_id':job_id,'state':'running','phase':'saving source snapshot','completed':0,'total':count})
         report_progress({'phase':'saving independent render snapshot','estimated_bytes':estimate,'native_call_interruptible':False})
-        finished(bpy.ops.wm.save_as_mainfile(filepath=str(root/'source.blend'),copy=True,check_existing=False,relative_remap=False))
-        job=p|{'job_id':job_id,'owner':active['owner'],'scene':scene.name,'source_sha256':file_hash(root/'source.blend'),'reserve_bytes':reserve,'estimated_bytes':estimate}
+        if snapshot_writer:snapshot_writer(root/'source.blend')
+        else:finished(bpy.ops.wm.save_as_mainfile(filepath=str(root/'source.blend'),copy=True,check_existing=False,relative_remap=False))
+        job=p|{'job_id':job_id,'owner':active['owner'],'scene':scene_name,'source_sha256':file_hash(root/'source.blend'),'reserve_bytes':reserve,'estimated_bytes':estimate}
         write_json(root/'job.json',job)
         if (root/'source.blend').stat().st_size>p['max_bytes']:raise ValueError('Saved source snapshot exceeds max_bytes')
         check_cancelled()

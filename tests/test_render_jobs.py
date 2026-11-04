@@ -55,11 +55,12 @@ def test_render_recovery_and_guarded_cleanup(tmp_path):
     jobs.cleanup(root,'agent',p|{'dry_run':False});assert not root.exists()
 
 
-def test_broker_delegates_releases_editor_and_restores_after_restart(tmp_path,monkeypatch):
+@pytest.mark.parametrize('command',['render_camera_batch','capture_botanical_views'])
+def test_broker_delegates_releases_editor_and_restores_after_restart(tmp_path,monkeypatch,command):
     path=tmp_path/'bridge.sock';broker=Broker(path)
     try:
         broker.request('register_worker',{'status':{'session_id':'editing','pid':os.getpid()}})
-        op=broker.request('submit',{'owner':'agent','request_id':'render','command':'render_camera_batch','params':{'directory':str(tmp_path/'job')}})
+        op=broker.request('submit',{'owner':'agent','request_id':'render','command':command,'params':{'directory':str(tmp_path/'job')}})
         broker.request('claim',{'session_id':'editing'})
         root=bundle(tmp_path/'job',op=op['operation_id'],state='running');fd=jobs.lock_fd(root);fcntl.flock(fd,fcntl.LOCK_EX)
         receipt={'_external_render':True,'directory':str(root),'render_job_id':'job1','worker_pid':os.getpid(),'estimated_bytes':1024**2}
@@ -86,6 +87,6 @@ def test_broker_delegates_releases_editor_and_restores_after_restart(tmp_path,mo
         jobs.write_json(root/'status.json',{'job_id':'job1','state':'succeeded'});os.close(fd)
         monitor.join(timeout=5);assert not monitor.is_alive()
         done=broker.request('get_operation',{'owner':'agent','operation_id':op['operation_id']});assert done['state']=='succeeded' and done['result']['valid']
-        duplicate=broker.request('submit',{'owner':'agent','request_id':'render','command':'render_camera_batch','params':{'directory':str(root)}})
+        duplicate=broker.request('submit',{'owner':'agent','request_id':'render','command':command,'params':{'directory':str(root)}})
         assert duplicate['operation_id']==op['operation_id']
     finally:broker.journal.db.close()

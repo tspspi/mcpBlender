@@ -4920,3 +4920,53 @@ full-sphere coverage, native foliage optical equivalence, whole-tree far assets,
 wind, shadows or population cost. Existing flat-PBR shading loss remains open.
 No package/environment, installed runtime, Blender build, service, Godot, remote
 push or tag changes were used.
+
+## Native instanced whole-tree reference/data capture
+
+Qualified on FreeBSD Blender 5.0.1 with system Python and the structured MCP code
+surface disabled. `inspect_botanical_view_capture` and
+`capture_botanical_views` retain shared leaf instances, source shaders and a
+static root/pivot. Independent render jobs bind a private tree-only snapshot,
+neutral world, directional cameras, PNG16 and required float32 multilayer EXR
+Combined/Depth/Normal/Position/Diffuse Color/Glossy Color/Transmission Color
+channels. Source/resource/settings guards include nested ramps/curves/mapping,
+packed image bytes, static shader-coordinate objects and native ray visibility.
+Material-output displacement refuses because analytical bounds cover geometry;
+normal/bump detail remains supported.
+
+The independent native witness enumerates evaluated leaf-instance vertices and
+checks all ten cameras against their projections after rotated, translated and
+uniformly scaled object parenting. Hidden collection planning, source-ID/flag
+preservation, cancellation, failures before and after snapshot writing, stale
+socket/ramp/coordinate-object/visibility guards and nonuniform scale refusal are
+covered. An actual separate worker successfully renders a collection hidden in
+both viewport and renderer while preserving the editing source. The final
+expanded native witness passed in 15.74s. Structured three-view capture with
+Python tools absent verifies source preservation, tree-only snapshot reopen,
+shared instancing, file validation and metadata tamper rejection; its preceding
+source/witness pair passed in 60.35s. Focused contracts, render journal/delegation,
+server/archive and storage checks passed 18 tests in 34.66s. Existing native
+camera-batch/pass, cancellation/reconnect and editor-shutdown/crash recovery
+cases also passed. Storage-observation cleanup races have separate deterministic
+filesystem-read boundary tests.
+
+The retained seed-three canopy has 88,704 native leaf instances and an expanded
+render estimate of 17,457,216 triangles. Its ten-direction 512×512, eight-sample
+Cycles CPU capture passed in 274.93s, with editing after handoff, fresh free-space
+reports and unchanged source tree guard. Twenty PNG/EXR files total 70,087,059
+bytes; the compressed native snapshot is 4,736,301 bytes. Independent stock
+Blender reopen finds one scene, 18 objects, 133,767 total mesh vertices and the
+original instance graph without realization; the object created during capture
+is absent. All ten decoded PNG masks have nonempty alpha coverage and clear
+frame borders. Final source-guard inspection reproduces the measured geometry,
+pivot, bounds and camera plans. Evidence is retained locally under
+`tmp/qualification/tree-capture-20261104/`, including dense and small bundles,
+proof/progress, native readback/masks and final plan. The dense test is opt-in via
+`MCPBLENDER_TREE_CAPTURE_SOURCE` pointing to the retained `Canopy3.blend` fixture.
+
+These are native reference/data captures, not finished far assets. Required EXR
+headers and file hashes are checked; numerical pass decoding/reconstruction,
+portable PBR/thickness/transmission reconstruction, native-versus-far optics,
+view interpolation, depth/shadow proxies, wind, population performance and the
+mature-tree artistic reference remain separate qualifications. No receiving
+engine or GPU renderer is qualified by these CPU captures.

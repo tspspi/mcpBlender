@@ -39,6 +39,16 @@ def main():
         bpy.ops.wm.open_mainfile(filepath=str(root/'source.blend'),load_ui=False,use_scripts=False)
         if bpy.app.autoexec_fail:raise ValueError('Source requires disabled script/driver execution')
         scene=bpy.data.scenes[job['scene']];bpy.context.window.scene=scene
+        if capture:=job.get('botanical_capture'):
+            from mcpblender import tree_capture
+            tree_capture.validate(capture,job)
+            # Source editing visibility is preserved in source.blend; canonical
+            # reference owners are enabled only in this isolated process.
+            for name in capture['render_visible_objects']:bpy.data.objects[name].hide_render=False
+            for name in capture['render_visible_collections']:bpy.data.collections[name].hide_render=False
+            for name in capture['render_visible_objects']:
+                obj=bpy.data.objects[name]
+                while obj.parent:obj=obj.parent;obj.hide_render=False
         scene.render.engine=job['engine'];scene.render.use_sequencer=False;scene.render.use_border=False
         scene.render.resolution_x=job['width'];scene.render.resolution_y=job['height'];scene.render.resolution_percentage=100
         scene.render.use_file_extension=True;scene.render.threads_mode='FIXED';scene.render.threads=job['threads']
@@ -64,7 +74,7 @@ def main():
                     bpy.data.images['Render Result'].save_render(str(path),scene=scene)
                     outputs.append({'camera':camera,'camera_index':ci,'frame':frame,'frame_index':fi,'format':fmt,'file':name,'bytes':path.stat().st_size,'sha256':files.file_hash(path),'header':files.image_header(path)})
                 status(completed=current['completed']+1)
-        files.write_json(root/'manifest.json',{'version':1,'job_id':job['job_id'],'source_sha256':job['source_sha256'],'blender_version':bpy.app.version_string,'outputs':outputs})
+        files.write_json(root/'manifest.json',{'version':1,'job_id':job['job_id'],'source_sha256':job['source_sha256'],'blender_version':bpy.app.version_string,'outputs':outputs,**({'botanical_capture':job['botanical_capture']} if 'botanical_capture' in job else {})})
         files.validate(root,job['owner'])
         if sum(v['bytes'] for v in files.inventory(root))>job['max_bytes']:raise ValueError('Completed render exceeds byte budget')
         status(state='succeeded',phase='complete')

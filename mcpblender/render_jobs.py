@@ -133,6 +133,12 @@ def validate(root,owner,progress=lambda value:None,cancelled=lambda:False):
                 if done%(16*1024**2)==0:progress({'phase':'verifying render file','file':Path(path).name,'bytes_verified':done})
         return value.hexdigest()
     if saved.get('job_id')!=r['id'] or saved.get('source_sha256')!=job.get('source_sha256') or checked_hash(root/'source.blend')!=job['source_sha256']:raise ValueError('Render source/manifest binding mismatch')
+    capture=job.get('botanical_capture')
+    if capture is not None:
+        from . import tree_capture
+        tree_capture.validate(capture,job)
+        if saved.get('botanical_capture')!=capture:raise ValueError('Botanical capture manifest binding mismatch')
+    elif 'botanical_capture' in saved:raise ValueError('Unexpected botanical capture metadata')
     expected={(ci,fi,fmt) for ci,_ in enumerate(job['cameras']) for fi,_ in enumerate(range(job['frame_start'],job['frame_end']+1,job['frame_step'])) for fmt in job['formats']}
     actual=set();members=[]
     for item in saved['outputs']:
@@ -141,10 +147,11 @@ def validate(root,owner,progress=lambda value:None,cancelled=lambda:False):
         if key not in expected or key in actual or item['file']!=name or item['camera']!=job['cameras'][ci] or item['frame']!=job['frame_start']+fi*job['frame_step']:raise ValueError('Render camera/frame association mismatch')
         path=root/name;header=image_header(path)
         if path.stat().st_size!=item['bytes'] or checked_hash(path)!=item['sha256'] or header!=item['header'] or header['width']!=job['width'] or header['height']!=job['height'] or header['format']!=fmt:raise ValueError('Render output hash/header mismatch')
+        if capture is not None and fmt=='OPEN_EXR_MULTILAYER':tree_capture.validate_header(header)
         actual.add(key);members.append(item)
         progress({'phase':'verified render output','completed_files':len(members),'total_files':len(expected)})
     if actual!=expected or {v['path'] for v in rows if v['path'].startswith('outputs/')}!={i['file'] for i in members}:raise ValueError('Render output inventory mismatch')
-    return {'valid':True,'directory':str(root),'job_id':r['id'],'outputs':members,'frames':[str(root/v['file']) for v in members if v['format']=='PNG'],'path':str(root/'manifest.json'),'source_sha256':saved['source_sha256']}
+    return {'valid':True,'directory':str(root),'job_id':r['id'],'outputs':members,'frames':[str(root/v['file']) for v in members if v['format']=='PNG'],'path':str(root/'manifest.json'),'source_sha256':saved['source_sha256'],**({'botanical_capture':capture} if capture is not None else {})}
 
 def request_cancel(root,owner):
     r=record(root,owner)

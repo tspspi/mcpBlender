@@ -694,6 +694,71 @@ matched silhouette gate. The corrected projected-alpha policy passes the same
 fixed-view gates for that cluster, as recorded in VALIDATION.md; this does not
 qualify other views, shadows, wind or receiving-renderer filtering.
 
+## Native whole-tree reference captures
+
+Use `inspect_botanical_view_capture` before `capture_botanical_views`, carrying
+its `capture_sha256` as `expected_capture` and using identical source options.
+These tools render a static managed botanical master with its native materials
+and instanced leaves. They provide reference/data images for far-asset work;
+creating far geometry and reconstructing portable PBR materials are separate.
+The inspector is asynchronous by default; use normal operation tracking or
+`wait: true` to obtain its result.
+
+```json
+{
+  "collection": "Oak",
+  "views": ["FRONT", "FRONT_RIGHT", "SIDE", "BACK_RIGHT", "BACK", "BACK_LEFT", "LEFT", "FRONT_LEFT"],
+  "resolution": 512,
+  "margin": 1.1,
+  "world_strength": 0.5,
+  "samples": 16
+}
+```
+
+Add `directory` and `expected_capture` for capture. Four cardinal horizon views
+are the default; any distinct subset of the ten card directions is supported.
+Resolution is square, 32..2048px. The inspector reports native leaf count,
+expanded render-triangle estimate, conservative root-local bounds, static root
+matrix, physical pivot, units, view frames, orthographic camera matrices and
+clipping. Bounds visit eight corners per leaf prototype instance instead of
+realizing its triangles. Default limits are 100,000 leaves, 32 million expanded
+render triangles and two million bounds-work points; caller-adjustable ceilings
+are 250,000, 100 million and four million respectively. Framing follows the
+static root's rotation, positive uniform scale and static object parent chain.
+Nonuniform scale, shear, reflection, animated dependencies and uncontrolled or
+edited managed sources refuse. Linked material-output displacement also refuses
+because these bounds cover native geometry; normal/bump shading is supported. Packed static texture inputs are required.
+Source geometry, native shader/group/image content, placement and settings enter
+the plan guard. The saved snapshot hash binds the actual worker input.
+
+The snapshot contains one private scene, the selected source tree and its
+required dependencies, private cameras and a uniform white world. It excludes
+other scene objects, lights, compositor and sequencer. Live frame, camera,
+visibility, ownership and scene membership are preserved. Global render hiding
+on the source tree/foliage collections and reference owner objects is cleared
+only in the worker; semantic bud points stay hidden and leaf prototypes stay
+unlinked. Other native shader/ray-visibility semantics are retained.
+
+Every view produces a 16-bit RGBA PNG under a neutral Standard/sRGB display view
+and a 32-bit float multilayer EXR. Required native passes are Combined, Depth,
+Normal, Position, Diffuse Color, Glossy Color and Transmission Color. Combined
+EXR is scene-linear; normal/position data use native world scene coordinates.
+Orthographic depth, background/no-hit values and pass antialiasing retain
+Blender's semantics. These native material-color passes are **not** a ready
+base-color/roughness/metallic/thickness bake or a qualified game shader.
+
+Capture uses the same durable operation and owned render-job tools described
+below, including editing after snapshot/launch, two-worker slot locks, fresh
+free-space reports, cancellation, timeout/byte budgets and reconciliation without
+replay. `threads`, `max_bytes` and `timeout_seconds` default to 2, 4 GiB and 3600s.
+The output directory must be new and inside the caller's library. Capture
+requires snapshot, library-write and application-start permissions and must be a
+top-level operation, not a named-action step. The retained job and manifest carry
+the complete `botanical_capture` metadata; independent validation checks their
+binding and required float32 pass headers as well as ordinary file/source hashes.
+It does not certify decoded pass values, optical equivalence, far fitting,
+angular interpolation, shadow proxies, wind or population performance.
+
 ## Independent render workers and camera batches
 
 `render_camera_batch` snapshots the current project, starts a separate owned

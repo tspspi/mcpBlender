@@ -2022,6 +2022,17 @@ free storage and a checkpoint-size estimate; checkpoint admission retains its
 existing filesystem checks. Native construction uses the connected instance's
 main thread and provides cooperative cancellation boundaries.
 
+For the larger OAK_CANOPY_STUDY preset, take the leaf count from the source
+inspection and explicitly set `max_instances` when it exceeds the 30,000 default.
+Start with a short range and inspect coordinate/work estimates before creation;
+a high leaf count does not authorize raising every budget. Keep a source save.
+After creation, save and reopen the owned preview, review several native frames
+and interval midpoints, then render at the captured scene FPS. A display offset
+allows source/preview comparison while keeping wind evaluation at the original
+placement. Render only the preview objects with a camera that excludes the
+original, or explicitly control visibility without changing the source geometry.
+The scene environment tools can provide consistent lighting across poses.
+
 Before success, native readback checks every sampled frame and every interval
 midpoint against the exact solver. Defaults bound key position error to .0001m,
 midpoint error to .01m, leaf orientation error to 1 degree and mesh-edge relative

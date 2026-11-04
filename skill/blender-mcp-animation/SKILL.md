@@ -495,3 +495,13 @@ When revising adopted vegetation maps, explicit replace_existing retains prior
 optical/source lineage and the same geometry/UV/wind correspondence. It does not
 add animated LOD qualification. Use the design/render workflow for source refresh,
 map replacement, budgets and cleanup of retired private resources.
+
+For a dense OAK_CANOPY_STUDY wind preview, inspect the source leaf count and set
+max_instances explicitly when over the 30,000 default. Plan a short frame range
+first, inspect coordinate/work and storage reports, then submit creation once
+and poll the same ID. Keep original budgets unless a specific estimate requires
+a deliberate increase. Save/reopen the preview, review key/midpoint errors and
+render within the baked range at its captured FPS. Preserve the source guard.
+For controlled light across poses, use inspect_environment/configure_environment
+and separately guarded color management; avoid duplicate scene/SKY suns. An
+animation preview is artistic kinematics, not a mechanical or collision solver.

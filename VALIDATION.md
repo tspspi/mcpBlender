@@ -4088,3 +4088,64 @@ exposure settings. Foliage still reads as an artistic, relatively sparse
 silhouette, with visible angular branching and procedural bark. No mature-tree
 visual acceptance or physical-light calibration is claimed. Owned fixtures are
 stopped; the broader botanical/workflow backlog remains open.
+
+## Full-density shared canopy wind qualification — 2026-11-04
+
+The retained Canopy3 study (88,704 leaves, three shared templates) now has a
+larger native wind/animation qualification fixture in
+`tests/test_canopy_wind_workflow.py`. It uses typed MCP tools with arbitrary
+Python execution disabled, an explicit 88,704 instance cap, frames 1–13 at 24 fps,
+steady wind [3,1,0] m/s, gust 2 m/s and artistic bend response 1 degree per m/s.
+The 30,000 default instance limit correctly refuses this population. The plan
+reports 52,214,400 raw coordinate bytes and 17,881,584 heuristic work units. Native
+creation took 502.66 seconds, with operation polling and free-storage/checkpoint
+reports throughout; this timing is one local run, not a performance guarantee.
+
+Creation checked every key and interval midpoint: 25 frames, including every
+native leaf instance's pose/variant and nonzero wood/shoot edge strain. Maximum
+key position error was 1.9074e-6 m, midpoint position error .000484236 m, leaf
+orientation error .137057 degrees, edge strain .00548749, scale relative error
+4.4235e-7 and axis dot 3.8650e-7. Leaves remain instances; the preview copies only
+three template meshes and stores three helper vertices per leaf. The original
+live source guard stays unchanged during creation. Scene lights were disabled;
+SKY front lighting and exposure -2 provide consistent 256-pixel, eight-sample
+Cycles frames across the animation.
+
+Qualification was completed in two phases. The initial 679.71-second run finished
+native construction/readback, all 13 renders, save/reopen and preview removal,
+then failed a test assertion comparing source session guards across reopening.
+Those guards intentionally include native pointers. Source reports were otherwise
+identical. The fixture now compares geometry/semantic reports across reload,
+refreshes the session guard, and checks that guard before/after removal. It also
+excludes transport operation IDs when comparing reports from different tool
+surfaces. No production geometry/guard behavior was weakened to satisfy the test.
+
+A targeted saved-evidence continuation passed in 76.06 seconds without regenerating
+the large preview. It confirms source content, reopened preview validity,
+guarded cleanup preserving source/materials, fresh-process native playback and
+video delivery. The independent native reader accesses shape-key coordinates
+through a temporary carrier before the instance-only Geometry Nodes output.
+At frames 1, 7, 7.5, 13 and 20 it checks all 88,704 leaf centers/helper axes,
+pinned soil vertices and source stability. Frames 1/13 independently count all
+88,704 instances and three used templates, with no Realize Instances node. The
+fractional-frame center error was .000453682 m and axis error .138477 degrees;
+frame 20 exactly matches the sampled endpoint's coordinate hash. This is native
+persistence/interpolation evidence, not continuous-time motion qualification.
+
+All 13 decoded RGB frames are distinct. Frames 1/7 and 1/13 differ in 29,147 and
+29,428 pixels, with mean absolute channel differences 4.680 and 6.279. Frames
+1, 7 and 13 were actually viewed and remain within the chosen fixed camera.
+The H.264 MP4 is independently probed as 256x256, 13 frames at 24 fps (about half a
+second). This is a short rendered kinematic preview. Sparse artistic habit,
+procedural bark, biomechanical response, collision, wind extrema, runtime shader
+parity, animated LODs and the 1000-tree workload remain unqualified.
+
+Run the full opt-in fixture with `MCPBLENDER_TEST_BLENDER=1` and
+`MCPBLENDER_WIND_CANOPY_SOURCE` pointing to the retained preset Canopy3.blend.
+`MCPBLENDER_WIND_CANOPY_EVIDENCE_DIR` retains outputs. The targeted delivery test
+uses `MCPBLENDER_WIND_CANOPY_SAVED` pointing to the saved evidence library. Local
+evidence is `/tmp/mb-canopy-wind-20261104/`, including operation/storage journals,
+`library/canopy-wind.blend`, wind/cleanup/native/pixel/video proofs, 13 PNGs and
+the MP4. Temporary native readback objects are removed before final guard checks;
+all owned applications/brokers stop. No packages, virtual environments, installed
+runtimes/skills, services, user GUI sessions or engine adapters were changed.

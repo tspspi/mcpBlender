@@ -1107,6 +1107,15 @@ and work when `allow_code_execution=false`. Editing requires `allow_scene_edit`;
   with `projection="ORTHO"` for an orthographic view. The camera must be static,
   unparented and have independent data. Fit uses current render aspect and frame;
   refit after changing them. Clipping distances may expand to accommodate the asset.
+  `source_bounds_world` reports the fitted evaluated envelope in native world units.
+  Hidden targets and cameras are temporarily enabled on one nonexcluded layer path
+  for evaluation; object, collection and local viewport-hide flags are restored,
+  including on evaluation errors or cooperative cancellation. Targets outside the
+  current view layer are refused. The path scan is bounded to 8192 layer entries
+  and 128 levels. Modifier enablement remains the current viewport configuration.
+  Orthographic sizing/centering is checked against the actual projection, including
+  render aspect and camera shift. `setup_preview_stage` uses the same hidden-source
+  evaluation path for its camera and light-placement bounds.
 
 Asset mesh tools require Object mode; operator-based edits also require a visible,
 selectable target in the current view layer. They restore object selection and

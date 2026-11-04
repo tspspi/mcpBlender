@@ -783,3 +783,9 @@ silhouette gates. Explicit null criteria disable those gates through MCP. Dark
 FRONT/SIDE cards remain a shading issue: flat normals improve the current uniform-
 world control, while flipping backward map normals only partially helps. Neither
 control is a native-optics or dynamic-lighting correction.
+
+For camera staging, frame_objects reports source_bounds_world in native scene units.
+Hidden target/collection visibility is temporarily enabled for evaluated bounds and
+restored afterward. Keep targets in a nonexcluded current view-layer path; refit
+when frame, aspect or geometry changes. Orthographic fits account for actual
+projection/shift; setup_preview_stage shares the hidden-source evaluation path.

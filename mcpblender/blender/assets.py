@@ -313,7 +313,51 @@ def edit_object(command, p):
     return object_info(obj, True)
 
 
+@contextmanager
+def evaluation_visibility(obj):
+    """Evaluate a hidden target on one nonexcluded path; restore every flag."""
+    from .bridge import check_cancelled
+    layer=bpy.context.view_layer;layer.update()
+    if layer.objects.get(obj.name)!=obj:raise ValueError('Object is outside the current view layer: '+obj.name)
+    if obj.visible_get():
+        yield False
+        return
+    paths=[];stack=[(layer.layer_collection,())];visited=0
+    while stack:
+        node,parents=stack.pop();visited+=1
+        if visited>8192 or len(parents)>=128:raise ValueError('Hidden evaluation collection-path budget exceeded')
+        if visited%256==0:check_cancelled()
+        if node.exclude:continue
+        path=parents+(node,)
+        if node.collection.objects.get(obj.name)==obj:paths.append(path)
+        stack.extend((child,path) for child in node.children)
+    if not paths:raise ValueError('Hidden evaluation needs a nonexcluded collection path')
+    path=min(paths,key=lambda nodes:(sum(bool(n.hide_viewport)+bool(n.collection.hide_viewport) for n in nodes),tuple(n.name for n in nodes)))
+    changed=[];local_hidden=None
+    try:
+        for node in path:
+            for owner in (node.collection,node):
+                if owner.hide_viewport:
+                    owner.hide_viewport=False;changed.append(owner)
+        if obj.hide_viewport:obj.hide_viewport=False;changed.append(obj)
+        local_hidden=obj.hide_get()
+        if local_hidden:obj.hide_set(False)
+        layer.update();check_cancelled()
+        if not obj.visible_get():raise ValueError('Target remains unavailable for viewport evaluation: '+obj.name)
+        yield True
+    finally:
+        if local_hidden:obj.hide_set(True)
+        for owner in reversed(changed):owner.hide_viewport=True
+        if changed or local_hidden:layer.update()
+
+
 def evaluated_mesh_bounds(obj,graph=None):
+    """Include hidden targets without trusting their unevaluated cached data."""
+    with evaluation_visibility(obj) as changed:
+        return _evaluated_mesh_bounds(obj,None if changed else graph)
+
+
+def _evaluated_mesh_bounds(obj,graph=None):
     """Bound a mesh and its visible mesh instances without realizing prototypes."""
     graph=graph or bpy.context.evaluated_depsgraph_get();low=[float('inf')]*3;high=[-float('inf')]*3;seen=set();count=0
     def include(evaluated,matrix):
@@ -340,6 +384,14 @@ def evaluated_mesh_bounds(obj,graph=None):
 
 
 def frame_objects(p):
+    camera=local_object(p['name'])
+    with evaluation_visibility(camera):
+        result=_frame_objects(p)
+    result['visible']=camera.visible_get()
+    return result
+
+
+def _frame_objects(p):
     from bpy_extras.object_utils import world_to_camera_view
     from .bridge import object_info
     camera = local_object(p["name"])
@@ -358,7 +410,7 @@ def frame_objects(p):
         candidate=bpy.data.objects.get(name)
         if candidate and candidate.instance_type=='COLLECTION' and candidate.get('mcpblender_asset_instance'):
             from .assemblies import instance
-            bounds=instance({'name':name})['world_bounds']
+            with evaluation_visibility(candidate):bounds=instance({'name':name})['world_bounds']
             if not bounds:raise ValueError('Instance has no visible evaluated mesh geometry')
             points.extend(Vector((x,y,z)) for x in (bounds['min'][0],bounds['max'][0]) for y in (bounds['min'][1],bounds['max'][1]) for z in (bounds['min'][2],bounds['max'][2]))
             continue
@@ -392,6 +444,22 @@ def frame_objects(p):
     bpy.context.view_layer.update()
     scene = bpy.context.scene
     projected = [world_to_camera_view(scene, camera, point) for point in points]
+    if camera.data.type == "ORTHO":
+        # Native camera_fit_coords can underestimate the viewport footprint.
+        # Size and centre against the actual projection, including aspect/shift.
+        span=max(max(v[i] for v in projected)-min(v[i] for v in projected) for i in range(2))
+        camera.data.ortho_scale=max(.001,camera.data.ortho_scale*span*margin)
+        bpy.context.view_layer.update()
+        projected=[world_to_camera_view(scene,camera,point) for point in points]
+        frame=camera.data.view_frame(scene=scene)
+        width=max(v.x for v in frame)-min(v.x for v in frame)
+        height=max(v.y for v in frame)-min(v.y for v in frame)
+        dx=((max(v.x for v in projected)+min(v.x for v in projected))/2-.5)*width
+        dy=((max(v.y for v in projected)+min(v.y for v in projected))/2-.5)*height
+        basis=camera.matrix_world.normalized().to_3x3()
+        camera.location+=basis.col[0]*dx+basis.col[1]*dy
+        bpy.context.view_layer.update()
+        projected=[world_to_camera_view(scene,camera,point) for point in points]
     near, far = min(v.z for v in projected), max(v.z for v in projected)
     if near <= 0:
         camera.location += direction * (abs(near) + radius)
@@ -405,6 +473,7 @@ def frame_objects(p):
     bounds = {"min": [min(v[i] for v in projected) for i in range(2)],
               "max": [max(v[i] for v in projected) for i in range(2)]}
     return object_info(camera, True) | {"objects": p["objects"], "projection_bounds": bounds,
+        "source_bounds_world": {"min":list(low),"max":list(high)},
         "fully_in_frame": near >= camera.data.clip_start and far <= camera.data.clip_end
             and all(-1e-5 <= v <= 1.00001 for v in bounds["min"] + bounds["max"]),
         "camera_type": camera.data.type, "ortho_scale": camera.data.ortho_scale,

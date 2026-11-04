@@ -4831,3 +4831,40 @@ Other custom attribute payloads are not qualified. Native blend/GLB writes are
 blocking; no new live crash/cancellation-injection qualification is claimed here.
 All owned workers finished normally. No package/environment, runtime install,
 Blender rebuild, Godot, remote push or tag changes were used.
+
+### Hidden evaluated sources and camera framing
+
+Camera framing and preview-stage bounds now evaluate hidden owners on one
+nonexcluded viewport collection/layer path, restoring object, collection, layer
+and local-hide flags afterward. Hidden cameras use the same scope. Targets outside
+the current view layer are refused; collection traversal has explicit 8192-entry
+and 128-level bounds. Modifier enablement is preserved. Evaluated instance output
+is bounded without realizing prototypes, using the existing geometry/instance
+limits. `source_bounds_world` exposes the actual fitted envelope in native units.
+
+The fixture combines an animated parent at frame 7, a solidified plane and a
+Geometry Nodes owner with three cube instances and an empty base mesh. Both owners
+and their parent collections/layer are hidden before save/reopen. Independent
+visible evaluated-vertex enumeration supplies reference bounds. The resulting
+hidden-source bounds match that reference. Camera fits exercise landscape and
+portrait aspects, shifted orthographic optics, perspective projection and a hidden
+camera. Preview-stage camera/light bounds use the same source envelope.
+
+The bounds check also exposed an orthographic crop in the installed native
+`camera_fit_coords` result: evaluated source bounds were correct, but its projected
+range extended outside the image. Orthographic scale and centering now use the
+actual projection/view frame, respecting aspect, shift and requested margin.
+For the landscape fixture, the final normalized projection spans approximately
+[0.131599,0.065218] to [0.868401,0.934783], with `fully_in_frame=true`.
+
+A saved-state readback in a separate stock Blender process verifies all original
+hide flags and frame remain restored. Native injected evaluation failure and
+cooperative cancellation also restore those flags and the datablock inventory.
+An empty-source framing request leaves the camera transform unchanged. The final
+hidden-source test plus existing textured camera/delivery and procedural textured
+building/managed-instance preview regressions passed three tests in 80.38 seconds.
+Nine contract/server/archive checks passed in 20.84 seconds. This qualifies those
+bounds, projection and restoration cases; it does not establish arbitrary modifier
+behavior, a large-population/GPU performance result or a new live-crash guarantee.
+All owned test jobs finished normally; no dependency, environment, installed
+runtime, Blender build, service, Godot, push or tag changes were required.

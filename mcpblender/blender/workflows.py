@@ -176,7 +176,7 @@ def setup_preview_stage(p):
         candidate=bpy.data.objects.get(name)
         if candidate and candidate.instance_type=='COLLECTION' and candidate.get('mcpblender_asset_instance'):
             from .assemblies import instance
-            value=instance({'name':name})['world_bounds']
+            with assets.evaluation_visibility(candidate):value=instance({'name':name})['world_bounds']
             if not value:raise ValueError('Preview instance has no visible evaluated mesh geometry')
             bounds.append(value);continue
         obj = assets.mesh_object(name)

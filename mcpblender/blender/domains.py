@@ -42,6 +42,7 @@ from . import vegetation_materials
 from . import botanical_surfaces
 from . import render_batches
 from . import compositing
+from . import environment
 from . import lod_adoption
 from . import lod_management
 from . import lods
@@ -100,6 +101,7 @@ COMMANDS.update(vegetation_adoption.COMMANDS)
 COMMANDS.update(botanical_surfaces.COMMANDS)
 COMMANDS.update(render_batches.COMMANDS)
 COMMANDS.update(compositing.COMMANDS)
+COMMANDS.update(environment.COMMANDS)
 COMMANDS.update(lod_adoption.COMMANDS)
 COMMANDS.update(lod_management.COMMANDS)
 COMMANDS.update(assemblies.COMMANDS)
@@ -152,6 +154,7 @@ def dispatch(command, p):
     if command in botanical_uv.COMMANDS:return botanical_uv.dispatch(command,p)
     if command in botanical_presets.COMMANDS:return botanical_presets.dispatch(command,p)
     if command=='render_camera_batch':return render_batches.launch(p)
+    if command in environment.COMMANDS:return environment.dispatch(command,p)
     if command in compositing.COMMANDS:
         return compositing.dispatch(command,p)
     if command in lod_adoption.COMMANDS:

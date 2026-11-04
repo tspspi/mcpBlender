@@ -277,3 +277,18 @@ changes. complete means only these declared coverage/resolution/input-budget
 criteria passed; it does not certify visual quality, padding/filtering, UV2,
 physical optics, engine shaders or animated LOD behavior. Export/validate files
 separately and review representative renders at the intended quality target.
+
+For scene environment lighting, use environment_catalog and inspect_environment,
+then configure_environment with the fresh expected_environment and settings mode
+COLOR, SKY or HDRI. SKY AUTO resolves the installed atmospheric model; angles are
+in degrees. HDRI takes a static 2:1 library image, bounded encoded/pixel budgets,
+optional color_space and rotation_degrees, and packs a private copy for relocation.
+Only ordinary scanline RGB(A) EXR is accepted alongside PNG/JPEG/Radiance HDR.
+Inspect available storage and decoded-size estimates. Other scenes and unmanaged
+or edited Worlds are preserved. Animated/unsupported/linked dependencies refuse.
+Scene lights and exposure are independently controlled: inspect existing SUN
+lights before adding a sky sun, and use inspect_render_pipeline plus guarded
+configure_color_management for exposure. film_transparent controls camera
+background without removing illumination. Keep asset guards, check macro leaf
+front/back transmission and bark scale, then review the whole asset. Save/reopen
+packed inputs. These controls do not establish physical optics or engine parity.

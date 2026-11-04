@@ -459,6 +459,75 @@ but smoke/fire renders are empty. Homogeneous mesh-volume rendering and shader
 round-trips pass; cached smoke/fire appearance is **not qualified on that build**.
 
 
+## World environment lighting
+
+Use `environment_catalog`, `inspect_environment` and `configure_environment`
+with typed `params`; arbitrary Python execution is unnecessary. Inspection returns
+`environment_sha256`, static graph/image dependencies, ownership/users, managed
+settings and refusal reasons. It also reports current exposure, film transparency
+and existing SUN lights. Supply a fresh `expected_environment` when configuring:
+
+```json
+{
+  "expected_environment": "<environment_sha256 from inspect_environment>",
+  "settings": {
+    "mode": "SKY",
+    "sky_model": "AUTO",
+    "strength": 0.3,
+    "sun_elevation_degrees": 35,
+    "sun_rotation_degrees": 225
+  },
+  "film_transparent": false
+}
+```
+
+`COLOR` accepts scene-linear RGB and strength. `SKY` authors the installed
+atmospheric Sky node, with sun direction/disc/size/intensity, altitude and air,
+aerosol and ozone density. Directions and angular sizes use degrees. `AUTO`
+selects MULTIPLE_SCATTERING, SINGLE_SCATTERING or legacy NISHITA in that order,
+according to the installed API; inspect `resolved_sky_model`. An explicitly
+requested unavailable model refuses without publishing a replacement.
+
+`HDRI` accepts `image_path` inside the caller's library, strength, Z rotation in
+degrees and an optional installed `color_space`. Inputs must be static 2:1
+equirectangular PNG/JPEG/Radiance HDR or ordinary single-part scanline RGB(A)
+HALF/FLOAT EXR with identical data/display windows. Deep, tiled, multipart and
+arbitrary multichannel EXR are excluded. A bounded 64 KiB header check admits
+size before native decoding; it is not full codec validation. Defaults allow
+128 MiB encoded and 16 megapixels; explicit caps are 512 MiB and 32 megapixels.
+Files must be regular and unchanged across admission, decoding and packing.
+The privately loaded image is packed for relocation; saved metadata keeps its
+basename/hash rather than requiring the source path. Inspection includes the
+resolved color space and float-image flag. Review color interpretation on the
+actual input; format alone does not establish calibrated radiance.
+
+Each configuration stages a private World and changes only the current scene's
+binding. Other scenes keep their World. Unmanaged or edited previous Worlds are
+retained and pinned with a fake user when otherwise orphaned. An unchanged,
+single-user managed World can be retired with its unused owned HDRI image.
+Animated, linked/overridden, unsupported or oversized graph/image dependencies
+refuse structured replacement. Inspection bounds nested groups, links, sockets
+and encoded image dependencies. It hashes saved image content without creating
+large Python decoded-pixel lists. Cooperative cancellation/failure restores the
+original binding, film flag and fake-user flag and removes staged IDs. This is
+not an application-crash transaction; use existing checkpoints/recovery for that.
+
+Scene SUN/area lights and exposure remain independently controlled. A sky sun
+disc can supply directional lighting: inspect and explicitly disable unnecessary
+scene lights to avoid doubling it. Use guarded `configure_color_management`
+with `inspect_render_pipeline` for exposure/display changes. An optional
+`film_transparent` changes the camera background while World lighting continues
+to illuminate the scene. Omission preserves the flag. Geometry/material guards
+remain independent. HDRI admission reports input size, decoded-RGBA estimate and
+available storage before loading; storage is a checkpoint heuristic, not a peak
+RAM or full-project save estimate. For long renders submit once and poll the
+same operation ID, including after an observation timeout.
+
+Review full assets and close-ups under controlled light: leaf front/back with
+transmission enabled/disabled, bark at physical scale, silhouettes and shadows.
+Lighting controls do not certify physical optics, species habit, texture
+filtering or material portability. Save/reopen packed projects before delivery.
+
 ## Compositing, render passes and color management
 
 Structured compositor authoring uses the Blender 5 `compositing_node_group` API.

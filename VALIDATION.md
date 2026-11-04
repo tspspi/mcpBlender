@@ -4023,3 +4023,68 @@ before leaf-record allocation. The cap includes wood and shoots as well as
 leaves. New preset planning/creation advertise wait=false by default; existing
 commands retain their defaults. The final readonly/schema compatibility check
 passed without requiring Blender startup. All owned Blender fixtures stopped.
+
+## Structured World lighting and material close-ups — 2026-11-04
+
+Stock FreeBSD Blender 5.0.1 now has typed COLOR, atmospheric SKY and static
+packed HDRI authoring with arbitrary Python execution disabled. Catalog and
+inspection remain available to read-only callers. Configuration isolates the
+current scene, verifies a bounded static World graph/image signature and checks
+sharing before replacement. Installed SKY AUTO selected MULTIPLE_SCATTERING;
+legacy NISHITA was not assumed to exist in this Blender build.
+
+`tests/test_environment_native.py` and `tests/test_environment_contracts.py`
+passed three tests in 13.16 seconds after the final admission/inspection changes.
+They exercise late cancellation with exact binding/film/fake-user/ID restoration,
+shared-scene isolation, sharing-count and film stale-token rejection, retained
+user-edited graphs, unchanged managed-data retirement, mist-setting preservation,
+animated/object-dependent refusal and packed FLOAT EXR save/reopen after source
+removal. Header checks cover PNG/JPEG/Radiance including CRLF/scanline EXR,
+unsupported multipart admission, byte/pixel budgets, nonblocking FIFO refusal,
+finite typed limits, library boundaries and read-only discovery. These are
+bounded admission checks, not full media-codec validation or a security sandbox.
+Compositor contract/native rollback and add-on import without frontend
+dependencies passed four regression tests in 20.64 seconds.
+
+`tests/test_environment_workflow.py::test_sky_leaf_transmission_bark_and_packed_hdri`
+passed through MCP with code execution disabled in 111.45 seconds. Synthetic EXR
+input media was prepared outside MCP; all scene editing used typed tools.
+Eight Cycles renders cover leaf front/reverse optics, default/finer procedural
+bark and HDRI rotation/reopen. In 17,712 common opaque leaf pixels, reverse-side
+mean green was 187.07 with transmission and 24.94 without it. This measures the
+saved display pixels under these settings, not physical leaf transmission.
+The two bark images differ by mean absolute RGB 21.61 in their common opaque
+pixels. Both remain stylized, as direct image inspection confirms. Rotating the
+HDRI 180 degrees changed a background sample from [236,143,133] to [136,156,229].
+Deleting the input EXR, saving and reopening produced identical decoded render
+pixels. This establishes relocation/rotation in this fixture, not calibrated
+radiance, arbitrary image-format compatibility or cross-engine optical parity.
+
+The optional retained-canopy test uses `MCPBLENDER_ENVIRONMENT_CANOPY_SOURCE`
+pointing to an existing Canopy3.blend, avoiding a repeated large source build.
+It loads 88,704 shared leaves, disables existing scene lights, configures SKY,
+frames/renders through tracked operations and checks the botanical guard remains
+unchanged. The initial single-view case passed in 61.20 seconds. Its exposure-zero
+backlit view was brighter but visibly washed out, prompting the targeted
+exposure/front-light comparison recorded below. None of these views establish
+mature-oak habit, close-up junctions, physical optics, distant texture filtering,
+full-density wind, shadow delivery, GPU performance or the 1000-tree workload.
+
+Evidence is `/tmp/mb-environment-20261104/`: macro/HDRI images and editable
+projects in `library`, display-pixel checks in `pixel-proof.json`, full-canopy
+images/projects in `canopy-library`, and operation/storage journals. The checked
+input/output free-space reports are polling/checkpoint observations, not peak
+memory or complete project-save reservations. Fixtures own isolated background
+instances and stop them on exit. No packages, virtual environments, installed
+runtime/skills, services, user GUI sessions or engine adapters were changed.
+
+The final expanded retained-canopy case passed in 63.63 seconds. Three 320-pixel,
+16-sample Cycles views compare sky backlighting at exposure 0 and -2 stops, then
+front lighting at -2 stops (sky rotation 180 degrees). All images were actually
+viewed. Lower exposure improves the backlit contrast; front lighting makes the
+procedural trunk and green leaf distribution easier to inspect. The botanical
+content guard remains unchanged; the saved project retains the final sky and
+exposure settings. Foliage still reads as an artistic, relatively sparse
+silhouette, with visible angular branching and procedural bark. No mature-tree
+visual acceptance or physical-light calibration is claimed. Owned fixtures are
+stopped; the broader botanical/workflow backlog remains open.

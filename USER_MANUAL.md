@@ -632,6 +632,49 @@ original scalar settings. Custom color curves and OCIO configuration-file editin
 remain separate. These operations change scene setup; ordinary render capture
 continues to restore its temporary resolution/path/engine/camera settings.
 
+## Comparing rendered images and alpha silhouettes
+
+`compare_png_images` reads `reference` and `candidate` PNG paths inside the active
+library. It defaults to an asynchronous operation; poll the same operation ID for
+progress/cancellation. Input files are hashed and the scene is preserved. Supported
+inputs are non-interlaced RGB/RGBA PNG8/16, up to 4096 per dimension, four megapixels
+and 64 MiB encoded per file. CRCs and bounded decompression are checked before
+pixel analysis. ICC/CICP, animated PNG and colour-key transparency refuse.
+
+Choose `color_space=SRGB` (default) for ordinary display/render PNGs or `LINEAR`
+for explicitly linear/non-colour data. The declared interpretation applies to
+both files; this is not ICC conversion or reconstruction of scene radiance from
+a display-transformed render. RGB is premultiplied by alpha before comparison and
+filtering, so arbitrary colour in fully transparent pixels does not affect error.
+
+Results report hard-mask IoU, missing/excess silhouette fractions, soft-alpha IoU,
+relative alpha-area bias, alpha mean absolute error and premultiplied RGB RMSE.
+`alpha_threshold` defaults to 0.5. `scales` defaults to `[1,2,4]`, and accepts distinct
+powers of two through 16 including 1. Each scale box-averages the original
+premultiplied pixels; partial edge blocks use their actual pixel counts. This
+measures that explicit filter, not receiving-engine mipmaps, alpha clipping,
+compression, anisotropy or runtime overdraw.
+
+The `quality` defaults are minimum hard/soft IoU 0.8, maximum alpha MAE 0.05 and
+maximum premultiplied RGB RMSE 0.1. Set individual criteria to null to disable them.
+Every selected scale must pass its available criteria. An empty reference cannot
+pass. If its base hard mask is empty, the enabled hard-mask criterion is unavailable
+and fails; lower the threshold or choose another criterion explicitly. At filtered
+scales an empty reference hard mask is marked uninformative and skipped, while
+soft-alpha/colour criteria remain active. Undefined overlaps return null, never
+an invented perfect match. `passed=false` reports a measured quality rejection;
+it is not an operation failure and must not be treated as accepted delivery.
+
+For foliage cards, render native and delivered assets separately with the same
+fixed orthographic camera, framing, frame, resolution, lighting and colour settings.
+Use transparent film to isolate alpha silhouettes; opaque-background alpha covers
+the whole frame. Hide other meshes/lights consistently and keep the native shader
+if native/PBR approximation loss is being measured. The tool does not establish
+matched-camera provenance or align/rescale images automatically. Check the images
+as well as the metrics. Colour padding must not be assumed to preserve opacity
+coverage: the retained dense 256px card currently fails this matched silhouette
+gate, as recorded in VALIDATION.md.
+
 ## Independent render workers and camera batches
 
 `render_camera_batch` snapshots the current project, starts a separate owned

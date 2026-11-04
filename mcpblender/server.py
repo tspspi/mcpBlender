@@ -158,6 +158,7 @@ class State:
         if command == "run_action":
             return [path for step in params["steps"] for path in State.input_paths(step["command"], step["params"])]
         paths = []
+        if command=="compare_png_images":paths.extend(params[k] for k in ("reference","candidate"))
         if command in {'inspect_texture_atlas','build_texture_atlas','inspect_vegetation_bake_adoption','adopt_vegetation_bakes'}:
             paths.extend(e['directory'] for e in params['entries'])
         if command in {"open_blend", "import_asset", "upload_asset", "inspect_glb_deformation"}:
@@ -201,6 +202,10 @@ class State:
                 temporary.append({"kind": "sequence", "path": params["directory"], "frame_start": params["frame_start"],
                                   "frame_end": params["frame_end"], "frame_step": params["frame_step"],
                                   "video": command == "render_animation_preview" and params["make_video"]})
+        if command=="compare_png_images":
+            for key in ("reference","candidate"):
+                params[key]=str(self.library_path(params[key]))
+                if Path(params[key]).suffix.lower()!=".png":raise ValueError("Comparison inputs must end in .png")
         if command in ("open_blend", "import_asset", "save_blend", "export_glb", "export_objects_glb", "inspect_glb_deformation"):
             params["path"] = str(self.library_path(params["path"], write=command in ("save_blend", "export_glb", "export_objects_glb")))
             extension = {"save_blend": ".blend", "open_blend": ".blend", "export_glb": ".glb", "export_objects_glb": ".glb", "inspect_glb_deformation": ".glb"}.get(command)
@@ -454,7 +459,7 @@ def build_server(config: Config):
 
     def domain_tool(command):
         model, _, description = COMMANDS[command]
-        default_wait = command not in ("create_botanical_foliage_cluster", "inspect_botanical_foliage_clusters", "plan_botanical_asset_preset", "create_botanical_asset_preset", "inspect_texture_quality", "inspect_vegetation_bake_adoption", "adopt_vegetation_bakes", "prepare_vegetation_bake", "export_botanical_lods", "validate_botanical_lod_bundle", "inspect_botanical_lod_source", "create_botanical_lods", "create_botanical_tree", "regenerate_botanical_tree", "plan_botanical_tree", "inspect_botanical_coverage", "plan_botanical_foliage", "configure_botanical_foliage", "remove_botanical_foliage", "create_botanical_wind_preview", "render_animation", "render_video", "render_animation_preview", "render_camera_batch", "download_asset", "upload_asset", "request_asset_api", "sample_rigid_bodies", "bake_rigid_bodies", "sample_simulation", "bake_simulation", "bake_fluid", "bake_textures", "build_texture_atlas", "sample_constraint_animation", "bake_constraint_animation", "configure_nla_strip", "remove_nla_strip", "move_nla_track", "configure_nla_playback", "retarget_animation", "set_skin_weights", "repair_skin_weights", "smooth_skin_weights", "mirror_skin_weights", "edit_armature_rest", "generate_lod_chain", "export_lod_chain", "sample_lod_chain", "inspect_glb_deformation", "create_asset_assembly", "realize_asset_instances", "generate_asset_proxies", "export_asset_package", "rebuild_lod_chain", "adopt_lod_chain", "readopt_lod_chain", "recover_export_job", "cleanup_export_job", "list_export_jobs")
+        default_wait = command not in ("compare_png_images", "create_botanical_foliage_cluster", "inspect_botanical_foliage_clusters", "plan_botanical_asset_preset", "create_botanical_asset_preset", "inspect_texture_quality", "inspect_vegetation_bake_adoption", "adopt_vegetation_bakes", "prepare_vegetation_bake", "export_botanical_lods", "validate_botanical_lod_bundle", "inspect_botanical_lod_source", "create_botanical_lods", "create_botanical_tree", "regenerate_botanical_tree", "plan_botanical_tree", "inspect_botanical_coverage", "plan_botanical_foliage", "configure_botanical_foliage", "remove_botanical_foliage", "create_botanical_wind_preview", "render_animation", "render_video", "render_animation_preview", "render_camera_batch", "download_asset", "upload_asset", "request_asset_api", "sample_rigid_bodies", "bake_rigid_bodies", "sample_simulation", "bake_simulation", "bake_fluid", "bake_textures", "build_texture_atlas", "sample_constraint_animation", "bake_constraint_animation", "configure_nla_strip", "remove_nla_strip", "move_nla_track", "configure_nla_playback", "retarget_animation", "set_skin_weights", "repair_skin_weights", "smooth_skin_weights", "mirror_skin_weights", "edit_armature_rest", "generate_lod_chain", "export_lod_chain", "sample_lod_chain", "inspect_glb_deformation", "create_asset_assembly", "realize_asset_instances", "generate_asset_proxies", "export_asset_package", "rebuild_lod_chain", "adopt_lod_chain", "readopt_lod_chain", "recover_export_job", "cleanup_export_job", "list_export_jobs")
 
         async def operation(params=None, wait: bool = default_wait, request_id: str | None = None) -> dict:
             values = params.model_dump(exclude_none=True) if params is not None else {}
@@ -723,7 +728,7 @@ def build_http_app(server, state):
 def addon_zip(destination: Path):
     source = Path(__file__).parent
     with zipfile.ZipFile(destination, "x", zipfile.ZIP_DEFLATED) as archive:
-        for path in [*(source / name for name in ("__init__.py","graph_digest.py","wire.py","broker.py","retention.py","network.py","storage.py","fluid_files.py","texture_files.py","skin_math.py","uv_math.py","uv_quality.py","uv_chart_layout.py","animation_graph.py","driver_graph.py","rest_math.py","lod_files.py","skin_glb.py","package_files.py","export_jobs.py","lod_recipe.py","render_jobs.py","botany.py","foliage.py","foliage_coverage.py","gltf_units.py","card_fit.py","atlas_layout.py","wind.py","attribute_values.py","attribute_glb.py","vegetation_interchange.py","vegetation_lod.py","vegetation_lod_files.py","vegetation_materials.py","vegetation_adoption.py","vegetation_uv.py","botanical_presets.py","environment_files.py","collision_hulls.py","vegetation_sampling.py","json_text.py","foliage_clusters.py")), *sorted((source / "blender").glob("*.py"))]:
+        for path in [*(source / name for name in ("__init__.py","graph_digest.py","wire.py","broker.py","retention.py","network.py","storage.py","fluid_files.py","texture_files.py","skin_math.py","uv_math.py","uv_quality.py","uv_chart_layout.py","animation_graph.py","driver_graph.py","rest_math.py","lod_files.py","skin_glb.py","package_files.py","export_jobs.py","lod_recipe.py","render_jobs.py","botany.py","foliage.py","foliage_coverage.py","gltf_units.py","card_fit.py","atlas_layout.py","wind.py","attribute_values.py","attribute_glb.py","vegetation_interchange.py","vegetation_lod.py","vegetation_lod_files.py","vegetation_materials.py","vegetation_adoption.py","vegetation_uv.py","botanical_presets.py","environment_files.py","collision_hulls.py","vegetation_sampling.py","json_text.py","foliage_clusters.py","image_comparison.py")), *sorted((source / "blender").glob("*.py"))]:
             archive.write(path, str(Path("mcpblender") / path.relative_to(source)))
 
 

@@ -700,3 +700,11 @@ keys block deletion and native edits require explicit discard. Pass the returned
 object to existing fitted-card tools, then explicitly choose FRONT_PBR for managed
 thin leaves, bake, reopen/validate and review alpha before export. No multi-view,
 filtered optical/shadow, wind or far-LOD quality follows from a single fitted view.
+
+For matched native/card review, keep a fixed camera/frame/lighting and transparent
+film, render each representation in isolation, then compare_png_images on the two
+library PNGs. Inspect hard/soft IoU, excess/missing alpha, alpha-area bias and
+premultiplied RGB error at declared box-filter scales. Empty reference data cannot
+pass; opaque-background alpha is not an isolated silhouette. Treat passed=false
+as rejected quality, not success merely because rendering/export completed. This
+is image evidence only, not GPU mip/alpha, shadow, wind or engine qualification.

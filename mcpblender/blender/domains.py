@@ -23,6 +23,7 @@ from . import animation_curves
 from . import drivers
 from . import nla
 from . import botanical_trees
+from . import image_comparison
 from . import foliage_clusters
 from . import botanical_collisions
 from . import botanical_uv
@@ -104,6 +105,7 @@ COMMANDS.update(botanical_surfaces.COMMANDS)
 COMMANDS.update(render_batches.COMMANDS)
 COMMANDS.update(compositing.COMMANDS)
 COMMANDS.update(environment.COMMANDS)
+COMMANDS.update(image_comparison.COMMANDS)
 COMMANDS.update(foliage_clusters.COMMANDS)
 COMMANDS.update(botanical_collisions.COMMANDS)
 COMMANDS.update(lod_adoption.COMMANDS)
@@ -158,6 +160,7 @@ def dispatch(command, p):
     if command in botanical_uv.COMMANDS:return botanical_uv.dispatch(command,p)
     if command in botanical_presets.COMMANDS:return botanical_presets.dispatch(command,p)
     if command=='render_camera_batch':return render_batches.launch(p)
+    if command in image_comparison.COMMANDS:return image_comparison.dispatch(command,p)
     if command in foliage_clusters.COMMANDS:return foliage_clusters.dispatch(command,p)
     if command in botanical_collisions.COMMANDS:return botanical_collisions.dispatch(command,p)
     if command in environment.COMMANDS:return environment.dispatch(command,p)

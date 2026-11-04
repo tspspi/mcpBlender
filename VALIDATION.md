@@ -4445,3 +4445,39 @@ and therefore do not trigger mutation checkpoints. The cluster delivery regressi
 passed in 56.70 seconds; a dedicated small collision lifecycle check passed in
 14.21 seconds. The optional large-canopy collision tests were not enabled in that
 run (three skipped), so no new large-canopy physics claim follows from this fix.
+
+### PNG comparison and matched dense-card rejection
+
+`compare_png_images` is a read-only, library-contained comparison of bounded
+non-interlaced RGB/RGBA PNG8/16. Fourteen pure cases cover all five PNG row filters,
+8/16-bit precision, RGB opacity, explicit sRGB/linear interpretation, transparent
+RGB invariance, missing/shifted silhouettes, colour errors, partial box-filter
+blocks, uninformative hard masks, empty-reference rejection, CRC/profile/size
+admission and cancellation. Contracts/path-policy, add-on archive and code-disabled
+MCP checks bring the focused run to 17 tests passed in 23.90 seconds. The native
+scene readback remains equal (excluding per-request operation IDs); comparisons
+return no recovery metadata or scene/image datablock edits.
+
+A separate typed MCP measurement run used the retained dense selected cluster and
+its delivered GLB. Both were rendered at 512 by 512 in Cycles with 16 samples,
+the same fixed TOP orthographic camera/frame, white world strength 0.5 and
+transparent film; all other mesh/light objects were hidden. The original native
+thin shader was retained, so FRONT_PBR optical losses were not suppressed. Camera
+matrix readback was identical. Input-file hashes bind the measured PNGs. Both
+renders were visually inspected.
+
+The measurement completed, but the approximation FAILS the default quality gates.
+At full size, native alpha area is 22,274.02 pixels versus 38,486.34 for the card
+(+72.79%). Hard silhouette IoU is 0.58260, soft-alpha IoU 0.57875, missing fraction
+zero and excess fraction 0.71644. Alpha MAE is 0.06185; premultiplied RGB RMSE is
+0.01210. At box-filter factors 2/4/8, hard IoU is 0.57897/0.57771/0.56149 and
+soft-alpha IoU remains about 0.57875. All four levels reject hard/soft overlap and
+alpha MAE. The images visibly show gaps filled between leaves. Exact-image
+self-comparison passes; the measurement and basic MCP checks passed two tests in
+78.75 seconds. A passing measurement test is not accepted card quality.
+
+The 256px texture bake used two pixels of EXTEND padding for every map, including
+ALPHA. This is a concrete suspected contributor to excess opacity; the alpha path
+must be investigated and corrected before qualifying dense card silhouettes. The
+comparison gates were not relaxed. Box-filter results do not qualify GPU mipmaps,
+alpha clipping/compression, shadows, wind, population or receiving-engine behavior.

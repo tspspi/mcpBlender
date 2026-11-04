@@ -1378,6 +1378,37 @@ successful deliverables, current-project/image references, symlinks and unknown
 files are protected. These explicit output bundles are not temporary retention
 artifacts. Keep wanted source projects/maps before removing partial work.
 
+### Projected normal-transfer diagnostics
+
+Open the unchanged projected bake's `asset.blend`, then call
+`inspect_projected_normal_transfer` with its `directory`. This read-only operation
+validates bundle hashes and native geometry/UV/material/image binding before
+measuring the NORMAL PNG. It defaults to asynchronous execution; use the returned
+operation ID to follow progress, or set `wait=true`.
+
+Coverage is ALPHA map **red > 0.5**, or the projection-hit mask's red signal when
+ALPHA was not baked. File alpha does not define coverage. Raw non-colour RGB is
+decoded to [-1,1] and normalized for directions. Reports include covered, invalid,
+backward and grazing counts/fractions, mean tangent Z and absolute Z, unit-length
+error, exact input hashes and target geometry context. Backward means normalized
+Z < -2/255 (a conservative PNG8 quantization dead band, also used for PNG16);
+grazing means abs(Z) < 0.25. These sets can overlap. Undefined direction fractions
+are null. Near-zero vectors (length <= 2/255) are counted as invalid.
+
+Planarity is measured in world coordinates against the first face plane, with
+relative bounding-diagonal tolerance 1e-6 and absolute floor 1e-12; distances are
+Blender world units. Smooth faces and custom normals are reported separately.
+Tangent Z refers to the shading frame, which need not match true face geometry.
+The inspector refuses atlases, self-bakes, missing NORMAL maps, targets without
+faces or over 250,000 vertices, and unsupported/over-budget PNGs (the same 4 MP,
+4096-axis, 64 MiB-per-file bounds as image comparison).
+
+These statistics diagnose representation risk; they neither identify corrupt
+maps nor prove native optical equivalence. A flat proxy can shade differently
+from its source geometry even after facing correction. No maps, materials or
+normals are modified and no optical pass/fail is inferred. Compare rendered
+foreground colour and silhouettes under the intended cameras and lighting too.
+
 ### Emission map convention
 
 EMISSION maps store emission color multiplied by the source Principled Emission

@@ -20,7 +20,7 @@ from .fluids import alive
 from mcpblender.texture_files import MARKER,inventory,write_json,read_json,verify_steps,file_hash,projected_map_policy,validate_map_policy,validate_atlas_pixels
 from mcpblender.storage import require_space
 
-COMMANDS={'inspect_texture_bake','bake_textures','validate_texture_bake','inspect_texture_job','recover_texture_job','cleanup_texture_job'}
+COMMANDS={'inspect_projected_normal_transfer','inspect_texture_bake','bake_textures','validate_texture_bake','inspect_texture_job','recover_texture_job','cleanup_texture_job'}
 BINDING='mcpblender_texture_binding'
 NODE_UI={'select','location','width','height','hide','label','color','use_custom_color','show_options','show_preview','show_texture'}
 
@@ -176,6 +176,50 @@ def validate(p):
     return {'validated':True,'bytes':size,'map_policy':map_policy,'pixel_copy_proof':pixel_proof,'maps':saved['maps'],'material':saved['material'],'projection':saved['projection'],'material_adapters':saved.get('material_adapters',[]),**({'atlas':saved['atlas'],'objects':names} if saved.get('atlas') is not None else {}),'validation_scope':'file hashes and native low geometry/UV/material/image binding'}
 
 
+def inspect_normal_transfer(p):
+    from .bridge import check_cancelled,report_progress
+    from mcpblender.normal_transfer import inspect as measure
+    from mcpblender.image_comparison import MAX_BYTES
+    root=Path(p['directory']);saved=read_json(root/'manifest.json');job=read_json(root/'job.json')
+    if saved.get('atlas') is not None or not job.get('sources') or not saved.get('projection'):raise ValueError('Normal transfer inspection requires an original projected bake, not an atlas or self-bake')
+    maps={row['map']:row for row in saved['maps']}
+    if 'NORMAL' not in maps:raise ValueError('Projected bundle has no NORMAL map')
+    yield from validate(p)
+    obj=mesh_object(saved['name']);mesh=obj.data
+    if not mesh.polygons or len(mesh.vertices)>250000:raise ValueError('Normal diagnostic requires faces and at most 250000 target vertices')
+    # World-space planarity is geometry context, not a reconstructed shading TBN.
+    points=[]
+    for i,v in enumerate(mesh.vertices):
+        if i%4096==0:check_cancelled()
+        points.append(obj.matrix_world@v.co)
+    polygon=mesh.polygons[0];origin=points[polygon.vertices[0]]
+    normal=obj.matrix_world.to_3x3().inverted().transposed()@polygon.normal
+    if normal.length<1e-12:raise ValueError('Degenerate target normal')
+    normal.normalize();diagonal=math.sqrt(sum((max(v[a] for v in points)-min(v[a] for v in points))**2 for a in range(3)))
+    deviation=max(abs((v-origin).dot(normal)) for v in points)
+    context={'world_bbox_diagonal':diagonal,'max_plane_distance':deviation,
+             'planarity_relative_tolerance':1e-6,'planar':deviation<=max(1e-12,diagonal*1e-6),
+             'smooth_faces':sum(f.use_smooth for f in mesh.polygons),'faces':len(mesh.polygons),
+             'has_custom_normals':bool(mesh.has_custom_normals),
+             'scope':'Planarity only; encoded tangent Z refers to the shading TBN, not necessarily the true face normal.'}
+    coverage='textures/alpha.png' if 'ALPHA' in maps else 'textures/coverage.png'
+    paths=['textures/normal.png',coverage];inventory_paths={r['path'] for r in saved['files']}
+    if not set(paths)<=inventory_paths or maps['NORMAL']['path']!=paths[0] or ('ALPHA' in maps and maps['ALPHA']['path']!=coverage):raise ValueError('Normal diagnostic requires inventoried canonical normal and coverage PNGs')
+    payloads=[]
+    for path in paths:
+        check_cancelled()
+        with (root/path).open('rb') as stream:payload=stream.read(MAX_BYTES+1)
+        if len(payload)>MAX_BYTES:raise ValueError('Normal diagnostic PNG byte budget exceeded')
+        expected=next(r['sha256'] for r in saved['files'] if r['path']==path)
+        if hashlib.sha256(payload).hexdigest()!=expected:raise ValueError('Normal diagnostic input changed after validation')
+        payloads.append(payload)
+    result=measure(*payloads,cancelled=check_cancelled,progress=report_progress)
+    if (result['width'],result['height'])!=(maps['NORMAL']['width'],maps['NORMAL']['height']):raise ValueError('Normal diagnostic dimensions differ from manifest')
+    return result|{'job_id':saved['job_id'],'target':saved['name'],'target_geometry':context,
+                   'coverage_path':coverage,'coverage_kind':'ALPHA_RED' if 'ALPHA' in maps else 'PROJECTION_HIT_RED',
+                   'validation_scope':'Validated file hashes and opened native asset binding; directional statistics are not optical acceptance.'}
+
+
 def bake(p):
     from . import bridge
     info=guard(p);root=Path(p['directory'])
@@ -263,7 +307,7 @@ def cleanup(p):
 
 
 def dispatch(command,p):
-    return {'inspect_texture_bake':inspect,'bake_textures':bake,'validate_texture_bake':validate,'inspect_texture_job':job_info,'recover_texture_job':recover,'cleanup_texture_job':cleanup}[command](p)
+    return {'inspect_projected_normal_transfer':inspect_normal_transfer,'inspect_texture_bake':inspect,'bake_textures':bake,'validate_texture_bake':validate,'inspect_texture_job':job_info,'recover_texture_job':recover,'cleanup_texture_job':cleanup}[command](p)
 
 
 def baked_material(images,uv_map):

@@ -20,10 +20,12 @@ def test_bake_limits_paths_and_policy(tmp_path):
     config=Config();config.stdio.library_root=str(tmp_path/'library');config.stdio.allow_scene_edit=False;config.stdio.allow_library_write=False
     server,state=build_server(config)
     with pytest.raises(ValueError,match='library_root'):state.prepare('bake_textures',base|{'directory':'../outside'})
+    with pytest.raises(ValueError,match='library_root'):state.prepare('inspect_projected_normal_transfer',{'directory':'../outside'})
+    assert state.input_paths('inspect_projected_normal_transfer',{'directory':'bundle'})==['bundle']
     async def run():
         async with Client(server) as client:
             names={t.name for t in await client.list_tools()}
-            assert {'inspect_texture_bake','validate_texture_bake','inspect_texture_job'}<=names
+            assert {'inspect_texture_bake','validate_texture_bake','inspect_texture_job','inspect_projected_normal_transfer'}<=names
             assert not names & {'bake_textures','recover_texture_job','cleanup_texture_job'}
     asyncio.run(run())
 

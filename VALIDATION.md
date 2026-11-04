@@ -4659,3 +4659,50 @@ SIDE control. That test criterion is a diagnostic example, not a chosen product
 optics tolerance or acceptance of flat-normal assets. Further work must examine
 normal facing, geometric-normal/shading-normal transport and self-occlusion under
 controlled lighting, rather than treating a partial flip as a complete solution.
+
+### Projected-normal transport controls and directional inspection
+
+Further controls on the same retained FRONT/SIDE bake assets kept cameras,
+lighting and source PNGs fixed. Disabling shadow, diffuse, glossy, or all
+secondary-ray visibility produced identical measured errors to the original:
+overlap RGB RMSE 0.06254/0.06808, image-luminance bias -64.88%/-69.25%.
+A diffuse-only closure retained the darkening, at RMSE 0.06913/0.07720.
+The facing-flipped diffuse controls still had biases -51.52%/-60.88%.
+These results exclude those ray-visibility changes as a correction in this
+fixture; they do not qualify arbitrary scenes or light transports.
+
+A separate square control removed texture/UV encoding entirely. It used an
+explicit constant world-space shader normal at 0, 60 and 80 degrees, uniform
+world lighting, and either flat geometry or geometry tilted to match the shader
+normal, with the same projected square. Diffuse mean decoded PNG red was
+0.09465/0.04880/0.02698 for flat geometry and approximately 0.09465 for all three
+matching-geometry cases. Principled likewise differed with true geometry.
+These are decoded, display-transformed PNG values, not scene radiance or a
+physical energy ratio. The control demonstrates geometric/shading-normal
+transport dependence without implicating normal-map encoding. It does not
+establish a portable correction formula, native optical equivalence, or that
+normal maps alone can reproduce the source geometry's transport on a flat card.
+Original assets/maps were preserved; no normal correction was shipped.
+
+`inspect_projected_normal_transfer` is a read-only, bounded diagnostic over a
+successful original projected bake and its unchanged opened native asset. It
+validates hashes and binding, measures raw tangent directions on covered texels,
+and reports target planarity/smoothing/custom-normal context. It explicitly has
+no optical acceptance gate and changes no data. Normal Z refers to the shading
+TBN, which need not be the geometric face frame. Atlas and self-bake input is
+outside this inspector's scope. Empty coverage/undefined vectors remain null
+rather than yielding a passing fraction. Analytic checks cover directions,
+quantization dead band, file-alpha independence, scalar-red coverage, invalid
+vectors, unit-length error, PNG16, dimension mismatch, admission and cancellation.
+
+Code-disabled MCP qualification reopened relocated TOP256/FRONT512/SIDE512 bundles
+and measured 7,032/14,511/9,389 covered texels. Backward fractions with the explicit
+2/255 dead band were 0.000142/0.464131/0.457344; grazing fractions were
+0.011519/0.101234/0.272233. All three targets were planar, flat-shaded cards.
+The inspector preserved reported scene state and added no recovery checkpoint.
+Wrong opened assets and changed PNGs were rejected. A newly baked 32x32 NORMAL-only
+projection used the hit-mask red fallback (1,024 valid covered directions), and a
+successful self-bake was refused. The two native MCP tests passed in 35.21 seconds;
+29 focused pure/contract/server/archive regressions passed in 18.35 seconds.
+This qualifies diagnostics and their boundaries, not a normal-map correction or
+receiving-engine lighting behavior. All owned native jobs finished normally.

@@ -10,7 +10,7 @@ from test_image_comparison import png
 
 
 def test_contracts_readonly_and_input_path_policy(tmp_path):
-    for patch in ({'scales':[True]},{'scales':[1.]},{'scales':[2]},{'scales':[1,1]},{'alpha_threshold':0},{'quality':{'min_mask_iou':float('nan')}}):
+    for patch in ({'scales':[True]},{'scales':[1.]},{'scales':[2]},{'scales':[1,1]},{'alpha_threshold':0},{'quality':{'min_mask_iou':float('nan')}},{'quality':{'max_abs_overlap_luminance_relative_bias':True}},{'quality':{'max_abs_overlap_luminance_relative_bias':-.1}}):
         with pytest.raises(ValueError):Compare(**({'reference':'a.png','candidate':'b.png'}|patch))
     cfg=Config();cfg.bridge.socket_path=str(tmp_path/'bridge/sock');cfg.stdio.library_root=str(tmp_path/'library');cfg.stdio.allow_scene_edit=False;cfg.stdio.allow_library_write=False
     root=Path(cfg.stdio.library_root);root.mkdir()

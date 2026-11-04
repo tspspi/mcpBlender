@@ -669,6 +669,16 @@ reference/candidate luminance and `overlap_luminance_relative_bias` help diagnos
 brightness loss; relative bias is null for a black reference. These are decoded
 image-colour diagnostics, not calibrated scene radiance or native BRDF equivalence.
 
+`abs_overlap_luminance_relative_bias` is the absolute value of the signed
+shared-coverage mean luminance bias. Set
+`quality.max_abs_overlap_luminance_relative_bias` to enable its gate: `0.1`
+allows at most 10% brightening or darkening at each selected scale. It defaults
+to null. This detects large relative changes in dark subjects that can have small
+absolute RGB errors. Black-reference luminance or missing shared coverage makes
+the metric unavailable; an enabled gate then fails. Thresholds can exceed one.
+Mean bias can cancel opposing local errors, so use an RGB-error gate alongside
+it. These remain decoded-image diagnostics, without radiometric calibration.
+
 The `quality` defaults are minimum hard/soft IoU 0.8, maximum alpha MAE 0.05 and
 maximum premultiplied RGB RMSE 0.1. Optional `max_reference_area_rgb_rmse` and
 `max_overlap_rgb_rmse` default to null (disabled); choose them explicitly for the

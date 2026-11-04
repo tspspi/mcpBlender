@@ -5119,3 +5119,67 @@ view blending, depth compositing, shadows, wind and population/reference quality
 remain open, along with the rest of the original workflow scope. No package
 installation, environment creation, application deployment or receiving-engine
 qualification was performed.
+
+
+## Relative foreground brightness and relighting controls
+
+`compare_png_images` now reports absolute shared-coverage relative luminance bias
+alongside its signed bias. The optional
+`max_abs_overlap_luminance_relative_bias` gate defaults to null; existing gates
+are unchanged. A threshold of 0.1 rejects both brightening and darkening beyond
+10% of reference shared-coverage mean luminance. Black reference or missing
+shared coverage makes this criterion unavailable and failing when enabled.
+This is decoded PNG color analysis, not radiometric calibration. Opposing local
+errors can cancel a mean bias, so a spatial RGB-error gate remains necessary.
+
+Focused independent PNG/relative-metric/contracts checks passed 23 cases in
+6.48s; the final combined PNG/relative/contracts/server set passed 30 cases in
+35.03s. They include dark subjects with small absolute RGB errors but doubled or
+halved luminance, transparent-padding invariance, separate alpha behavior,
+undefined black/missing reference coverage, explicit null, tolerances above one,
+invalid thresholds and cancellation of opposing local errors. The Python-disabled
+MCP synthetic comparison workflow passed in 14.33s, including unchanged scene,
+positive/negative rejection and explicit null propagation. The real paired-canopy
+MCP check passed in 106.61s: all four lighting/ray controls pass the existing
+silhouette and 0.05 overlap-RGB criteria at three scales, but all fail the new
+10% relative-brightness criterion. These are successful measurements of quality
+rejection, not accepted delivery or failed tool execution.
+
+The paired 512px CPU2/8-sample canopy controls use the same fixed FRONT camera,
+frame, film and world/sun condition for original and proxy. Relative bias in
+raw scene-linear shared-coverage Noisy Image luminance is +14.62% under uniform
+world lighting, -25.90% when secondary-ray object visibility is disabled, +51.74%
+with front sun and +94.61% with rear sun. Display-decoded PNG biases in those
+controls are +14.26%, -26.23%, +49.42% and +92.38%. These results contradict a
+single lighting-independent albedo/brightness correction.
+
+Anchor renders without extra light-component passes reproduce both retained
+native and proxy decoded PNGs exactly. In this installed Blender 5.0.1 fixture,
+enabling the extra passes changes denoised Combined output slightly; the native
+raw Noisy Image remains bit-for-bit identical (zero differing components).
+This finding is specific to the tested settings, not a general denoiser-bug
+claim. AOV-field wiring itself remains pixel invariant. The light decomposition
+uses raw passes and reconstructs Noisy Image within 4.35e-8 maximum component
+error over jointly covered samples in all eight control renders. Separate
+Environment is excluded from transparent-film beauty reconstruction, consistent
+with the [Blender passes manual](https://docs.blender.org/manual/en/4.2/render/layers/passes.html).
+The initial decomposition including Environment failed and is retained separately.
+Under uniform world lighting, direct diffuse mean is 0.04107 native versus
+0.05546 proxy, while indirect diffuse is 0.00563 versus 0.00103. Visibility and
+normal/geometry errors both matter; component agreement is not optical parity.
+
+An independent plane AOV control shows Normal, Geometry Normal and True Normal
+all change sign on the back face in this Cycles fixture. A diagnostic per-pixel
+normal-aligned mesh (217,324 triangles, exceeding the current production asset
+budget) reduces the unoccluded-control brightness bias from -26.23% to -5.68%,
+but worsens ordinary-world bias to +33.97%. It uses 31,503 estimated pixel depths
+and 230 capped slopes; it is not native surface recovery or a production policy.
+Only seven covered camera-normal samples point backward. No normal-flip default,
+brightness gain, dense-mesh default or occlusion compensation was shipped.
+
+Evidence is local under `tmp/qualification/depth-optics-20261105/`: paired PNG/EXR
+controls/proof, exact anchors, raw-anchor comparison, component reconstruction,
+normal conventions, per-pixel geometry diagnostic and `relative-mcp-proof.json`.
+Adaptive geometry, missing layered visibility/bounce/shadow information and
+multi-light/multi-view optical qualification remain open. The full workflow goal
+remains incomplete.

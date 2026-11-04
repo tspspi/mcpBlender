@@ -89,6 +89,7 @@ def measure(reference,candidate,w,h,threshold,cancelled):
                 overlap_error+=weight*(r-s)**2
                 overlap_ref_luma+=weight*r*luma;overlap_cand_luma+=weight*s*luma
     union=ref_count+cand_count-intersection
+    relative_luminance=overlap_cand_luma/overlap_ref_luma-1 if overlap_ref_luma else None
     return {'width':w,'height':h,'reference_alpha_area_pixels':ref_area,'candidate_alpha_area_pixels':cand_area,
             'reference_mask_pixels':ref_count,'candidate_mask_pixels':cand_count,'intersection_pixels':intersection,
             'mask_iou':intersection/union if union else None,'soft_alpha_iou':soft_intersection/soft_union if soft_union else None,
@@ -101,16 +102,17 @@ def measure(reference,candidate,w,h,threshold,cancelled):
             'overlap_rgb_rmse':math.sqrt(overlap_error/(3*overlap_weight)) if overlap_weight else None,
             'overlap_reference_luminance':overlap_ref_luma/overlap_weight if overlap_weight else None,
             'overlap_candidate_luminance':overlap_cand_luma/overlap_weight if overlap_weight else None,
-            'overlap_luminance_relative_bias':overlap_cand_luma/overlap_ref_luma-1 if overlap_ref_luma else None}
+            'overlap_luminance_relative_bias':relative_luminance,
+            'abs_overlap_luminance_relative_bias':abs(relative_luminance) if relative_luminance is not None else None}
 
 
 def compare(reference,candidate,*,scales=(1,2,4),alpha_threshold=.5,color_space='SRGB',policy=None,
             cancelled=lambda:None,progress=lambda v:None):
     if not isinstance(scales,(list,tuple)) or not 1<=len(scales)<=5 or len(set(scales))!=len(scales) or any(type(s)!=int or s not in (1,2,4,8,16) for s in scales) or 1 not in scales:raise ValueError('Comparison scales must include 1 and distinct powers of two up to 16')
     if isinstance(alpha_threshold,bool) or not isinstance(alpha_threshold,(int,float)) or not math.isfinite(alpha_threshold) or not 0<alpha_threshold<=1:raise ValueError('Invalid comparison alpha threshold')
-    defaults={'min_mask_iou':.8,'min_soft_alpha_iou':.8,'max_alpha_mae':.05,'max_premultiplied_rgb_rmse':.1,'max_reference_area_rgb_rmse':None,'max_overlap_rgb_rmse':None}
+    defaults={'min_mask_iou':.8,'min_soft_alpha_iou':.8,'max_alpha_mae':.05,'max_premultiplied_rgb_rmse':.1,'max_reference_area_rgb_rmse':None,'max_overlap_rgb_rmse':None,'max_abs_overlap_luminance_relative_bias':None}
     policy=defaults|(policy or {})
-    if set(policy)!=set(defaults) or any(v is not None and (isinstance(v,bool) or not isinstance(v,(int,float)) or not math.isfinite(v) or v<0 or (k!='max_reference_area_rgb_rmse' and v>1)) for k,v in policy.items()):raise ValueError('Invalid image comparison policy')
+    if set(policy)!=set(defaults) or any(v is not None and (isinstance(v,bool) or not isinstance(v,(int,float)) or not math.isfinite(v) or v<0 or (k not in {'max_reference_area_rgb_rmse','max_abs_overlap_luminance_relative_bias'} and v>1)) for k,v in policy.items()):raise ValueError('Invalid image comparison policy')
     w,h,a=decode_png(reference,color_space=color_space,cancelled=cancelled,progress=progress)
     cw,ch,b=decode_png(candidate,color_space=color_space,cancelled=cancelled,progress=progress)
     if (w,h)!=(cw,ch):raise ValueError('Comparison images require identical dimensions; no automatic registration/resizing')

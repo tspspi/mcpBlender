@@ -137,7 +137,8 @@ def inspect(p):
     content={'objects':records,'uv_map':p['uv_map'],'frame':bpy.context.scene.frame_current,'subframe':bpy.context.scene.frame_subframe}
     if p.get('thin_foliage_mode','REFUSE')!='REFUSE':content['thin_foliage_mode']=p['thin_foliage_mode']
     adapters={s['material']:s['bake_adapter'] for r in records for s in r.get('shaders',[]) if s.get('bake_adapter')}
-    digest=hashlib.sha256(json.dumps(content,sort_keys=True,allow_nan=False).encode()).hexdigest() if not reasons else None
+    from mcpblender.texture_files import bake_fingerprint
+    digest=bake_fingerprint(content) if not reasons else None
     return content|{'material_adapters':[adapters[k] for k in sorted(adapters)],'complete':not reasons,'bake_sha256':digest,'unsupported_reasons':reasons}
 
 

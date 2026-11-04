@@ -81,6 +81,7 @@ COMMANDS.update({
 
 class Delivery(Model):
     lod_collection: SafeName
+    require_quality: bool = False
     required_maps: list[Literal['NORMAL','AO','BASE_COLOR','ROUGHNESS','METALLIC','EMISSION','ALPHA']] = Field(default=['BASE_COLOR','NORMAL','AO','ROUGHNESS','METALLIC','ALPHA'],min_length=1,max_length=7)
     min_texture_size: int = Field(default=128,strict=True,ge=32,le=4096)
     max_texture_bytes: int = Field(default=64*1024**2,strict=True,ge=4096,le=512*1024**2)
@@ -91,4 +92,4 @@ class Delivery(Model):
         return self
 
 
-COMMANDS['inspect_vegetation_delivery']=(Delivery,(),'Inspect every native LOD wood/shoot and shared leaf template for adopted-map coverage, requested map/resolution gaps, optical omissions and whole-profile source-map base/full-mipmap RGBA8 estimates. Returns complete only for these declared file/material criteria, not visual or engine qualification.')
+COMMANDS['inspect_vegetation_delivery']=(Delivery,(),'Inspect every native LOD wood/shoot and shared leaf template for adopted-map coverage, requested map/resolution gaps, optical omissions and whole-profile source-map base/full-mipmap RGBA8 estimates. Optional require_quality also requires retained successful source-bound geometric reports under their recorded policies and current scene unit scale. No geometric rerun, visual or engine qualification.')

@@ -35,6 +35,11 @@ padding at declared base/mip sizes. A shared `quality` policy on inspection and
 baking enforces complete/pass and records the report; use matching dimensions
 and margin no larger than policy padding_pixels. Incomplete budgets cannot pass.
 It does not test actual mip kernels, colors, dilation or optical appearance.
+Quality-gated vegetation self-bakes also retain the source witness needed for
+adoption. Their reports travel with packed maps and semantic exports. Use
+inspect_vegetation_delivery(require_quality=true) to flag missing reports or
+changed scene units, then inspect each recorded policy; mip_levels=0 certifies
+only the declared base footprint. This does not repeat sampling or render review.
 The isolated worker preserves
 the editing scene, producing PNGs plus a static current-frame PBR asset. Check
 `projection.fraction`, map statistics and an actual render; a completed job is

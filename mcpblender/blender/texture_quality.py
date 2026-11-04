@@ -33,7 +33,7 @@ def measure(obj,mesh,uv_map,policy):
         if now-last[0]>=1:
             if bridge._bridge is not None:bridge.check_cancelled()
             bridge.report_progress({'phase':'inspecting geometric texture quality','width':policy['width'],'height':policy['height']});last[0]=now
-    return uv_quality.analyze(triangles,edges,len(islands),policy,checkpoint=checkpoint)
+    return uv_quality.analyze(triangles,edges,len(islands),policy,checkpoint=checkpoint)|{'scene_unit_scale':unit}
 
 
 def inspect(p):

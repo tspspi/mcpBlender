@@ -3,7 +3,7 @@ import hashlib
 import re
 import struct
 from . import botany
-from .texture_files import EMISSION_ENCODING
+from .texture_files import EMISSION_ENCODING,validate_quality_report
 FORMAT='mcpblender-vegetation-baked-maps-v1'
 MAPS={'NORMAL','AO','BASE_COLOR','ROUGHNESS','METALLIC','EMISSION','ALPHA'}
 
@@ -20,6 +20,10 @@ def validate(record):
         if not re.fullmatch('[a-f0-9]{64}',str(record.get(key,''))):raise ValueError('Invalid baked vegetation source binding')
     if not 1<=len(record['maps'])<=7 or len({m['map'] for m in record['maps']})!=len(record['maps']):raise ValueError('Invalid baked vegetation map inventory')
     if record.get('emission_encoding') not in (None,EMISSION_ENCODING):raise ValueError('Unsupported vegetation emission map encoding')
+    if record.get('texture_quality') is not None:
+        policy=validate_quality_report(record['texture_quality'])
+        if not re.fullmatch('[a-f0-9]{64}',str(record.get('preparation_bake_sha256',''))):raise ValueError('Quality adoption lacks its original preparation binding')
+        if any((m['width'],m['height'])!=(policy['width'],policy['height']) for m in record['maps']):raise ValueError('Adopted maps differ from retained quality dimensions')
     total=0
     for m in record['maps']:
         if m['map'] not in MAPS or not re.fullmatch('[a-f0-9]{64}',str(m['sha256'])) or type(m['bytes'])!=int or m['bytes']<=0 or any(type(m[k])!=int or not 32<=m[k]<=4096 for k in ('width','height')) or m['width']*m['height']>4*1024**2:raise ValueError('Invalid baked vegetation map witness')
@@ -64,7 +68,7 @@ def mip_bytes(width,height):
         width=max(1,width//2);height=max(1,height//2)
 
 
-def delivery(records,assets,required_maps,min_texture_size,max_texture_bytes,max_mip_bytes):
+def delivery(records,assets,required_maps,min_texture_size,max_texture_bytes,max_mip_bytes,*,require_quality=False,scene_unit_scale=None):
     if not assets or len(set(assets))!=len(assets) or not set(records)<=set(assets):raise ValueError('Invalid vegetation delivery component inventory')
     if not required_maps or len(set(required_maps))!=len(required_maps) or not set(required_maps)<=MAPS:raise ValueError('Invalid vegetation delivery required maps')
     missing=[asset for asset in assets if asset not in records];map_gaps={};resolution_gaps={};encoding_gaps={};base=0;mips=0;losses=set();sampling=[]
@@ -79,6 +83,10 @@ def delivery(records,assets,required_maps,min_texture_size,max_texture_bytes,max
         if record.get('source_sampling_changes') or record.get('inherited_sampling_changes'):sampling.append(asset)
     budget={'rgba8_base_bytes':base,'rgba8_full_mip_bytes':mips,'max_texture_bytes':max_texture_bytes,'max_mip_bytes':max_mip_bytes,'passed':base<=max_texture_bytes and mips<=max_mip_bytes,
             'scope':'All adopted source map inputs counted separately per component, with a full floor-halved mip chain to 1x1. No cross-component deduplication, encoded-channel packing, compression, Blender cache or GPU allocation model.'}
-    return {'complete':not missing and not map_gaps and not resolution_gaps and not encoding_gaps and budget['passed'],'expected_assets':assets,'adopted_assets':sorted(records),'missing_assets':missing,'missing_maps':map_gaps,'resolution_gaps':resolution_gaps,'map_encoding_gaps':encoding_gaps,
+    unchecked=[asset for asset in assets if not records.get(asset,{}).get('texture_quality')]
+    unit_gaps=[asset for asset,r in records.items() if r.get('texture_quality') and scene_unit_scale is not None and r['texture_quality'].get('scene_unit_scale')!=scene_unit_scale]
+    return {'complete':not missing and not map_gaps and not resolution_gaps and not encoding_gaps and budget['passed'] and (not require_quality or not unchecked and not unit_gaps),'expected_assets':assets,'adopted_assets':sorted(records),'missing_assets':missing,'missing_maps':map_gaps,'resolution_gaps':resolution_gaps,'map_encoding_gaps':encoding_gaps,
+            'quality_scene_unit_gaps':unit_gaps,
+            'quality_required':require_quality,'assets_without_quality_reports':unchecked,'quality_policies':{asset:r['texture_quality']['policy'] for asset,r in records.items() if r.get('texture_quality')},
             'required_maps':required_maps,'min_texture_size':min_texture_size,'budget':budget,'optical_omissions':sorted(losses),'sampling_changed_assets':sorted(sampling),
-            'scope':'Adopted input-map coverage and declared resolution/memory criteria. Not visual texture quality, physical optics, shadow/filtering, receiving-engine or animated LOD qualification.'}
+            'scope':'Adopted input-map coverage, resolution/memory criteria and optional retained source-bound geometric quality under each recorded policy. No new geometric measurement, visual quality, physical optics, shadow/filtering, receiving-engine or animated LOD qualification.'}

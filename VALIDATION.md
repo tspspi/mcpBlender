@@ -3474,6 +3474,41 @@ distances, not measurements of Cycles dilation, generated mip image quality,
 self-padding within one chart, HDR/material optics, target-engine filtering or
 visual maturity. Existing prepared layouts are not automatically modified.
 
+## Retained quality through vegetation adoption
+
+Quality-bearing self-bakes carry canonical source inspection content. Removing
+only the quality report reproduces the unchanged preparation fingerprint; the
+full content reproduces the policy-bearing bake fingerprint. Pure tests check
+compatibility with the original fingerprint recipe, missing/altered witnesses,
+policy/dimension/margin inconsistencies, failed or incomplete chart/mip/density/
+padding claims, portable report/map-size correspondence, legacy delivery behavior
+and the optional report requirement, including scene-unit changes.
+
+The structured integration fixture uses a seeded 5 m source, two native LOD levels
+and three shared leaf templates. It prepares wood and one leaf template with a
+pixel border, then actually bakes three maps each at 1024x1024 under minimum
+32 texels/metre, four chart pixels and one-pixel padding at base resolution.
+It verifies altered source-content refusal before native mutation, guarded
+adoption, optical-loss retention, reports in packed native records, cleanup of
+the preparation and original bake directories, save/reopen and independently
+validated numeric/GLB delivery after the native profile is removed. Other roles
+remain unchecked and keep the full-profile report incomplete. Base-only success
+does not qualify mip 1 or full-profile visual quality.
+
+Retained source-profile probes at 256, 512 and 1024 pixels complete geometric
+inspection but expose narrow wood/shoot chart coverage and leaf mip-gap failures.
+These are evidence for chart allocation/spacing work, rather than acceptance
+based only on higher image resolution. The probes and successful delivery
+fixture are kept under `/tmp/mb-quality-adoption-20261104/`. The integration test
+passed in 338.08 seconds: wood measured about 63.29 directional texels/metre and
+at least six covered pixels per chart; the leaf template measured about 8156.24
+texels/metre and at least 105 pixels. Both had at least sixteen base pixels of
+tile-edge space. Six adopted maps total 24 MiB of base RGBA8 input estimates.
+The remaining five roles are explicitly unchecked. The native legacy adoption/
+replacement, ordinary quality bake and dependency-free add-on regressions passed
+four tests in 150.05 seconds; the final focused pure gate passed twelve tests in
+10.47 seconds. Both bundled design/render skills remain schema-valid.
+
 ## Dense default face attributes during preparation
 
 Re-preparing an already textured component with NEW UVs can make Blender's

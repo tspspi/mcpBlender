@@ -17,7 +17,8 @@ def bundle(directory,component,limits):
     record=texture_files.read_json(root/texture_files.MARKER);saved=texture_files.read_json(root/'manifest.json');job=texture_files.read_json(root/'job.json')
     if record.get('kind')!='mcpblender-texture-job' or record.get('version')!=1 or record.get('state')!='succeeded' or saved.get('version')!=1 or saved.get('job_id')!=record.get('job_id') or job.get('job_id')!=record.get('job_id'):raise ValueError('Successful owned texture job required')
     if saved.get('atlas') is not None or job.get('sources') or job.get('cage') or saved.get('name')!=component['name'] or job.get('name')!=component['name']:raise ValueError('Adoption requires a self-bake of this exact prepared component')
-    if saved.get('source')!=component['initial_bake_sha256'] or record.get('source')!=saved['source'] or job.get('expected_bake')!=saved['source']:raise ValueError('Bake source differs from the unchanged initial preparation')
+    expected,_=texture_files.quality_binding(saved,job,component['initial_bake_sha256'])
+    if saved.get('source')!=expected or record.get('source')!=saved['source'] or job.get('expected_bake')!=saved['source']:raise ValueError('Bake source differs from the unchanged initial preparation')
     if job.get('uv_map')!=component['inspect_texture_bake']['uv_map'] or job.get('thin_foliage_mode','REFUSE')!=component['inspect_texture_bake']['thin_foliage_mode'] or saved.get('material_adapters',[])!=component['material_adapters']:raise ValueError('Bake UV/optical adapter binding changed')
     size=sum(r['bytes'] for r in texture_files.deliverables(root))
     if size>limits['max_bytes']:raise ValueError('Adoption bundle exceeds max_bytes')
@@ -88,6 +89,7 @@ def plan(p):
               'geometry_sha256':w['mesh']['geometry'],'uv_map':pm['components'][role]['inspect_texture_bake']['uv_map'],'uv_witness':uvs,'maps':maps,
               'material_adapters':saved.get('material_adapters',[]),'front_pbr_accepted':p['accept_front_pbr'],'source_sampling_changes':[v for v in ps['source_sampling_changes'] if v['asset']==role],
               'emission_encoding':saved.get('emission_encoding'),'rgba8_base_bytes':sum(m['width']*m['height']*4 for m in maps),'portable_optical_equivalence':False}
+        if saved.get('texture_quality') is not None:item.update(texture_quality=saved['texture_quality'],preparation_bake_sha256=pm['components'][role]['initial_bake_sha256'])
         item['adoption_sha256']=botany.digest(item);schema.validate(item);total+=item['rgba8_base_bytes'];encoded+=sum(m['bytes'] for m in maps);entries[role]=item
     total+=sum(schema.validate(r) for role,r in meta.get('baked_materials',{}).items() if role not in entries)
     if total>p['max_texture_bytes']:raise ValueError('Adoption exceeds the profile base RGBA8 texture budget')
@@ -152,6 +154,6 @@ def dispatch(command,p):
     if command=='inspect_vegetation_delivery':
         col,owned,meta,state=lods.inspect(p)
         if not state['valid']:raise ValueError('Valid unchanged native LOD profile required')
-        report=schema.delivery(meta.get('baked_materials',{}),list(materials.lod_objects(col,meta)),p['required_maps'],p['min_texture_size'],p['max_texture_bytes'],p['max_mip_bytes'])
+        report=schema.delivery(meta.get('baked_materials',{}),list(materials.lod_objects(col,meta)),p['required_maps'],p['min_texture_size'],p['max_texture_bytes'],p['max_mip_bytes'],require_quality=p.get('require_quality',False),scene_unit_scale=bpy.context.scene.unit_settings.scale_length)
         return report|{'lod_collection':col.name,'lods_sha256':state['lods_sha256'],'levels':len(meta['levels']),'shared_leaf_templates':meta['prototypes']}
     return plan(p)[-1] if command=='inspect_vegetation_bake_adoption' else adopt(p)

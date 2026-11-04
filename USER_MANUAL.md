@@ -3916,6 +3916,19 @@ allocations. Managed leaf FRONT_PBR maps require explicit `accept_front_pbr=true
 review the retained optical omissions and any copy-only source UV fallback first.
 This acceptance is part of the plan guard.
 
+Self-bakes admitted with an optional `quality` policy retain a canonical
+`source_inspection` witness in their manifest. Adoption removes only that
+policy/report from the fingerprint recipe to verify the unchanged preparation
+source, then verifies the full policy-bearing bake fingerprint against the
+job and manifest. It does not rerun a historical bake or open its native asset.
+Missing or inconsistent policy/report/source witnesses require a rebake.
+Ordinary bakes retain their original fingerprint behavior. The adopted record
+keeps the successful report, its original preparation bake hash and the baked
+map dimensions; these travel in the independently checked semantic bundle even
+after preparation removal and source-folder cleanup. Reports describe the
+evaluated prepared component at bake time, including its scene unit scale;
+shared-template measurements do not measure every placed instance.
+
 Call `adopt_vegetation_bakes` with identical options and `expected_plan` from that
 inspection. Both tools default to tracked asynchronous operations. Adoption
 reconstructs the existing standard bake-worker PBR recipe with explicit BakeUV
@@ -4013,6 +4026,17 @@ lists `missing_assets`, per-component `missing_maps`, `resolution_gaps`,
 omissions and source-sampling-change roles, along with the current LOD guard.
 It does not edit the scene and is available under read-only scene policy.
 
+Set `require_quality=true` to additionally require a retained successful
+geometric report for every expected component. `assets_without_quality_reports`
+lists unchecked roles; `quality_policies` exposes each report's declared
+resolution, density, coverage, padding and mip requirements. Reports at mip 0
+cover base resolution only. No minimum global policy is implied: review those
+policies for the delivery target. `quality_scene_unit_gaps` flags reports whose
+recorded unit scale is absent or differs from the live scene; these also block
+the optional requirement. This inspection checks retained evidence and native
+ownership/content guards, without repeating geometric sampling or baking.
+Omitting the option preserves the ordinary map/resolution/budget criteria.
+
 `min_texture_size` defaults to 128 and applies to both dimensions of every required
 map. `max_texture_bytes` defaults to 64 MiB for all adopted input images' base RGBA8
 estimate, including maps beyond the required set. `max_mip_bytes` defaults to
@@ -4025,7 +4049,8 @@ created by inspection.
 
 `complete=true` means every expected component has valid adopted records, every
 requested map/resolution is present, emission conventions are known, and these
-declared budgets pass. Legacy emission without the strength-aware convention
+declared budgets pass, together with the optional retained-report requirement
+when selected. Legacy emission without the strength-aware convention
 creates an encoding gap, including extra emission maps outside the required set. It does not
 mean visual quality, padding/filtering, physical optics, lightmap UV2, shadow
 behavior, animation or receiving-engine qualification. Source loss declarations

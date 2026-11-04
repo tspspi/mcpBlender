@@ -56,6 +56,13 @@ For vegetation, request tile_padding_pixels at declared texture_width/height
 when planning and creating a NEW bake preparation instead of editing its frozen
 UVs afterward. Original source maps stay intact. EXISTING forbids nonzero inset.
 Check each resulting component's full geometric quality policy before baking.
+Quality-gated vegetation self-bakes retain source inspection witnesses so
+adoption can verify both the original preparation and policy-bearing bake hashes.
+Their geometric reports survive packed adoption, source cleanup and semantic
+export. inspect_vegetation_delivery(require_quality=true) requires a report for
+every component and matching scene units; review quality_policies because each
+report covers only its declared thresholds/mip sizes and prepared placement.
+It does not rerun sampling or qualify every scaled shared-template instance.
 
 For high-to-low textures, inspect `inspect_texture_bake` with the low `name`,
 high `sources`, target `uv_map` and optional topology-matched `cage`. Carry its

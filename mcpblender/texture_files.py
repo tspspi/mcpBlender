@@ -12,6 +12,68 @@ ROOT_FILES={MARKER,'source.blend','asset.blend','job.json','worker.log','result.
 MAPS={'normal','ao','base_color','roughness','metallic','emission','alpha','coverage','uv_mask'}
 
 
+def bake_content(info,*,without_quality=False):
+    """Canonical source content; preserve the original bake fingerprint recipe."""
+    import copy
+    result={k:copy.deepcopy(info[k]) for k in ('objects','uv_map','frame','subframe')}
+    if 'thin_foliage_mode' in info:result['thin_foliage_mode']=info['thin_foliage_mode']
+    if without_quality:
+        for obj in result['objects']:obj.pop('texture_quality',None)
+    return result
+
+
+def bake_fingerprint(info,*,without_quality=False):
+    import json
+    return hashlib.sha256(json.dumps(bake_content(info,without_quality=without_quality),sort_keys=True,allow_nan=False).encode()).hexdigest()
+
+
+def quality_binding(saved,job,initial_source):
+    """Bind a policy-bearing bake to its unchanged preparation without replay."""
+    if not job.get('quality'):
+        if saved.get('texture_quality') is not None:raise ValueError('Unexpected texture quality report without a job policy')
+        return initial_source,None
+    content=saved.get('source_inspection');report=saved.get('texture_quality')
+    if not isinstance(content,dict) or not isinstance(report,dict):raise ValueError('Quality bake lacks its source inspection witness; rebake')
+    try:
+        validate_quality_report(report)
+        if bake_fingerprint(content,without_quality=True)!=initial_source:raise ValueError('Quality bake source differs from the unchanged preparation')
+        if len(content['objects'])!=1 or content['objects'][0].get('role')!='target' or content['objects'][0].get('texture_quality')!=report:raise ValueError('Quality report differs from the guarded source witness')
+        if report.get('policy')!=job['quality'] or report.get('complete') is not True or report.get('passed') is not True:raise ValueError('Complete passed job-bound texture quality required')
+        if (report['policy']['width'],report['policy']['height'])!=(job['width'],job['height']) or job['margin']>report['policy']['padding_pixels']:raise ValueError('Texture quality dimensions or bake margin changed')
+        return bake_fingerprint(content),report
+    except (KeyError,TypeError) as e:raise ValueError('Invalid texture quality source witness') from e
+
+
+def validate_quality_report(report):
+    """Check a retained successful geometric report, without claiming a rerun."""
+    import math
+    try:
+        policy=report['policy']
+        if 'scene_unit_scale' in report and (type(report['scene_unit_scale']) not in (int,float) or not math.isfinite(report['scene_unit_scale']) or report['scene_unit_scale']<=0):raise ValueError('Invalid retained texture quality unit scale')
+        integers={'width':(32,4096),'height':(32,4096),'mip_levels':(0,8),'min_chart_pixels':(1,1000000),'max_raster_tests':(1,200000000),'max_spacing_tests':(1,5000000)}
+        for key,(low,high) in integers.items():
+            if type(policy[key])!=int or not low<=policy[key]<=high:raise ValueError('Invalid retained texture quality policy')
+        for key,high in (('min_texels_per_meter',1000000),('padding_pixels',64)):
+            value=policy[key]
+            if type(value) not in (int,float) or not math.isfinite(value) or not 0<=value<=high:raise ValueError('Invalid retained texture quality threshold')
+        if policy['width']*policy['height']>4*1024**2:raise ValueError('Invalid retained texture quality resolution')
+        if report['complete'] is not True or report['passed'] is not True or report['out_of_tile'] is not False or report['degenerate_triangles']!=0 or report['low_density_triangles']!=0:raise ValueError('Successful geometric texture quality required')
+        if not math.isfinite(report['minimum_directional_texels_per_meter']) or report['minimum_directional_texels_per_meter']<policy['min_texels_per_meter']:raise ValueError('Retained texture density did not pass')
+        if report['overlap']['complete'] is not True or report['overlap']['face_pair_count']!=0:raise ValueError('Retained texture overlap did not pass')
+        expected=[]
+        for level in range(policy['mip_levels']+1):
+            size=[max(1,policy['width']//2**level),max(1,policy['height']//2**level)];expected.append(size)
+            if size==[1,1]:break
+        if len(report['levels'])!=len(expected):raise ValueError('Retained texture mip footprint inventory changed')
+        for i,(row,size) in enumerate(zip(report['levels'],expected)):
+            coverage=row['coverage'];gap=row['spacing']
+            if row['level']!=i or row['size']!=size or row['passed'] is not True or row['undersized_chart_count']!=0:raise ValueError('Retained texture mip footprint did not pass')
+            if coverage['complete'] is not True or coverage['ambiguous_pixels']!=0 or coverage['minimum_covered_pixels']<policy['min_chart_pixels']:raise ValueError('Retained texture chart coverage did not pass')
+            if gap['complete'] is not True or gap['violation_pair_count']!=0 or gap['required_gap_pixels']!=2*policy['padding_pixels'] or row['edge_margin_pixels']<policy['padding_pixels']:raise ValueError('Retained texture padding did not pass')
+        return policy
+    except (KeyError,TypeError,OverflowError) as e:raise ValueError('Invalid retained texture quality report') from e
+
+
 def inventory(root):
     root=Path(root)
     if root.is_symlink() or not root.is_dir():raise ValueError('Expected a real texture job directory')

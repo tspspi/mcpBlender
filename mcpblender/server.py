@@ -106,6 +106,17 @@ class State:
         return candidate
 
     async def control(self, action, **params):
+        # Status observations may be repeated after a slow broker response.
+        # A timeout is not evidence that the application or broker has stopped.
+        for attempt in range(3):
+            try:
+                return await self._control_once(action, **params)
+            except RuntimeError as exc:
+                if action not in {'status','get_operation','list_operations'} or not str(exc).startswith('Bridge timed out;') or attempt==2:
+                    raise
+                await asyncio.sleep(.1*(attempt+1))
+
+    async def _control_once(self, action, **params):
         try:
             return await asyncio.to_thread(call, self.config.bridge.socket_path, action, params, 5)
         except (OSError, RuntimeError) as exc:

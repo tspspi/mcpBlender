@@ -3631,3 +3631,20 @@ checkpoint, not edits after it, and does not imply rollback or power-failure pro
 Absolute shape-key animation, general external-cache bakes, arbitrary constraint/driver/NLA combinations outside the documented profiles, other Blender/platform versions,
 long-duration workloads, external HTTPS deployment, Godot behavior and real
 external generation services are not qualified by this suite.
+
+## Slow control observations
+
+The 77-map qualification run completed all texture workers but hit a five-second
+control observation timeout during native adoption. The test harness then stopped
+its owned application; this was not evidence that adoption itself had failed.
+The saved preparation and every successful bake bundle were retained for resume.
+
+Frontend status/get-operation/list-operation reads now retry a timed-out exchange
+up to three times using the same request, without treating timeout as evidence to
+restart the broker/application. Existing disconnect reconciliation remains.
+Mutation control timeouts do not gain this retry path, and semantic errors are
+returned immediately. Synthetic timeout/error injection and existing operation
+regressions passed thirteen tests in 16.44 seconds. This is bounded observation
+resilience, not a guarantee against prolonged host/storage stalls or a diagnosis
+of the underlying stall. Clients must retain the operation ID after exhaustion;
+a timeout still does not imply terminal operation state.

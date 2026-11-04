@@ -4571,3 +4571,54 @@ unresampled atlas transfer. It does not qualify all 296 clusters, multi-view or
 whole-tree far representations, GPU mip/alpha/compression behavior, shadows, wind,
 population budgets, mature-tree biology or receiving-engine behavior. Base/full-mip
 planning numbers remain estimates, not measured GPU memory or runtime performance.
+
+### Bounded fitted-card view families
+
+`inspect_foliage_card_views` captures evaluated sources once and fits requested
+TOP/FRONT/SIDE alternatives with source, aggregate projected-triangle and total
+output-triangle limits. Each row retains the existing single-view creation guard
+and parameters. It returns the matching orthographic framing preset (SIDE maps to
+RIGHT), not an automatic angular-selection or crossed-card renderer. Native
+checks cover metre/centimetre placement, unchanged IDs/transforms/selection,
+per-view guard equivalence, budget refusal, cooperative cancellation, stale
+sources, independent target creation and refusal of degenerate views. Typed MCP
+checks verify readonly behavior/no recovery checkpoint and direct consumption of
+the returned creation parameters. Existing single-view tests remain valid.
+Eight focused native/contracts/MCP/fitting/archive tests passed in 79.36 seconds.
+
+The retained 462-leaf / 90,552-triangle source produces a 271,656 projected-triangle
+workload and 116 fitted triangles: TOP 34, FRONT 49, SIDE 33. At 256px texture
+resolution for all views, TOP passed but FRONT and SIDE were rejected against
+512px native renders. Base hard/soft IoU was 0.79816/0.77352 for FRONT and
+0.67275/0.66743 for SIDE. Alpha-area biases were about -0.159%/-0.094%, with balanced
+missing/excess boundaries rather than the previous opacity-padding expansion.
+The failed measurement completed in 287.47 seconds and remains rejected evidence.
+No criterion was loosened and no requested view was omitted.
+
+A second run used TOP256/FRONT512/SIDE512 maps and a shared 2048x1024 RGBA8 atlas.
+Each orientation was framed once with an ORTHO camera on source plus fitted target;
+native, individual GLB and atlas GLB reused that camera/frame/lighting at
+512px/Cycles16/transparent film/white world0.5. All nine comparisons, each at box
+factors 1/2/4/8, passed their existing criteria. Native-to-atlas full-size hard/soft
+IoU was TOP 0.89839/0.88082, FRONT 0.89726/0.88415, SIDE 0.81282/0.81597. At factor8
+these became 0.96067/0.95075, 0.96429/0.96763 and 0.92593/0.94465. Individual-to-atlas
+hard IoU is 1.0 throughout; soft IoU exceeds 0.99998. Atlas core/gutter RGBA copying
+passed the exact witness checks. The three-view GLB is 489,924 bytes. The sequence
+took 497.76 seconds; the positive test passed in 507.53 seconds.
+
+Front/side native and delivered images were visually inspected. Despite the
+silhouette and global RGB gates passing, substantial darker/specular shading
+regions remain in FRONT/SIDE under the explicitly lossy FRONT_PBR conversion.
+A follow-up map diagnostic found negative tangent-Z normal components in 6,739
+of 14,511 opaque FRONT texels (46.44%) and 4,301 of 9,389 opaque SIDE texels
+(45.81%), versus 1 of 7,032 TOP texels. This is a concrete lead for investigating
+view-conditioned normal facing; it is not yet a confirmed cause or correction.
+Global premultiplied RGB error must not be interpreted as calibrated foreground
+optical equivalence. Those shading differences remain an open quality issue.
+
+This qualifies bounded planning and the measured alternative-view file/silhouette
+pipeline only. It does not qualify intermediate/back views, angular selection or
+interpolation, drawing the alternatives together, native optical equivalence,
+whole-tree far assets, shadows, wind, population performance or receiving-engine
+behavior. Sources and failed-resolution evidence remain preserved; no Blender
+rebuild, package installation or Godot operation was used.

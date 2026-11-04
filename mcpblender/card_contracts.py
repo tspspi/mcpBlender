@@ -5,9 +5,8 @@ from .config import Model
 from .mesh_contracts import Name,Digest
 
 
-class Plan(Model):
+class Source(Model):
     sources: list[Name] = Field(min_length=1,max_length=16)
-    view: Literal['TOP','FRONT','SIDE'] = 'TOP'
     outline: Literal['RECTANGLE','CONVEX_HULL'] = 'CONVEX_HULL'
     padding: FiniteFloat = Field(default=.02,ge=0,le=.25)
     standoff_m: FiniteFloat = Field(default=.005,gt=0,le=100)
@@ -21,6 +20,20 @@ class Plan(Model):
         return self
 
 
+class Plan(Source):
+    view: Literal['TOP','FRONT','SIDE'] = 'TOP'
+
+
+class Views(Source):
+    views: list[Literal['TOP','FRONT','SIDE']] = Field(default=['TOP','FRONT','SIDE'],min_length=1,max_length=3)
+    max_projected_triangles: int = Field(default=300000,strict=True,ge=1,le=750000)
+    max_total_card_triangles: int = Field(default=192,strict=True,ge=1,le=762)
+    @model_validator(mode='after')
+    def distinct_views(self):
+        if len(set(self.views))!=len(self.views):raise ValueError('Choose distinct card views')
+        return self
+
+
 class Create(Plan):
     name: Name
     expected_card: Digest
@@ -31,6 +44,7 @@ class Create(Plan):
 
 
 COMMANDS={
+ 'inspect_foliage_card_views':(Views,(),'Plan a bounded family of TOP/FRONT/SIDE fitted card alternatives from one evaluated source inspection. Returns existing per-view create_foliage_card parameters/guards, geometry/coverage and matching orthographic frame_objects view names. Enforce source, aggregate projected-triangle and output-triangle budgets; preserve scene and reject degenerate views. Alternatives must be baked and compared independently; no view selection/interpolation, crossed-card, wind or whole-tree guarantee.'),
  'inspect_foliage_card':(Plan,(),'Fit an orthographic convex-envelope or rectangular card to evaluated mesh sources. Inspect physical geometry, sampled coverage/empty area, material conversion and budgets without editing. Returns a mode/source/frame/unit-bound card guard. Realize instances first.'),
  'create_foliage_card':(Create,('allow_scene_edit',),'Guardedly create an editable fitted UV card without changing sources. Return inspected bake parameters for the existing isolated texture worker; baking remains explicit. Static single-view approximation, not an atlas or wind representation.'),
 }

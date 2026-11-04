@@ -725,3 +725,12 @@ bundles are removed; rebuilding cannot. Compare individual delivered cards versu
 the atlas under the same fixed camera before comparing the atlas with native
 geometry. An exact copy witness does not certify mipmaps, angular views, shadows,
 wind or whole-tree/population budgets.
+
+Use inspect_foliage_card_views to prepare TOP/FRONT/SIDE alternatives from one
+ordinary source inspection under source/projected/output-triangle budgets.
+Consume each row's create_parameters plus a fresh name with create_foliage_card;
+the global views_sha256 is not an expected_card. Bake/validate each view separately.
+For review configure ORTHO then frame_objects on source plus that target using
+camera_frame_view (SIDE -> RIGHT), and keep the camera fixed between native/card/
+atlas renders. Alternatives do not provide angular selection/interpolation or
+an automatically safe crossed-card, wind or whole-tree far representation.

@@ -1541,6 +1541,41 @@ continues to report free space, own its worker and support cancellation/recovery
 This produces one view of a leaf or mesh cluster; combine verified bakes with the
 atlas workflow below.
 
+### Planning several fitted card views
+
+`inspect_foliage_card_views` evaluates the ordinary mesh `sources` once and plans
+`views` (distinct TOP, FRONT and/or SIDE; all three by default). Use bounded
+botanical cluster sources for dense foliage. The usual fitting/material options
+apply, including explicit `thin_foliage_mode=FRONT_PBR` for managed thin leaves.
+The tool is read-only and defaults to asynchronous execution.
+
+`max_triangles` still bounds the combined source mesh triangles. Additional limits
+are `max_projected_triangles` (default 300000, maximum 750000, source triangles times
+requested views) and `max_total_card_triangles` (default 192, maximum 762, summed
+fitted targets). These bound the planning request, not a scene-wide object quota.
+Degenerate/edge-on views and over-budget fits refuse the request without silently
+omitting alternatives or editing the source. Choose the requested subset explicitly.
+
+Each returned view has its fitted `card`, existing single-view `card_sha256`,
+`create_parameters` and `camera_frame_view`. Call `create_foliage_card` with a row's
+`create_parameters` plus a distinct `name`; the ordinary guarded creation/bake
+workflow remains unchanged. `views_sha256` identifies the full planning result,
+while creation uses the individual `expected_card` in each row. Changed source,
+frame, units or fitting options require reinspection. Creating several ordinary
+targets is not an atomic family edit.
+
+Bake each alternative separately, inspect its unpadded opacity/coverage, reopen
+and validate the bundles, then optionally build a shared atlas. Configure an
+ORTHO camera and call `frame_objects` with source plus that created target and
+the returned `camera_frame_view` (SIDE maps to the camera's RIGHT preset). This
+fits clipping and placement without agents calculating Blender matrices. Keep the
+camera fixed while rendering native, individual delivery and atlas alternatives.
+Review `compare_png_images` at declared scales for each orientation.
+
+These are independent static alternatives. Drawing all planes together changes
+opacity/occlusion; no automatic angular selection, interpolation, crossed-card
+union, wind binding or whole-tree far representation is provided by this planner.
+
 ### Shared PBR texture atlases
 
 Use `inspect_texture_atlas` with `entries=[{"id":"leaf","directory":"leaf-bake"},

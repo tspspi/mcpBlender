@@ -4,11 +4,11 @@ from mcpblender import card_fit,botany
 from . import textures
 from .assets import mesh_object
 
-COMMANDS={'inspect_foliage_card','create_foliage_card'}
+COMMANDS={'inspect_foliage_card','create_foliage_card','inspect_foliage_card_views'}
 OPTIONS=('sources','view','outline','padding','standoff_m','resolution','max_vertices','max_triangles','thin_foliage_mode')
 
 
-def inspect(p):
+def sources(p):
     from .bridge import check_cancelled,report_progress
     bpy.context.view_layer.update();deps=bpy.context.evaluated_depsgraph_get();unit=bpy.context.scene.unit_settings.scale_length
     triangles=[];records=[]
@@ -33,11 +33,39 @@ def inspect(p):
             triangles.extend([coords[i] for i in t.vertices] for t in mesh.loop_triangles)
         finally:ev.to_mesh_clear()
         report_progress({'phase':'inspecting fitted card sources','sources':len(records),'triangles':len(triangles)})
+    return triangles,records,unit
+
+
+def fitted(p,triangles,records,unit):
+    from .bridge import check_cancelled,report_progress
     options={k:p[k] for k in OPTIONS}
     spec=card_fit.fit(triangles,**{k:p[k] for k in OPTIONS if k not in {'sources','thin_foliage_mode'}},cancelled=check_cancelled,progress=report_progress)
     guard=botany.digest({'source':records,'options':options,'scene_unit_scale':unit,'frame':bpy.context.scene.frame_current+bpy.context.scene.frame_subframe,'fit':spec})
     return spec|{'card_sha256':guard,'scene_unit_scale':unit,'sources':p['sources'],
                  'material_adapters':[r['bake_adapter'] for record in records for r in record['shaders'] if 'bake_adapter' in r]}
+
+
+
+def inspect(p):return fitted(p,*sources(p))
+
+
+def views(p):
+    from .bridge import check_cancelled,report_progress
+    triangles,records,unit=sources(p);work=len(triangles)*len(p['views'])
+    if work>p['max_projected_triangles']:raise ValueError('Foliage view-family projected triangle budget exceeded')
+    rows=[];total=0;options={k:p[k] for k in OPTIONS if k!='view'}
+    for index,view in enumerate(p['views']):
+        check_cancelled();report_progress({'phase':'fitting foliage card alternatives','view':view,'completed':index,'total':len(p['views'])})
+        params=options|{'view':view};state=fitted(params,triangles,records,unit);total+=state['triangles']
+        if total>p['max_total_card_triangles']:raise ValueError('Foliage view-family total card triangle budget exceeded')
+        rows.append({'view':view,'card':state,'create_parameters':params|{'expected_card':state['card_sha256']},
+                     'camera_frame_view':{'TOP':'TOP','FRONT':'FRONT','SIDE':'RIGHT'}[view]})
+    result={'method':'ORTHOGRAPHIC_CARD_VIEW_FAMILY_V1','sources':p['sources'],'views':rows,'source_triangles':len(triangles),
+            'projected_triangles':work,'total_card_triangles':total,'scene_unit_scale':unit,
+            'limits':{k:p[k] for k in ('max_projected_triangles','max_total_card_triangles')},
+            'scope':'Individually fitted static alternatives with independent source-bound creation guards. No automatic baking, angular selection/interpolation, crossed-card union, wind, or whole-tree far representation.',
+            'next_step':'For each selected alternative, call create_foliage_card with create_parameters and a distinct name. Bake separately, then optionally atlas verified bundles. Configure an ORTHO camera and frame_objects using source plus created target and camera_frame_view; keep that camera fixed for matched native/delivered review.'}
+    check_cancelled();return result|{'views_sha256':botany.digest(result)}
 
 
 def create(p):
@@ -69,4 +97,6 @@ def create(p):
         if not success:bpy.data.batch_remove(ids=tuple(set(bpy.data.user_map())-before))
 
 
-def dispatch(command,p):return inspect(p) if command=='inspect_foliage_card' else create(p)
+def dispatch(command,p):
+    if command=='inspect_foliage_card_views':return views(p)
+    return inspect(p) if command=='inspect_foliage_card' else create(p)

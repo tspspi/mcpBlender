@@ -1382,10 +1382,62 @@ partition and current native tree guard, independent of pagination; reinspection
 is required after source changes or reloading Blender. The tool defaults to an
 asynchronous operation: poll its operation ID for progress/cancellation.
 
-This tool plans bounded workloads only. It does not yet create cluster source
-meshes or cards, reconcile variant UV schemas, preserve object-dependent material
-sampling through merging, or establish alpha/optical/shadow/wind/far-LOD quality.
-Existing fitted-card tools below still require ordinary realized mesh sources.
+Planning establishes leaf membership and workload limits, not alpha, optical,
+shadow, wind or far-LOD quality. Use the selected-source workflow below to prepare
+one bounded mesh for existing fitted-card tools.
+
+### Selected botanical foliage cluster sources
+
+Call `create_botanical_foliage_cluster` with the same planning settings,
+`expected_plan=plan_sha256`, a `cluster_index` from the paged summaries and a new
+`cluster_collection` (up to 40 UTF-8 bytes). It creates an owned root and ordinary
+mesh containing only that cluster's leaves, including template petioles. Native
+template vertices, face material bindings, smooth/sharp/seam flags and every UV
+corner/channel are retained. Transformed corner normals are explicitly encoded
+and checked at every corner within 0.05 degrees in world orientation; Blender
+normal storage is quantized. Point attributes `leaf_index`, `bot_branch_index`
+and `leaf_variant` correspond to the returned canonical `leaf_mapping`.
+
+The root copies source placement; optional `display_offset_m` moves the snapshot
+in world metres. Scene scale is respected, including centimetre scenes and source
+rotation/nonuniform scale. The snapshot is static and independent of source
+geometry. Woody sleeves and shoot stems are excluded. It does not contain native
+wind animation or create a foliage card automatically. Source and snapshot may
+overlap at the default zero offset; isolate the intended objects for previews.
+
+Only selected variants are merged. Their UV names, order, active map and render
+map must match exactly. If just one variant has a secondary UV, author consistent
+channels on the other selected variants first. No channels are silently dropped
+or filled. Custom split normals refuse. Total selected geometry is bounded to
+250,000 vertices / 1,000,000 corners in addition to the planning limits.
+
+Materials stay shared and editable. Creation admits the existing bounded static
+Principled/managed thin-leaf bake graphs, then checks sampling dependencies:
+explicit UV-derived procedural vectors, flat image projection and tangent-space
+normal maps are supported. Generated/object coordinates, instancer UVs, shader
+groups, shader displacement and geometry outputs other than Backfacing refuse
+before native staging. These restrictions avoid silently changing per-leaf
+sampling when merging objects. `material_sampling_at_creation` records admission;
+subsequent shared material edits intentionally affect the snapshot. Native material
+bindings are retained; the lossy FRONT_PBR adapter is used only if explicitly
+selected in subsequent card/bake tools. No native optical equivalence is claimed.
+
+`inspect_botanical_foliage_cluster` reports native content integrity, source
+freshness, UV schema and `cluster_sha256`. Removing/changing the source leaves the
+independent snapshot usable. To delete it, call `remove_botanical_foliage_cluster`
+with `expected_cluster`. Inspection/removal require Object mode so pending mesh
+edits cannot bypass the guard. Foreign members, external references, shape keys and
+attached physics block deletion. Native edits (including active/render UV changes)
+require explicit `discard_derived_edits=true`; shared materials are preserved.
+Creation reports progress/storage estimates and rolls back cooperative failures.
+
+Pass the returned `object` as a source to `inspect_foliage_card` and
+`create_foliage_card`, then use their guarded `bake_parameters` with `bake_textures`.
+Managed thin leaves require explicit `thin_foliage_mode=FRONT_PBR`, which records
+omitted back/translucent optics. Review projection and alpha coverage; reopen and
+validate the independent baked bundle before export. A selected source and one
+fitted view do not establish multi-view, atlas, filtered alpha, shadow, animated
+LOD or population quality.
 
 ### Fitted leaf and mesh-cluster cards
 

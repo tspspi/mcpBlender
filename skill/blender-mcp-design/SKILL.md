@@ -691,6 +691,12 @@ For dense botanical foliage, `inspect_botanical_foliage_clusters` plans bounded
 semantic-axis/spatial workloads without realizing the full tree. Poll the operation;
 page summaries with offset/limit, and retain its page-independent plan guard.
 Actual native template triangles and leaf/count budgets apply. Bounds cover leaf
-centres only. This planner does not create merge-safe sources or qualify cards,
-UV/material equivalence, optics, wind or far LODs; ordinary realized mesh sources
-are still required by the existing fitted-card tools.
+centres only. Use create_botanical_foliage_cluster with the planning settings,
+expected_plan, cluster_index and a new cluster_collection to realize one bounded
+independent static source. Selected variants need identical UV schemas; unsupported
+object/generated/instancer shader sampling refuses before mutation. Materials stay
+shared. Inspect/remove with the snapshot guard; foreign references/physics/shape
+keys block deletion and native edits require explicit discard. Pass the returned
+object to existing fitted-card tools, then explicitly choose FRONT_PBR for managed
+thin leaves, bake, reopen/validate and review alpha before export. No multi-view,
+filtered optical/shadow, wind or far-LOD quality follows from a single fitted view.

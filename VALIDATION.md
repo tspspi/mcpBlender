@@ -4393,3 +4393,47 @@ These results qualify workload partitioning only. Leaf-centre bounds exclude
 blade extents. No native cluster source, UV/material merge, fitted card, alpha
 bake, shadow/optical/wind/far-LOD or population performance qualification follows
 from this milestone. Existing generic card/bake tests retain their narrower scope.
+
+### Independent selected botanical cluster sources and card delivery
+
+`create_botanical_foliage_cluster`, `inspect_botanical_foliage_cluster` and
+`remove_botanical_foliage_cluster` add an owned independent static mesh snapshot
+for one planned cluster. Native tests compare every selected vertex against its
+canonical pose/physical placement (including centimetre scene scale, source
+rotation, nonuniform scale and world-metre preview offset), every UV corner across
+two authored channels, material slots, smoothing/edge flags and canonical point
+indices. Transformed corner normals are explicitly assigned and independently
+compared after Blender's quantized encoding, with a 0.05-degree world-orientation
+limit. Creation also checks every corner and records its measured error.
+
+Checks cover cooperative cancellation before/after native staging with exact
+source/ID preservation, stale plans, unsafe implicit/explicit Generated and
+instancer UV sampling, mixed variant UV schemas, foreign collection members,
+external mesh users, derived edits, active-UV changes, Object-mode admission,
+save/reopen, source removal and guarded cleanup preserving shared materials.
+Readonly discovery, contracts and dependency-free add-on packaging are covered.
+
+The code-disabled MCP path creates the selected ordinary source, fits a card,
+bakes BASE_COLOR/NORMAL/ROUGHNESS/ALPHA in an isolated worker, verifies the live
+source unchanged, removes source and snapshot, reopens/validates the independent
+bundle, exports GLB and renders a preview. Separate small and retained dense
+fixtures exercise this path. Seven focused tests passed in 208.43 seconds;
+the final native/contract/archive checks passed three tests in 15.00 seconds,
+including Object-mode admission.
+
+For the retained 88,704-leaf tree, the largest planned cluster contains 462 leaves
+and 90,552 source triangles. All 184,800 native corners passed normal readback,
+maximum 0.04094 degrees. The fitted target has 34 triangles; its four maps are
+256 by 256. Projection hits are 7,032 of 46,668 target pixels (15.068%, above the
+12.136% chosen gate). Alpha includes both zero and one. The complete typed MCP
+sequence took 160.77 seconds, including all paginated dense workload inspections.
+The 70,000-byte GLB independently parses with BLEND alpha mode and three embedded
+images (alpha is packed with base colour). Both small and dense rendered previews
+were visually inspected and show leaf groups separated by transparent gaps.
+
+This establishes bounded source preparation and one fitted-view file-delivery
+path. FRONT_PBR remains an explicitly lossy conversion of native thin-leaf optics.
+The rendered preview is not a matched native/card comparison or a multi-view,
+shadow, filtering, overdraw, wind, population, mature-tree or receiving-engine
+qualification. Atlas/far representations and those independent quality gates
+remain open. No Godot operation, package installation or Blender rebuild was used.

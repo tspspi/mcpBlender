@@ -4223,3 +4223,27 @@ and operation/storage journals. Progress reports current free bytes and a
 collision checkpoint heuristic. All owned applications/brokers are stopped.
 No packages, virtual environments, installed runtimes/skills, services, normal
 GUI sessions, engine adapters, tags or pushes changed.
+
+## Dense LOD planning counterexample — 2026-11-04
+
+A separate pure planning check reused the retained 88,704-leaf source and its
+canonical export. At resolution 64, a 160,731,648-byte leaf-mask estimate fits
+the default memory budget. Planning took 295.57 seconds and 115,840 gain
+evaluations. The 22,000/6,000-leaf subsets report zero FRONT/SIDE/TOP covered-pixel
+loss on that grid; the 3,000-leaf subset loses 8.84–16.71% with zero boundary loss.
+These are fixed-grid pixel-centre results, not accepted dense LODs.
+
+Independent projection at resolution 128, using the exact same framing and the
+previously retained full-source reference, disproves a broad quality inference.
+The 22,000-leaf selection loses 52.70–66.21% of covered pixels; the 6,000-leaf
+selection loses 89.10–93.24%, and the 3,000-leaf selection 97.40–98.12%. The
+105.63-second check confirms severe sampling aliasing/selection bias. No native
+LOD profile was created or delivered from these misleading coarse results.
+Sampling-aware planning and independent quality checks are required before
+qualifying full-density near/mid/far representations. Cards/impostors and their
+optical/filtering/wind/export behavior remain open.
+
+Local exploratory evidence is `/tmp/mb-canopy-lod-20261104/` (`plan.json`, options,
+progress and `validation128.json`). The broad mature-tree and workflow goal
+remains incomplete; this counterexample takes priority over accepting an easier
+coarse-grid gate.

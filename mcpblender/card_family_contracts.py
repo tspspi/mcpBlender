@@ -62,3 +62,19 @@ COMMANDS={
  'select_foliage_card_family_view':(Select,('allow_scene_edit',),'Apply guarded supported view selection, showing exactly one owned card and hiding the others for viewport/render. No camera handler, interpolation, back-view synthesis or source visibility changes. Repeat explicitly when camera or family placement changes.'),
  'remove_foliage_card_family':(Remove,('allow_scene_edit',),'Guardedly remove an unchanged owned family and its private packed data; refuse changed content or external users. Preserve original bake objects and files.'),
 }
+
+
+class Export(Family):
+    expected_family: Digest
+    directory: str
+    max_bytes: int = Field(default=512*1024**2,strict=True,ge=1024**2,le=512*1024**2)
+
+
+class Bundle(Model):
+    directory: str
+
+
+COMMANDS.update({
+ 'export_foliage_card_family':(Export,('allow_library_write',),'Export a valid guarded family as all-view embedded GLBs, a family-only editable packed asset.blend and versioned world-metre glTF selection metadata. Verify decoded corner/triangle/UV/normal/placement correspondence before durable publication; preserve editor selection/visibility. No runtime selector, angular-quality or optical equivalence guarantee.'),
+ 'validate_foliage_card_family_bundle':(Bundle,(),'Independently validate family bundle hashes/inventory, decoded static GLB geometry/UVs/normals/placement, embedded PBR image bindings and selection metadata. No source scene required. Editable blend is hash-checked; open it and inspect the family for native validation.'),
+})

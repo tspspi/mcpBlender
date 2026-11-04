@@ -13,7 +13,7 @@ import uuid
 from .storage import snapshot
 
 FORMAT='mcpblender-export-job-v1'
-KINDS={'LOD','PACKAGE','NUMERIC','BOTANICAL','VEGETATION_LOD'}
+KINDS={'CARD_FAMILY','LOD','PACKAGE','NUMERIC','BOTANICAL','VEGETATION_LOD'}
 STATES={'running','verified','ready','interrupted','failed','cancelled','published','cleaning','cleaned'}
 
 
@@ -85,6 +85,7 @@ def allowed(record,relative,is_directory):
     parts=relative.split('/')
     if record['kind']=='LOD':
         return not is_directory and len(parts)==1 and (parts[0]=='manifest.json' or re.fullmatch(r'level_0[0-7]\.glb',parts[0]))
+    if record['kind']=='CARD_FAMILY':return not is_directory and relative in {'manifest.json','asset.blend','top.glb','front.glb','side.glb'}
     if record['kind']=='NUMERIC':return not is_directory and len(parts)==1 and parts[0] in {'asset.glb','manifest.json'}
     if record['kind'] in {'BOTANICAL','VEGETATION_LOD'}:
         if len(parts)==1 and parts[0] in {'manifest.json','semantics.json'}:return not is_directory
@@ -123,7 +124,10 @@ def validate_output(path,record,check_cancelled=lambda:None,progress=None):
     from .lod_files import validate as validate_lods
     from .package_files import validate as validate_package
     check_cancelled();inventory(path,record)
-    if record['kind'] in {'NUMERIC','BOTANICAL','VEGETATION_LOD'}:
+    if record['kind']=='CARD_FAMILY':
+        from .card_family_files import validate
+        result=validate(path,cancelled=check_cancelled,progress=progress or (lambda v:None))
+    elif record['kind'] in {'NUMERIC','BOTANICAL','VEGETATION_LOD'}:
         if any(child.name.startswith('.mcpblender-fields-') for child in Path(path).iterdir()):raise ValueError('Incomplete nested numeric export staging remains')
         if record['kind']=='NUMERIC':
             from .attribute_glb import verify,FORMAT as NUMERIC_FORMAT

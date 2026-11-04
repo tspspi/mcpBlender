@@ -755,6 +755,21 @@ Export only the returned visible object for a static GLB selection; glTF does no
 receive the selector. Remove only a valid fresh family guard; edits/external users
 block deletion. Keep native sources and original optics declarations.
 
+For all-view portable delivery, inspect the family and call export_foliage_card_family
+with expected_family, a new directory and explicit byte budget. Poll durable job
+progress/storage; use export-job inspect/recover/cleanup after interrupted writers,
+never replay solely because observing an operation timed out. Validate with
+validate_foliage_card_family_bundle after relocation. The bundle includes one
+embedded GLB per available view and a family-only packed editable asset.blend.
+Open/inspect the blend separately; independent validation hash-checks that file.
+
+Read selector origin/normals/bounds in GLTF_WORLD_Y_UP_METRES, choose exactly one
+available view under its declared cone, and do not apply native placement twice.
+The files contain displayed placement, not an engine selector or animation. Corner/
+view identity lanes consume no UV channel. Binary geometry/UV/normal/placement and
+PBR bindings are validated; texture pixels, angular quality, optics, custom wind
+payloads and engine behavior need their own evidence. Preserve optical losses.
+
 Use inspect_projected_normal_transfer on the unchanged original projected bake,
 not an atlas, to inspect covered backward/grazing tangent normals and geometric
 context. It validates binding, changes no maps and infers no optical pass/fail.

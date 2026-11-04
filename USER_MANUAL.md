@@ -1705,6 +1705,63 @@ Only private owned data is removed; original bake objects and files remain.
 Packed families do not resolve flat-card optical loss, shadows/wind, whole-tree
 impostors or receiving-engine behavior.
 
+### Portable card-family delivery
+
+Inspect a valid family, then call `export_foliage_card_family` with
+`family_collection`, `expected_family=family_sha256` and a new library `directory`.
+The operation defaults to asynchronous execution. It writes every alternative,
+regardless of the current selected view, while preserving live family content,
+selection and visibility. Existing destinations are refused.
+
+The bundle contains `manifest.json`, a family-only packed editable `asset.blend`,
+and one self-contained `top.glb`, `front.glb` and/or `side.glb` for each available
+view. The editable project has its own scene, units and owned family resources;
+it excludes original source objects, lights, cameras and unrelated scene data.
+Open it and use `inspect_foliage_card_family` to validate native content. Its saved
+view selection is retained. Each GLB is a standalone alternative; consumers must
+choose one rather than drawing all files together.
+
+`max_bytes` defaults to and cannot exceed 512 MiB (minimum 1 MiB). Actual sizes
+are checked between native file exports and before publication. Native blend/GLB
+writing is blocking and can overshoot the budget before the next check. Progress
+and free-space checks use a conservative geometry/texture/witness heuristic and
+report actual written bytes. Durable export journals support the existing
+`inspect_export_job`, `recover_export_job` and `cleanup_export_job` operations,
+including no-replay reconciliation after a departed writer. Incomplete staging
+is preserved for review; published output is never overwritten or swept.
+
+The versioned `mcpblender-card-family-bundle-v1` manifest declares
+`GLTF_WORLD_Y_UP_METRES`. GLBs retain displayed world placement in metres.
+`selector.origin_world_m` and the available `selector.normals_world` use the same
+coordinate system. Convert Blender vectors `(x,y,z)` to glTF `(x,z,-y)`; positions
+also multiply by the recorded actual `scene_unit_scale`. Root native matrices and
+corner witnesses are retained for correspondence validation. Do not apply their
+native-unit transform again when loading the already placed GLBs.
+
+Select the closest available normal to the direction from origin toward viewer;
+use canonical TOP/FRONT/SIDE order for exact ties and the fixed declared angular
+limit. For perspective, test the same selected view against all eight corners of
+`bounds_world_m`. Refuse a camera inside the bounds or a nearest view outside the
+cone. The manifest describes this policy; it installs no engine controller,
+visibility animation, interpolation or automatic camera-following behavior.
+Angular limits remain declared support, not measured image-quality acceptance.
+
+`validate_foliage_card_family_bundle` works independently of the native editing
+scene. It checks the exact bounded file inventory/hashes, canonical view identities,
+GLB corner/position/oriented-triangle/UV correspondence, shading normals, encoded
+origin and physical placement, declared selector directions versus face winding,
+embedded image headers and required PBR texture bindings. The private raw scalar
+attributes `_MCP_CORNER` and `_MCP_CARD_VIEW` provide corner and alternative
+identity without consuming UV channels. Other custom attribute payloads are not
+qualified by this profile. Conversion/provenance declarations remain in the
+manifest with `optical_equivalence=false`.
+
+The `.blend` is hash-checked by the independent validator; native inspection
+requires opening it. Binary map references/header checks do not prove source PNG
+pixel equivalence, arbitrary-light optical equivalence, intermediate-angle
+appearance, wind/shadow behavior or receiving-engine performance. Use matched
+render comparisons for the intended views and lighting as well.
+
 ### Shared PBR texture atlases
 
 Use `inspect_texture_atlas` with `entries=[{"id":"leaf","directory":"leaf-bake"},

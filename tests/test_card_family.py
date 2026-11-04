@@ -42,9 +42,11 @@ def test_contracts_paths_and_readonly_discovery(tmp_path):
     server,state=build_server(config)
     with pytest.raises(ValueError,match='library_root'):state.prepare('inspect_foliage_card_family_source',{'directory':'../outside','entries':entries})
     assert state.input_paths('create_foliage_card_family',{'directory':'bundle'})==['bundle']
+    assert state.input_paths('validate_foliage_card_family_bundle',{'directory':'bundle'})==['bundle']
+    with pytest.raises(ValueError,match='library_root'):state.prepare('validate_foliage_card_family_bundle',{'directory':'../outside'})
     async def run():
         async with Client(server) as client:
             names={t.name for t in await client.list_tools()}
-            assert {'inspect_foliage_card_family_source','inspect_foliage_card_family','inspect_foliage_card_family_selection'}<=names
-            assert not names&{'create_foliage_card_family','select_foliage_card_family_view','remove_foliage_card_family'}
+            assert {'inspect_foliage_card_family_source','inspect_foliage_card_family','inspect_foliage_card_family_selection','validate_foliage_card_family_bundle'}<=names
+            assert not names&{'create_foliage_card_family','select_foliage_card_family_view','remove_foliage_card_family','export_foliage_card_family'}
     asyncio.run(run())

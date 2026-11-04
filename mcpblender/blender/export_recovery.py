@@ -4,7 +4,7 @@ from mcpblender.export_jobs import ExportJob
 
 def run(command,p):
     from .bridge import _bridge,report_progress,check_cancelled
-    from . import lods,asset_packages,attribute_export,vegetation_export,vegetation_lod_export
+    from . import card_family_export,lods,asset_packages,attribute_export,vegetation_export,vegetation_lod_export
     active=_bridge.active if _bridge and _bridge.active else {}
     if active and 'owner' not in active:raise RuntimeError('Export journaling requires broker owner metadata; update/restart the broker before exporting')
     owner=active.get('owner','stdio')
@@ -12,6 +12,8 @@ def run(command,p):
         kind='NUMERIC';binding={'export_sha256':p['expected_export']};assets=[];function=attribute_export.export
     elif command=='export_botanical_bundle':
         kind='BOTANICAL';binding={'export_sha256':p['expected_export']};assets=[];function=vegetation_export.export
+    elif command=='export_foliage_card_family':
+        kind='CARD_FAMILY';binding={'family_guard':p['expected_family']};assets=[];function=card_family_export.export
     elif command=='export_botanical_lods':
         kind='VEGETATION_LOD';binding={'profile_guard':p['expected_lods'],'placement_mode':p['placement'],'materials_sha256':p.get('expected_materials')};assets=[];function=vegetation_lod_export.export
     elif command=='export_asset_package':

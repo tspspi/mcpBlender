@@ -4777,3 +4777,57 @@ identical in every visibility state and agrees with the original source bounds.
 It passed in 77.92 seconds, including existing lifecycle, placement, stale-selection
 and deletion-blocker checks. This corrects geometric bounds; it adds no angular
 appearance, optical-equivalence or automatic-playback claim.
+
+### Portable all-view card-family bundles
+
+`export_foliage_card_family` writes a family-only editable packed blend, one
+self-contained GLB for each available view, and a versioned manifest with displayed
+placement and selector data in glTF world Y-up metres. Export preserves the native
+family, selection and visibility. Durable CARD_FAMILY staging uses the existing
+owner/lock/inode/manifest binding, recovery, publication and conservative cleanup
+framework. The independent validator has no bpy dependency and can be called
+without a source scene; the MCP tool uses the ordinary operation surface.
+
+Each alternative carries corner and view identity scalar attributes without using
+UV channels. Independent decoding checks source local positions, oriented triangle
+correspondence, all source UVs, corner shading normals, physical world placement,
+encoded family origin, selector normal versus face orientation, required PBR
+texture/UV references and embedded image headers. File inventory/hashes include
+the editable blend; its native validity requires a separate reopen/inspection.
+No PNG-to-GLB pixel-equivalence claim is inferred from texture references.
+
+Analytic fixtures exercised normal/UV tampering, wrong PBR UV binding, lost alpha,
+selector-origin drift despite valid mesh placement, metadata/view/bounds mismatch,
+nonuniform/mirrored placement, unknown files and symlinks. A real subprocess died
+after verifying a complete CARD_FAMILY stage; recovery independently revalidated
+and published it without replay or Blender. The seven new pure tests passed; the
+final focused selector/file/journal/server/unit/package suite passed 42 tests in
+59.13 seconds. The standalone add-on archive includes the pure validator and
+native exporter, and read-only discovery/path boundaries were checked.
+
+The code-disabled native workflow exported a translated, rotated, uniformly scaled
+three-view family and verified the live scene/guard remained unchanged. It checked
+the published journal, independent validation, refusal to overwrite, relocation,
+opening the family-only blend with exactly its root and three cards, and tampered
+GLB rejection. All three re-imported GLBs were rendered against their native cards
+with the same orthographic camera, uniform world, transparent film and 16 samples
+at 256x256. Hard silhouette IoU was 1.0 for every pair at scales 1/2/4. Base-scale
+soft IoU was TOP 0.9999968, FRONT 0.9999853 and SIDE 0.9999596; shared-coverage RGB
+RMSE was 0.0000522, 0.0002441 and 0.0000694. All unchanged declared copy gates
+passed. The complete workflow passed in 122.45 seconds.
+
+A separate fresh seven-map 32x32 bake/family in a centimetre-unit scene exercised
+unit normalization, hidden initial alternatives, moved/rotated/scaled placement,
+encoded origin and AO/normal/emission/base/metallic-roughness image bindings. Native
+reopen of the isolated editable blend also passed. The workflow passed in 62.04
+seconds. Blender's actual float32 unit value (approximately 0.0099999998) is bound
+and retained; it is not rounded away in the document or GLB proof.
+
+These results qualify the specified file/copy/placement/selector contract and the
+measured three-view render cases. The selector is metadata, not an engine runtime
+controller. Intermediate angles, interpolation, arbitrary lighting, native foliage
+optics, wind, shadows, whole-tree far assets and population costs remain open.
+Other custom attribute payloads are not qualified. Native blend/GLB writes are
+blocking; no new live crash/cancellation-injection qualification is claimed here.
+All owned workers finished normally. No package/environment, runtime install,
+Blender rebuild, Godot, remote push or tag changes were used.

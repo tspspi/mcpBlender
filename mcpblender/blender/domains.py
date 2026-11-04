@@ -29,6 +29,7 @@ from . import botanical_collisions
 from . import botanical_uv
 from . import botanical_presets
 from . import botanical_foliage
+from . import card_family_export
 from . import card_families
 from . import foliage_cards
 from . import texture_atlas
@@ -89,6 +90,7 @@ COMMANDS.update(botanical_trees.COMMANDS)
 COMMANDS.update(botanical_uv.COMMANDS)
 COMMANDS.update(botanical_presets.COMMANDS)
 COMMANDS.update(botanical_foliage.COMMANDS)
+COMMANDS.update(card_family_export.COMMANDS)
 COMMANDS.update(card_families.COMMANDS)
 COMMANDS.update(foliage_cards.COMMANDS)
 COMMANDS.update(texture_atlas.COMMANDS)
@@ -140,11 +142,12 @@ def curves(action, slot):
 
 
 def dispatch(command, p):
-    if command in {"export_lod_chain","export_asset_package","export_attribute_bundle","export_botanical_bundle","export_botanical_lods"}:
+    if command in {"export_lod_chain","export_asset_package","export_attribute_bundle","export_botanical_bundle","export_botanical_lods","export_foliage_card_family"}:
         from .export_recovery import run
         return run(command,p)
     if command in botanical_surfaces.COMMANDS:return botanical_surfaces.dispatch(command,p)
     if command in botanical_foliage.COMMANDS:return botanical_foliage.dispatch(command,p)
+    if command in card_family_export.COMMANDS:return card_family_export.dispatch(command,p)
     if command in card_families.COMMANDS:return card_families.dispatch(command,p)
     if command in foliage_cards.COMMANDS:return foliage_cards.dispatch(command,p)
     if command in texture_atlas.COMMANDS:return texture_atlas.dispatch(command,p)

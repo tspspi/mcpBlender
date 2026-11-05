@@ -59,14 +59,17 @@ def test_native_tree_multiview_reference_capture(assets_live):
             # The same native shaders are sampled into raw input fields in the
             # worker, with beauty outputs preserved and the live tree untouched.
             with pytest.raises(ToolError,match='recapture'):await wait(client,'inspect_botanical_capture_data',directory='tree-capture',material_inputs=True,views=['FRONT'])
-            field_args=args|{'material_fields':True,'normal_moments':True}
+            field_args=args|{'material_fields':True,'normal_moments':True,'geometric_normals':True}
             field_plan=await wait(client,'inspect_botanical_view_capture',**field_args)
             await wait(client,'capture_botanical_views',**field_args,directory='tree-material-fields',expected_capture=field_plan['capture_sha256'])
             field_proof=await tool(client,'validate_render_job',directory='tree-material-fields')
             assert len(field_proof['botanical_capture']['material_fields']['fields'])==14
             assert len(field_proof['botanical_capture']['material_fields']['normal_moments']['fields'])==9
+            assert field_proof['botanical_capture']['material_fields']['geometric_normals']['orientation']=='RENDERER_FACE_FORWARD'
             field_data=await wait(client,'inspect_botanical_capture_data',directory='tree-material-fields',material_inputs=True,normal_quadrature=True,max_quadrature_pixels=16,views=['FRONT'],alpha_threshold=.01)
             material=field_data['views'][0]['material_inputs']
+            face=material['geometric_normals'];assert face['covered_pixels']>0 and face['nonfinite_pixels']==0
+            assert face['statistics']['shading_angle_degrees']['count']>0 and face['different_direction_pixels']>0
             if dest:=os.environ.get('MCPBLENDER_TREE_CAPTURE_EVIDENCE_DIR'):
                 out=Path(dest);out.mkdir(parents=True,exist_ok=True);shutil.copytree(root/'library/tree-material-fields',out/'material-bundle',dirs_exist_ok=True);(out/'material-proof.json').write_text(json.dumps(field_data,indent=2))
             assert material['normal_moments']['input_moments_valid'],material['normal_moments']

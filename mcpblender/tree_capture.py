@@ -17,6 +17,7 @@ def validate(metadata,job):
     fields=metadata.get('material_fields')
     if bool(fields)!=bool(metadata['options'].get('material_fields',False)):raise ValueError('Capture material field option/contract mismatch')
     if bool(fields and fields.get('normal_moments'))!=bool(metadata['options'].get('normal_moments',False)):raise ValueError('Capture normal-moment option/contract mismatch')
+    if bool(fields and fields.get('geometric_normals'))!=bool(metadata['options'].get('geometric_normals',False)):raise ValueError('Capture geometric-normal option/contract mismatch')
     if fields is not None:
         from . import capture_material_fields
         capture_material_fields.validate(fields)

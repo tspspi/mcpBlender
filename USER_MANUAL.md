@@ -858,6 +858,29 @@ material correction. The native Normal pass contains a filtered renderer-normal 
 Optional input-normal moments are described below.
 No shader or captured data changes when requesting these statistics.
 
+### Optional geometric face normals
+
+Set `material_fields: true` and `geometric_normals: true` when planning and
+capturing botanical views. The option defaults off; existing captures and their
+guards remain unchanged. The versioned `material_fields.geometric_normals`
+contract adds one float32 COLOR AOV, `MCP_GeometricNormal` (EXR suffixes `.R/G/B`).
+It records the Geometry node's **True Normal** in world space, with the renderer's
+face-forward orientation. The worker does not apply another backface flip,
+normalize filtered values, encode negatives into 0..1 or modify shading inputs.
+Smooth shading, linked normal/bump inputs and closure corrections can differ
+from this geometric normal. The native Normal pass and all material-input maps
+remain separate and unchanged. This option can accompany `normal_moments`.
+
+`inspect_botanical_capture_data` with `material_inputs: true` automatically
+reports `material_inputs.geometric_normals` when the capture contains it.
+Statistics include conditional vector length and the angle between geometric
+and native shading-normal mean directions. They divide raw observations by the
+constant-one surface weight, never beauty alpha. Invalid/missing weights,
+nonfinite values, zero vectors and conditional lengths above one are counted.
+An angle between filtered means does not establish correspondence between
+individual depth, material and normal samples, or recover a complete surface.
+Capture and inspection do not select a new depth-plane fit or certify lighting.
+
 ### Optional material normal-input moments
 
 Set both `material_fields: true` and `normal_moments: true` when planning and

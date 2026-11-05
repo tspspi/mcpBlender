@@ -13,7 +13,7 @@ def binding(node,socket):
     return {'node':node.name,'socket':port.identifier,'source':{'node':port.links[0].from_node.name,'socket':port.links[0].from_socket.identifier} if port.links else None,'default':shaders.plain(port.default_value)}
 
 
-def describe(materials,*,normal_moments=False):
+def describe(materials,*,normal_moments=False,geometric_normals=False):
     rows=[]
     for index,mat in enumerate(sorted(set(materials),key=lambda v:v.name)):
         if not mat.use_nodes or mat.animation_data or mat.node_tree.animation_data:raise ValueError('Material fields require static enabled node shaders')
@@ -37,6 +37,9 @@ def describe(materials,*,normal_moments=False):
     if normal_moments:
         from . import capture_normal_moments
         result['normal_moments']=capture_normal_moments.describe(materials,rows)
+    if geometric_normals:
+        from . import capture_geometric_normals
+        result['geometric_normals']=capture_geometric_normals.describe(materials,rows)
     result['fields_sha256']=botany.digest(result);schema.validate(result);return result
 
 
@@ -46,6 +49,7 @@ def register(scene,contract):
         existing={v.name:v.type for v in layer.aovs}
         fields=list(schema.FIELDS)
         if contract.get('normal_moments'):fields+=contract['normal_moments']['fields']
+        if contract.get('geometric_normals'):fields+=contract['geometric_normals']['fields']
         for field in fields:
             if field['name'] in existing:
                 if existing[field['name']]!=field['type']:raise ValueError('Capture AOV type mismatch')
@@ -59,7 +63,7 @@ def install(scene,contract):
         mat=bpy.data.materials.get(row['material'])
         if mat is None:raise ValueError('Capture material missing from snapshot')
         materials.append(mat)
-    if describe(materials,normal_moments=bool(contract.get('normal_moments')))!=contract:raise ValueError('Snapshot material field bindings changed')
+    if describe(materials,normal_moments=bool(contract.get('normal_moments')),geometric_normals=bool(contract.get('geometric_normals')))!=contract:raise ValueError('Snapshot material field bindings changed')
     register(scene,contract)
     fields={f['key']:f for f in schema.FIELDS}
     for row,mat in zip(contract['materials'],materials):
@@ -73,3 +77,6 @@ def install(scene,contract):
     if contract.get('normal_moments'):
         from . import capture_normal_moments
         capture_normal_moments.install(contract['normal_moments'])
+    if contract.get('geometric_normals'):
+        from . import capture_geometric_normals
+        capture_geometric_normals.install(contract['geometric_normals'])

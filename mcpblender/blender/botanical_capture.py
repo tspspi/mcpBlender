@@ -123,8 +123,8 @@ def source(p):
         from . import capture_material_fields
         materials={slot.material for obj in mesh_objects+prototypes for slot in obj.material_slots}
         if None in materials:raise ValueError('Every capture material slot must be populated')
-        material_contract=capture_material_fields.describe(materials,normal_moments=p.get('normal_moments',False))
-    summary={'format':tree_capture.FORMAT,'options':({k:p[k] for k in OPTIONS}|({'normal_moments':True} if p.get('normal_moments') else {})),'frame':scene.frame_current,'collection':col.name,'root':root.name,
+        material_contract=capture_material_fields.describe(materials,normal_moments=p.get('normal_moments',False),geometric_normals=p.get('geometric_normals',False))
+    summary={'format':tree_capture.FORMAT,'options':({k:p[k] for k in OPTIONS}|{k:True for k in ('normal_moments','geometric_normals') if p.get(k)}),'frame':scene.frame_current,'collection':col.name,'root':root.name,
              'source_tree_sha256':state['tree_sha256'],'model_sha256':state['model_sha256'],'resource_sha256':botany.digest(resources),
              'source_root_matrix_world':[list(r) for r in matrix],'scene_unit_scale':unit,'root_pivot_world_m':[x*unit for x in matrix.translation],
              'bounds_root_local_m':{'min':list(low),'max':list(high)},'bounds_method':'canonical wood/shoot vertices and transformed eight-corner leaf prototype boxes; conservative, no realization',

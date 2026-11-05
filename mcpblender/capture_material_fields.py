@@ -37,6 +37,9 @@ def validate(value):
     if 'normal_moments' in value:
         from . import normal_moments
         normal_moments.validate(value['normal_moments'],materials)
+    if 'geometric_normals' in value:
+        from . import geometric_normals
+        geometric_normals.validate(value['geometric_normals'],materials)
     return value
 
 
@@ -46,6 +49,9 @@ def validate_header(header,value):
     if 'normal_moments' in value:
         from . import normal_moments
         names+=normal_moments.channels()
+    if 'geometric_normals' in value:
+        from . import geometric_normals
+        names+=geometric_normals.channels()
     for name in names:
         if present.get(name)!=2:raise ValueError('Native material field EXR lacks float32 channel: '+name)
 
@@ -129,6 +135,9 @@ def inspect_view(path,expected_sha256,geometry,threshold,contract,*,cancelled=la
                 if field['key']=='material_id':counts['fractional_material_id_pixels']+=abs(values[0]-round(values[0]))>.001
             output[field['key']]={'count':count,'nonfinite_pixels':invalid,'min':low if count else None,'max':high if count else None,'mean':[v/count for v in sums] if count else None}
     extra={}
+    if contract.get('geometric_normals'):
+        from . import geometric_normals
+        extra['geometric_normals']=geometric_normals.inspect_view(path,expected_sha256,geometry,threshold,cancelled=cancelled,progress=progress)
     if contract.get('normal_moments'):
         from . import normal_moments
         extra['normal_moments']=normal_moments.inspect_view(path,expected_sha256,geometry,threshold,cancelled=cancelled,progress=progress,quadrature_pixels=quadrature_pixels)

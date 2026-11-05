@@ -6379,3 +6379,34 @@ installed OpenEXR C++ fixtures with 31/32/33 parts verify decoded negative float
 values, channel association, both boundary validators and the unchanged hard
 part cap. `tests/test_exr_scanline.py`: 18 checks passed. This fixes counting the
 terminator against the part budget; it does not expand image or channel budgets.
+
+### Separate geometric-normal capture
+
+Optional `geometric_normals` retains a raw world-space True Normal COLOR AOV
+alongside the original native Normal pass and shader-input fields. The contract
+pins orientation, accumulation semantics and material inventory. Default-off
+metadata stays unchanged; rehashed contract/header/option mismatches refuse.
+Inspection reports coverage-conditioned lengths and angles between filtered
+mean directions, counting missing/invalid observations without repairing them.
+
+Installed Blender 5.0.1/Cycles CPU controls cover flat, smooth, rotated and bumped
+bent two-triangle surfaces from front and back (16 renders). Interior geometric
+normals agree with independently transformed triangle normals within 1.2e-7 per
+component, including signed negative components and renderer backface orientation.
+Flat face/shading angles agree; smooth/rotated means differ by about 11 degrees
+and bumped means by about 13 degrees. Beauty RGBA and native Normal values are
+exactly unchanged before/after worker AOV wiring. Both optional normal extensions
+plus ordinary native passes decode at exactly 32 EXR parts. Reserved names and
+stale bindings refuse before worker allocation. These controls establish the
+capture field, not correlation of filtered depth/material samples or a lighting
+fix for dense canopy assets.
+
+Focused pure/contracts/add-on checks: 19 passed (23.89s, existing anyio warning).
+Native controls: 1 passed (8.59s). Structured MCP capture/inspection: 1 passed
+(53.22s), arbitrary execution disabled, both optional extensions, immutable bundle
+validation, unchanged source guards and exact original PNG comparisons. The MCP
+archive remains usable after copying; its material diagnostics expose the new
+face-normal field. Ignored evidence: `tmp/qualification/geometric-normals-20261105/`
+(check logs, 16 native EXRs/proof, MCP material bundle/proof). Byte-verified
+retention allowed removal of 1,076,324 bytes of our terminal native fixtures
+from `/tmp`; shared fixtures and production service were untouched.

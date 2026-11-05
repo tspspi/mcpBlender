@@ -1,9 +1,9 @@
 """Directional, witness-anchored projected geometry from archived input moments."""
 from array import array
 import math
-from . import botany, capture_data, depth_tiles, normal_moments, normal_quadrature, projected_microfacets
+from . import botany, capture_data, depth_tiles, normal_moments, normal_quadrature, projected_microfacets, normal_support
 
-FORMAT = 'mcpblender-moment-depth-patches-v3'
+FORMAT = 'mcpblender-moment-depth-patches-v4'
 TOLERANCE = 1e-5
 
 
@@ -37,6 +37,7 @@ def geometry(decoded, metadata, view, p, *, cancelled=lambda: None, progress=lam
     attempts=max_attempts=native_rebuilds=0;rejected={};seed_histogram={}
     maximum_residual = maximum_adjustment = maximum_omission = maximum_area_error = 0.
     maximum_unsupported = maximum_precision = 0.
+    minimum_support_margin=math.inf
     weight = ch[names[0]]
 
     def charge(amount):
@@ -81,6 +82,12 @@ def geometry(decoded, metadata, view, p, *, cancelled=lambda: None, progress=lam
                     sums[j] += v
         world_moments = [v/total_weight for v in sums]
         target = rotate(world_moments, axes)
+        charge(64)
+        support=normal_support.check(target,p['max_slope'])
+        if support['verdict']=='RULED_OUT':
+            progress({'phase':'moment facet direction-cap refusal','pixel_rect':record['pixel_rect'],'direction_cap':support})
+            raise normal_support.DirectionCapError(record['pixel_rect'],support)
+        minimum_support_margin=min(minimum_support_margin,*(r['slack']+r['error_bound'] for r in support['constraints']))
         rect = ((x/w-.5)*span, (.5-bottom/h)*span, (right/w-.5)*span, (.5-y/h)*span)
         witness_x, witness_y = record['witness_pixel']
         anchor = (((witness_x+.5)/w-.5)*span, (.5-(witness_y+.5)/h)*span)
@@ -133,12 +140,14 @@ def geometry(decoded, metadata, view, p, *, cancelled=lambda: None, progress=lam
         records.append(record | {'facet_count': len(piece['faces']), 'plane_anchor_pixel': [witness_x+.5, witness_y+.5],
             'normal_input_weight': total_weight, 'normal_moments_camera': target,
             'max_component_residual': residual, 'quadrature_adjustment': fitted['max_numerical_adjustment'], 'factor_seed':seed,'candidate_attempts':seed+1,
+            'direction_cap_minimum_margin':min(r['slack']+r['error_bound'] for r in support['constraints']),
             'omitted_mass': piece['omitted_mass'], 'unsupported_mass_omitted': piece['unsupported_mass_omitted'],
             'precision_mass_omitted': piece['precision_mass_omitted'], 'projected_area_relative_error': area_error})
     report = base['report'] | {'format': FORMAT, 'patches': len(faces), 'triangles': 2*len(faces),
         'moment_tiles': fits, 'depth_anchor': 'WITNESS_PIXEL_CENTRE', 'refinement_work': work,
         'construction_frame':'WITNESS_RELATIVE_CAMERA',
-        'work_unit': '10 per visited tile pixel plus 328 per bounded candidate fit and up to four geometry checks',
+        'work_unit': '10 per visited tile pixel plus 64 per direction-cap preflight plus 328 per bounded candidate fit and up to four geometry checks',
+        'direction_cap_method':normal_support.FORMAT,'direction_cap_minimum_margin':minimum_support_margin,
         'native_collapse_rebuilds':native_rebuilds,
         'candidate_attempts':attempts,'max_candidate_attempts_per_tile':max_attempts,
         'rejected_candidates':rejected,'selected_factor_seed_histogram':seed_histogram,

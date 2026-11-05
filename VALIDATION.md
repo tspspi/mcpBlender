@@ -5881,3 +5881,79 @@ Evidence is under `tmp/qualification/moment-precision-20261105/`: admission,
 source-cap bound, structured proof/packed asset, final native guard/transport/
 canopy evidence and check logs. Native source archives and production service
 remain untouched; the overall workflow goal remains active and incomplete.
+
+## Direction-cap preflight and explicit steeper settings
+
+`normal_support.check` exposes three necessary conditions for unit directions
+whose forward cosine satisfies z>=c=1/sqrt(1+max_slope^2): the mean-cosine lower
+bound, the weighted-direction norm bound, and E[(z-c)(1-z)]>=0. Each slack has an
+explicit component-error allowance covering the existing fit tolerance and
+renormalization after the allowed omitted mass. Only violations beyond that
+allowance return `RULED_OUT`. `NOT_RULED_OUT` does not validate the moment matrix,
+construct a supported decomposition or establish geometric/optical feasibility.
+Independent supported mixtures exercise six slope bounds, 1/2/4/32 directions,
+and double/float32 values (48 mixtures); none are falsely ruled out. Other tests
+cover the retained counterexample, near-boundary roundoff, backward directions,
+invalid controls, JSON errors and non-mutation.
+
+Moment geometry v4 charges a fixed 64-unit preflight before trying candidates.
+A ruled-out tile reports `DirectionCapError` with its pixel rectangle, necessary
+constraints, slack/error bounds and higher canonical 16/32/64 caps that are not
+ruled out. The same structured diagnostic is the last meaningful operation
+progress, with the standard free-space snapshot. Source observations and settings
+remain unchanged. Successful plans retain the method/minimum margin and per-tile
+margin in their geometry guard. Work is now 10 per visited pixel, 64 per tile
+preflight and 328 per candidate (including up to four geometry checks).
+
+The default maximum slope remains 16. Callers may explicitly select through 64,
+matching the existing shared settings ceiling; the primitive supports the same
+range. This extends representable orientation limits while retaining all near/
+far, float32 projection, moment residual, omission, triangle and aggregate-work
+checks. No slope is silently clipped or upgraded. A synthetic slope-32 plane
+refuses at the default, constructs with an explicit steeper setting, and still
+refuses under insufficient depth bounds.
+
+The retained 64px canopy FRONT constructs at all three settings:
+
+| Maximum slope | Triangles | Candidate attempts | Bounded work | Maximum actual moment residual |
+| --- | ---: | ---: | ---: | ---: |
+| 16 | 514 | 236 | 93,088 | 6.058e-7 |
+| 32 | 514 | 209 | 84,232 | 4.470e-7 |
+| 64 | 514 | 209 | 84,232 | 4.470e-7 |
+
+Native creation and world/front-sun/rear-sun measurement checks passed for all
+three profiles (three tests, eighteen rendered frames, 48.13s). World/front/rear
+shared-coverage luminance biases are -0.54%/+1.04%/+97.08% for slope 16 and
+-0.63%/+0.80%/+104.32% for 32/64. All profiles retain mask IoU 0.7763. These still
+fail silhouette/rear-light qualification; a steeper profile does not certify a
+better appearance. Existing image gates are unchanged.
+
+The Python-disabled MCP default-16 lifecycle passed in the initial run. The
+slope-64 and dense-refusal checks then passed using tracked asynchronous polling
+(two tests, 153.30s): immutable archive planning, parameter-pinned stale guard,
+creation, save/reopen without inputs, removal of eleven private IDs, and a dense
+refusal carrying matching error/progress JSON plus positive free-space data.
+The original test incorrectly expected an exception immediately from `wait=true`
+after its wait window: the server correctly returned a running operation. Its
+next short wait then found work still queued. The test now submits once and polls
+that same operation to terminal state, preserving progress evidence; no duplicate
+creation was launched against a live instance. All original isolated jobs were
+confirmed terminal before rerunning. The focused pure/contracts/add-on regression
+passed 88 tests (42.27s), with the existing anyio deprecation warning only.
+
+The dense 512px FRONT capture now reports its slope-16 necessary refusal directly
+at [280,32,284,36], recommending only that cap 32 is not ruled out by those bounds.
+Explicit 32 and 64 reach [184,36,188,40], where 63 constructed candidates fail the
+existing final projection bound and one fails supported orientation. An isolated
+numerical readback finds a nearest native root-local coordinate whose minimum
+projection error is 1.272e-5 pixel, above the fixed 1e-5 bound. A process-local
+experiment translating the mesh origin passes this tile without changing the
+bound, then reaches later direction-cap refusals. That experiment does not create
+an asset and is not shipped as a supported placement mode yet. Mesh-frame
+placement and subsequent admission/appearance remain open.
+
+Evidence is retained under `tmp/qualification/direction-caps-20261105/`: native
+profiles, MCP lifecycle/refusal/progress, initial/final check logs, ordinary/dense
+admission, projection proof and the isolated translated-mesh experiment. Existing
+source captures and the production daemon remain untouched. The complete retained
+workflow goal is still active and incomplete.

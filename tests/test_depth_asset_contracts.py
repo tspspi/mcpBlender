@@ -19,11 +19,14 @@ def test_strict_patch_settings_and_default_approximation_acceptance():
         with pytest.raises(ValueError):Source(directory='capture',view='FRONT',render_role=role)
     assert not Create(directory='capture',view='FRONT',collection='Far',expected_plan='a'*64).accept_approximate_optics
     assert Settings(geometry_mode='MOMENT_FACETS').max_slope==16
+    for slope in (16,32,64):
+        assert Settings(geometry_mode='MOMENT_FACETS',max_slope=slope).max_slope==slope
+        assert depth_tiles.options({'geometry_mode':'MOMENT_FACETS','max_slope':slope})['max_slope']==slope
     assert Settings().max_moment_candidates==32
     for value in (0,65,True,1.5):
         with pytest.raises(ValueError):Settings(max_moment_candidates=value)
         with pytest.raises(ValueError):depth_tiles.options({'max_moment_candidates':value})
-    for patch in ({'max_slope':32},{'max_slope':True}):
+    for patch in ({'max_slope':65},{'max_slope':True}):
         with pytest.raises(ValueError):Settings(geometry_mode='MOMENT_FACETS',**patch)
         with pytest.raises(ValueError):depth_tiles.options({'geometry_mode':'MOMENT_FACETS',**patch})
 

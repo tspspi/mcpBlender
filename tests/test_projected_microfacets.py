@@ -76,7 +76,7 @@ def test_clipping_budget_and_float32_loss_refused():
 
 
 @pytest.mark.parametrize('override', [dict(depth=float('nan')), dict(near=0),
-    dict(far=4), dict(max_slope=17), dict(max_slope=True), dict(triangle_budget=True),
+    dict(far=4), dict(max_slope=65), dict(max_slope=True), dict(triangle_budget=True),
     dict(omitted_mass_tolerance=.1), dict(residual_tolerance=0)])
 def test_invalid_options(override):
     with pytest.raises(ValueError):
@@ -151,3 +151,14 @@ def test_explicit_precision_omission_keeps_original_target_and_mass_bound():
     for indices in ((True,), (2,), (1,1), '1'):
         with pytest.raises(ValueError,match='indices'):
             build(atoms,precision_omissions=indices)
+
+
+def test_explicit_steeper_cap_keeps_default_and_actual_clip_bounds():
+    length=math.hypot(1,32);atoms=[{'weight':1,'direction':(32/length,0,1/length)}]
+    with pytest.raises(ValueError,match='Unsupported normal mass'):
+        build(atoms,depth=50,far=100)
+    result=build(atoms,max_slope=64,depth=50,far=100)
+    assert result['max_slope']==64 and result['max_component_residual']<1e-5
+    assert result['depth_bounds']==pytest.approx([18,82])
+    with pytest.raises(ValueError,match='near/far'):
+        build(atoms,max_slope=64)

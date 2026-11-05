@@ -41,7 +41,7 @@ def build(rect, atoms, *, depth, near, far, max_slope=16.,
         raise ValueError('Projected area exceeds numerical range')
     if not all(finite(v) for v in (depth, near, far)) or not 0 < near < depth < far:
         raise ValueError('Depth must lie inside positive near/far bounds')
-    if not finite(max_slope) or not 0 < max_slope <= 16:
+    if not finite(max_slope) or not .01 <= max_slope <= 64:
         raise ValueError('Invalid slope bound')
     if type(triangle_budget) is not int or not 2 <= triangle_budget <= 8:
         raise ValueError('Invalid triangle budget')

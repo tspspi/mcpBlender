@@ -956,7 +956,7 @@ root-local float32 triangles must reproduce all nine camera-frame moments within
 There is no adaptive splitting or flat fallback. Source bounds are reported;
 unlike adaptive mode, this mode does not clip slopes to the source bounding box.
 
-`max_slope` is at most 16 in this mode. Significant backward or grazing mass in
+`max_slope` defaults to 16; explicit values through 64 are supported. Significant backward or grazing mass in
 a candidate's reconstructed directions refuses; tiny unsupported mass or float32-collapsed
 strips can be omitted only within a combined 1e-6 mass bound and the independent
 moment-error bound. Both omission reasons are reported separately. This does not
@@ -975,13 +975,26 @@ be rebuilt away, with its precision omission counted in the same combined 1e-6
 mass budget and all final moment/projection checks retained. A maximum of three
 such rebuilds per candidate prevents unbounded retries; the reported counter
 includes attempted rebuilds even if that candidate subsequently refuses.
+Before candidate search, necessary direction-cap bounds check whether the tile's
+moments could match the configured slope within fit/omission tolerances. A
+`DirectionCapError` includes `pixel_rect` and a `direction_cap` JSON object with
+`verdict: "RULED_OUT"`, failed constraints, numerical bounds and
+`next_not_ruled_out_max_slope` when a higher canonical setting (16/32/64) survives
+those tests. These fields and free-space data persist in the failed operation's
+`progress`; read them with `get_operation`/`wait_operation`. A surviving bound
+does not establish feasible geometry or adequate rendered quality. Settings are
+never increased automatically. Steeper planes may still fail depth clipping,
+precision, budgets or candidate search.
+
 The dense capture now advances past its earlier precision failure but still
-refuses a tile whose moments cannot satisfy the configured slope cap. No admission or
+refuses a tile whose moments cannot satisfy slope 16. Explicit 32/64 settings
+advance to a later precision refusal. No admission or
 render-quality guarantee follows from increasing the candidate limit.
 
 Pixel inputs are checked before aggregation so invalid moments cannot cancel
 each other in an average. `max_refinement_work` bounds reconstruction at 10 units
-per visited tile pixel plus 328 per attempted bounded fit and up to four geometry checks.
+per visited tile pixel, 64 per direction-cap preflight, and 328 per attempted
+bounded fit and up to four geometry checks.
 The aggregate work ceiling remains active across retries. All existing pixel, texture,
 triangle and nearest-witness search limits apply. Plans pin the new shader recipe
 `CAPTURED_INPUT_PBR_V3_GEOMETRIC_MOMENTS`: Principled and translucent closures use
@@ -991,6 +1004,11 @@ included in this recipe's creation/inspection guard. Existing assets keep their
 stored guards and graphs. Controlled diffuse transport and the structured MCP
 lifecycle pass, but full canopy/PBR, filtering, color/depth correlation, angular
 and secondary-ray behavior remain unqualified.
+
+For long source plans or creation, use `submit_operation` and poll
+`wait_operation`/`get_operation`. A domain tool called with `wait: true` can return
+a still-active operation when its configured wait window expires; continue
+polling that ID before interpreting the result or submitting another operation.
 
 The six RGBA32 data images retain base color/coverage, raw source-root-local
 normal/roughness, emission color/strength, artistic thin color/weight,

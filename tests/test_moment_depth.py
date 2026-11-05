@@ -73,7 +73,7 @@ def test_missing_moments_work_triangles_depth_and_support_refused():
     with pytest.raises(ValueError, match='recapture'):
         build(d, m, v)
     d, m, v = source([{'weight': 1, 'direction': (0,0,-1)}])
-    with pytest.raises(ValueError, match='Unsupported normal mass'):
+    with pytest.raises(ValueError, match='direction cap ruled out'):
         build(d, m, v)
     d, m, v = source()
     v.update(clip_start=4.99, clip_end=5.01)
@@ -117,7 +117,7 @@ def test_supported_alternative_preserves_moments_and_reports_search():
     with pytest.raises(ValueError,match='candidate budget exhausted'):
         build(d,m,v,max_moment_candidates=1)
     with pytest.raises(ValueError,match='work budget'):
-        build(d,m,v,max_moment_candidates=64,max_refinement_work=368)
+        build(d,m,v,max_moment_candidates=64,max_refinement_work=500)
     g=build(d,m,v,max_moment_candidates=64)
     assert g['report']['candidate_attempts']>1
     assert g['report']['rejected_candidates']['Unsupported normal mass exceeds omission bound']>=1
@@ -151,3 +151,19 @@ def test_native_collapse_identifies_only_negligible_strip_for_bounded_rebuild():
     vertices,_,residual,_=moment_depth.native_piece(rebuilt,target,frame)
     assert rebuilt['precision_mass_omitted']==1e-8 and residual<1e-8
     assert min(vertices[::3])==7 and max(vertices[::3])==9
+
+
+def test_direction_cap_preflight_precedes_search_and_steep_setting_is_pinned():
+    from mcpblender import normal_support
+    length=math.hypot(1,32)
+    d,m,v=source([{'weight':1,'direction':(32/length,0,1/length)}])
+    v['clip_end']=200;v['matrix_world'][2][3]=100
+    d['channels']['TreeCapture.Depth.Z']=array('f',[100]*4)
+    with pytest.raises(normal_support.DirectionCapError) as caught:
+        build(d,m,v,max_refinement_work=110)
+    assert caught.value.diagnostic['max_slope']==16
+    assert caught.value.diagnostic['next_not_ruled_out_max_slope']==32
+    result=build(d,m,v,max_slope=64)
+    assert result['report']['options']['max_slope']==64
+    assert result['report']['direction_cap_method']==normal_support.FORMAT
+    assert result['report']['max_component_residual']<1e-5

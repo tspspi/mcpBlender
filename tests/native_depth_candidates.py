@@ -10,7 +10,7 @@ from mcpblender import exr_scanline,image_comparison
 bridge.check_cancelled=lambda:None;bridge.report_progress=lambda value:None
 source=Path(args[1]).resolve();out=Path(args[2]);out.mkdir(parents=True,exist_ok=True)
 bpy.ops.wm.open_mainfile(filepath=str(source/'source.blend'))
-args=Source(directory=str(source),view='FRONT',settings={'geometry_mode':'MOMENT_FACETS','max_moment_candidates':64}).model_dump();plan=api.prepared(args)[0]
+args=Source(directory=str(source),view='FRONT',settings={'geometry_mode':'MOMENT_FACETS','max_moment_candidates':64,'max_slope':float(args[3]) if len(args)>3 else 16}).model_dump();plan=api.prepared(args)[0]
 created=api.create(Create(**args,collection='CanopyMoment',expected_plan=plan['plan_sha256'],accept_approximate_optics=True).model_dump());assert created['valid']
 s=bpy.context.scene;s.render.engine='CYCLES';s.cycles.samples=32;s.cycles.use_denoising=False;s.cycles.use_adaptive_sampling=False;s.cycles.device='CPU';s.render.threads_mode='FIXED';s.render.threads=2;s.render.resolution_x=64;s.render.resolution_y=64;s.render.resolution_percentage=100;s.render.film_transparent=True;s.view_layers[0].name='Qualification';s.world.use_nodes=True;s.world.node_tree.nodes['Background'].inputs['Color'].default_value=(1,1,1,1)
 for obj in list(s.objects):

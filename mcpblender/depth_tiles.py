@@ -38,7 +38,6 @@ def options(values):
     for key,low,high in [('normal_tolerance_degrees',.1,90),('max_slope',.01,64)]:
         if type(p[key]) not in (int,float) or not math.isfinite(p[key]) or not low<=p[key]<=high:raise ValueError('Invalid depth patch option: '+key)
     for key in ('normal_tolerance_degrees','max_slope'):p[key]=float(p[key])
-    if p['geometry_mode']=='MOMENT_FACETS' and p['max_slope']>16:raise ValueError('Moment facets require max_slope <=16')
     return p
 
 

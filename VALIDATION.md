@@ -5637,3 +5637,48 @@ The final five targeted quadrature checks passed (0.70s), adding exclusion of
 invalid coverage and explicit tolerance/work-limit metadata. These data-only
 checks leave the native control math, shaders and qualified valid-input sample
 results unchanged.
+
+## Projected microfacet geometry and transport control
+
+The internal `projected_microfacets.build` primitive partitions an orthographic
+camera-frame rectangle into at most four independently planar strips. Projected
+strip areas follow positive direction weights; implicit geometric normals carry
+the represented directions. All output coordinates and UVs are float32. Both
+triangles of each rounded quad contribute to the measured nine-component moment
+residual. Reports include actual depth bounds, vertex SHA-256, area error,
+source/retained/omitted mass and explicit tolerances. The caller supplies near/far
+and triangle bounds; no plane is clipped to make it fit.
+
+Significant backward or excessively grazing normal mass refuses. At most 1e-6
+unsupported mass may be omitted by explicit tolerance, and the final geometric
+moment residual must independently pass (default 1e-5). The four-direction limit,
+maximum slope 16 and maximum eight triangles bound work. Cancellation propagates;
+invalid weights, nonunit directions, collapsed float32 intervals, excessive
+depth/normal precision loss and numerical overflow/underflow refuse. Pure checks
+read geometry back independently, verify coverage and area weights, and exercise
+omission/residual, budget, clipping, precision and cancellation boundaries.
+
+The native test uses the existing 32px/256-sample CPU diffuse-facet reference.
+Box-filter moments yield two substantial +/-60-degree directions plus a backward
+roundoff atom of weight 7.302e-9. The primitive explicitly reports omitting that
+atom. Thirty-two projected rectangles generate 64 quads/128 triangles versus
+512 quads/1,024 triangles in the reference mesh. Their maximum float32 moment
+residual is 2.264e-6. Secondary-ray visibility is disabled for this unoccluded
+control; the material uses implicit geometry normals and retains default bump
+correction. Center-pixel world red radiance is exact, front-sun relative error is
+9.246e-6 (0.000925%), and alpha is exactly one. The native regression passed
+(9.24s), including the reference and flat-mixture controls.
+
+The flat shader-normal mixture still loses 43.83% of world brightness. Turning
+off `Material.cycles.use_bump_map_correction` reduces that loss to 25.78% and
+does not solve transport. Blender's version-pinned
+[Cycles BSDF source](https://raw.githubusercontent.com/blender/blender/v5.0.1/intern/cycles/kernel/closure/bsdf.h)
+applies geometric hemisphere checks as well as optional bump-shadowing smoothing;
+the experiment supports investigating actual geometry rather than assuming a
+shader-normal mixture is sufficient. No production setting is changed.
+
+Evidence is retained under `tmp/qualification/projected-microfacets-20261105/`.
+This qualifies only the internal primitive and the controlled unoccluded diffuse
+case. No public tool consumes it yet. Canopy integration, input/geometric-normal
+differences, color/depth correlation, filtered pixel sampling, PBR, multiple views,
+secondary-ray transport and the existing strict image gates remain open.

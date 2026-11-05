@@ -874,6 +874,16 @@ rendered transport: the retained faceted-surface control matches moments and
 front-sun radiance, but a flat shader-normal mixture loses over 40% of uniform-
 world brightness. Current generated materials therefore remain unchanged.
 
+An internal projected-microfacet primitive now constructs actual float32 planes
+from up to four positive directions in an orthographic camera frame. It checks
+the resulting triangle normals and projected-area moments, reports tiny omitted
+unsupported mass, and refuses significant backward/grazing mass, clipping,
+precision loss or exhausted triangle budgets. It is included in the bridge
+archive for subsequent integration; there is no new public tool or depth-asset
+geometry option yet. A controlled diffuse fixture recovers world and sun lighting
+using actual geometric normals. This does not qualify canopy/PBR reconstruction,
+filtered pixel equivalence, secondary-ray occlusion or angular behavior.
+
 ### Experimental directional depth assets
 
 `inspect_botanical_depth_source` plans a reduced directional mesh from a completed

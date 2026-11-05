@@ -33,7 +33,8 @@ def test_full_density_tree_capture_and_live_editing(assets_live):
             await client.call_tool('open_blend',{'path':'native-tree.blend'})
             before=await operation('inspect_botanical_tree',collection='Canopy3')
             moments=os.environ.get('MCPBLENDER_TREE_CAPTURE_NORMAL_MOMENTS')=='1'
-            args={'collection':'Canopy3','views':list(DIRECTIONS),'resolution':512,'samples':8,'material_fields':True,'normal_moments':moments}
+            geometric=os.environ.get('MCPBLENDER_TREE_CAPTURE_GEOMETRIC_NORMALS')=='1'
+            args={'collection':'Canopy3','views':list(DIRECTIONS),'resolution':512,'samples':8,'material_fields':True,'normal_moments':moments,'geometric_normals':geometric}
             plan=await operation('inspect_botanical_view_capture',**args)
             assert plan['leaf_instances']==88704 and plan['expanded_render_triangles']>17000000
             queued=(await client.call_tool('capture_botanical_views',{'params':args|{'directory':'dense-bundle','expected_capture':plan['capture_sha256']}})).data
@@ -56,14 +57,14 @@ def test_full_density_tree_capture_and_live_editing(assets_live):
             if evidence:(evidence/'dense-material-inputs.json').write_text(json.dumps(material_data,indent=2))
             for view in material_data['views']:
                 if moments:assert view['material_inputs']['normal_moments']['input_moments_valid'],view['material_inputs']['normal_moments']
+                if geometric:assert view['material_inputs']['geometric_normals']['different_direction_pixels']>0
                 fields=view['material_inputs'];assert fields['covered_with_surface_weight']>0 and fields['covered_without_surface_weight']==0
                 assert fields['normalized_inputs']['thin_weight']['max'][0]>.219
                 assert fields['normalized_inputs']['thin_mode']['max'][0]>.999
                 assert fields['normalized_inputs']['alpha']['min'][0]>.999
             if baseline:=os.environ.get('MCPBLENDER_TREE_CAPTURE_BASELINE'):
-                from mcpblender.image_comparison import decode_png
-                for row in verified['outputs']:
-                    if row['format']=='PNG':assert decode_png((Path(baseline)/row['file']).read_bytes(),color_space='LINEAR',premultiply=False)==decode_png((library/'dense-bundle'/row['file']).read_bytes(),color_space='LINEAR',premultiply=False)
+                from capture_checks import assert_native_png_views
+                assert_native_png_views(baseline,library/'dense-bundle',verified)
             if evidence:(evidence/'dense-material-inputs.json').write_text(json.dumps(material_data,indent=2))
             # Independently reopen the retained snapshot and check native shared
             # data, rather than trusting the planner's instance-count report.

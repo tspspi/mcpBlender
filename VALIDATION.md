@@ -6439,3 +6439,71 @@ archives, inspect packed ownership and remove eleven private IDs per asset.
 Ignored evidence: `tmp/qualification/geometric-planes-20261105/` retains check
 logs and the MCP capture, packed scene and lifecycle proof. No production service
 restart or package/environment change was needed.
+
+### Full capture-pixel depth control
+
+A private control replaced capped adaptive primary geometry with one patch per
+covered capture pixel, split across two spatial bands so each mesh stayed below
+the existing triangle cap. NEAREST used 217,324 triangles in total; OMIT used
+154,318 and excluded 31,503 covered pixels lacking measured centre depth.
+Actual measured float32 depth residual maxima fell to about 12.14 and 5.34
+micrometres per band. Six original maps, camera, source placement, light cases,
+render settings and original frozen controls were retained. Shared private
+material/root ownership was intentionally invalid during the control and
+restored/verified after deleting only the new meshes/objects/collections.
+
+Near-zero measured centre-depth error still did not meet the original optical
+policy. World/front/rear primary relative brightness biases were respectively
++42.159%/+36.095%/+151.915% (NEAREST), and +48.618%/+36.535%/+164.347% (OMIT).
+A private camera-only primary plus the full original secondary-ray source
+produced -23.490%/-16.929%/-3.605% and -26.392%/-19.627%/-10.315% respectively.
+Only the NEAREST hybrid rear-light case passed the complete multiscale policy;
+all frozen source controls passed. Original alpha/RGB/10% brightness criteria
+at scales 1/2/4 were unchanged. These results do not justify raising geometry
+caps or shipping spatial partitioning as a dense-lighting fix. They motivate
+separating true face normals from smooth shading normals and examining filtered
+sample correspondence. Ignored evidence: `tmp/qualification/pixel-depth-20261105/`
+(control script/log, geometry measurements, fifteen EXRs and comparison proof).
+
+### Dense geometric-normal plane control
+
+A fresh two-view FRONT/BACK capture of the same 88,704-leaf source retained both
+normal extensions at 512px/8 samples. Structured MCP capture, immutable archive
+validation, editing during the independent capture and source guards succeeded.
+Native shared-instance reopening also passed. Exact camera geometry and decoded
+PNG equality were checked by **view identity**, including changed camera names
+and output indices. The initial private shortened-view fixture incorrectly
+paired camera-index filenames from the original ten-view archive and failed;
+the corrected independent post-check and reusable `tests/capture_checks.py`
+passed on the same retained images without recapture or threshold changes.
+The opt-in dense capture helper now supports geometric-normal capture and pairs
+baseline images using view metadata. This was a fixture error, not a beauty
+change, and the initial failed test log is retained.
+
+Rebuilding the primary with geometric-normal means, depth-aware refinement,
+the same 131,072-triangle cap and 5cm target left all six original shading maps
+exactly unchanged. Work was 5,183,466/16,000,000; measured depth MAE was 0.107786m,
+RMSE 0.631011m and maximum 10.292165m, with 3,317 emitted cells above tolerance.
+Measured/unknown pixels remained 77,159/31,503 with zero projection misses.
+The 5cm target remains unmet. The source-specific geometric angular metric is
+14.711 degrees; it measures a different normal field from shading-pass fitting.
+
+Nine native Cycles CPU renders (128px/256 samples) used the frozen original
+world/front-sun/rear-sun settings. Original controls matched exactly. Primary
+brightness biases were +40.625%/+35.354%/+150.657%; private camera-only primary
+plus original secondary-ray source yielded -25.509%/-19.494%/-2.985%. The original
+multiscale alpha/RGB/10% relative-brightness policy rejects every primary case
+and the world/front hybrid cases. Only rear hybrid passes. Geometric normals
+provide an explicit independent estimator, but do not solve dense lighting.
+Save/reopen, packed guards, final source/ray-flag restoration, owned inspection
+and removal of both eleven-ID assets passed; the native run exited successfully.
+
+Ignored evidence: `tmp/qualification/geometric-planes-20261105/` contains the
+private capture/control/post-check scripts, initial failure log, immutable dense
+archive and input statistics, view-matching/native-instancing proofs, packed
+scene, nine EXRs and multiscale comparison proof. The temporary MCP fixture was
+automatically removed; no native outputs were left in `/tmp`. Earlier native
+calibration fixtures were byte-verified and cleaned as recorded above. The full
+far/angular/shadow/wind/population/mature-oak and broader workflow ledger remains
+open. Neither cap increases, threshold changes nor material-energy adjustments
+were used to claim acceptance.

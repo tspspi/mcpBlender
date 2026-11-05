@@ -391,7 +391,7 @@ class BridgeServer:
                 reads.update({"export_foliage_card_family", "validate_foliage_card_family_bundle", "inspect_foliage_card_family_source", "inspect_foliage_card_family", "inspect_foliage_card_family_selection", "inspect_projected_normal_transfer", "inspect_texture_bake", "bake_textures", "validate_texture_bake", "inspect_texture_job", "recover_texture_job", "cleanup_texture_job"})
                 reads.update({"inspect_botanical_foliage_clusters","inspect_botanical_foliage_cluster","inspect_botanical_collision_source","inspect_botanical_collisions"})
                 reads.update({"inspect_botanical_depth_source","inspect_botanical_depth_asset"})
-                reads.add("compare_png_images")
+                reads.update({"compare_png_images","compare_exr_images"})
                 mutates = self.active["command"] not in reads
                 if self.active["command"] == "run_action":
                     mutates = any(step["command"] not in reads for step in self.active["params"]["steps"])

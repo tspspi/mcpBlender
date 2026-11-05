@@ -159,7 +159,7 @@ class State:
             return [path for step in params["steps"] for path in State.input_paths(step["command"], step["params"])]
         paths = []
         if command in {"inspect_botanical_depth_layers","create_botanical_depth_layers","inspect_botanical_depth_source","create_botanical_depth_asset","inspect_botanical_capture_data","inspect_projected_normal_transfer","inspect_foliage_card_family_source","create_foliage_card_family"}:paths.append(params["directory"])
-        if command=="compare_png_images":paths.extend(params[k] for k in ("reference","candidate"))
+        if command in {"compare_png_images","compare_exr_images"}:paths.extend(params[k] for k in ("reference","candidate"))
         if command in {'inspect_texture_atlas','build_texture_atlas','inspect_vegetation_bake_adoption','adopt_vegetation_bakes'}:
             paths.extend(e['directory'] for e in params['entries'])
         if command in {"open_blend", "import_asset", "upload_asset", "inspect_glb_deformation"}:
@@ -181,7 +181,7 @@ class State:
         if command not in COMMANDS:
             raise ValueError("Unknown operation command; use get_capabilities for supported operations")
         # Null image-comparison criteria disable gates; they must survive transport.
-        params = COMMANDS[command][0].model_validate(params).model_dump(exclude_none=command!="compare_png_images")
+        params = COMMANDS[command][0].model_validate(params).model_dump(exclude_none=command not in {"compare_png_images","compare_exr_images"})
         if command == "run_action":
             return self.compile_action(params["action"], params["inputs"], request_id or uuid.uuid4().hex)
         stable = hashlib.sha256((self.owner() + command + request_id).encode()).hexdigest()[:32] if request_id else uuid.uuid4().hex
@@ -204,10 +204,11 @@ class State:
                 temporary.append({"kind": "sequence", "path": params["directory"], "frame_start": params["frame_start"],
                                   "frame_end": params["frame_end"], "frame_step": params["frame_step"],
                                   "video": command == "render_animation_preview" and params["make_video"]})
-        if command=="compare_png_images":
+        if command in {"compare_png_images","compare_exr_images"}:
+            extension=".exr" if command=="compare_exr_images" else ".png"
             for key in ("reference","candidate"):
                 params[key]=str(self.library_path(params[key]))
-                if Path(params[key]).suffix.lower()!=".png":raise ValueError("Comparison inputs must end in .png")
+                if Path(params[key]).suffix.lower()!=extension:raise ValueError("Comparison inputs must end in "+extension)
         if command in ("open_blend", "import_asset", "save_blend", "export_glb", "export_objects_glb", "inspect_glb_deformation"):
             params["path"] = str(self.library_path(params["path"], write=command in ("save_blend", "export_glb", "export_objects_glb")))
             extension = {"save_blend": ".blend", "open_blend": ".blend", "export_glb": ".glb", "export_objects_glb": ".glb", "inspect_glb_deformation": ".glb"}.get(command)
@@ -461,11 +462,11 @@ def build_server(config: Config):
 
     def domain_tool(command):
         model, _, description = COMMANDS[command]
-        default_wait = command not in ("inspect_botanical_depth_layers", "create_botanical_depth_layers", "inspect_botanical_depth_source", "create_botanical_depth_asset", "inspect_botanical_depth_asset", "remove_botanical_depth_asset", "inspect_botanical_capture_data", "inspect_botanical_view_capture", "capture_botanical_views", "export_foliage_card_family", "validate_foliage_card_family_bundle", "inspect_foliage_card_family_source", "create_foliage_card_family", "inspect_projected_normal_transfer", "inspect_foliage_card_views", "compare_png_images", "create_botanical_foliage_cluster", "inspect_botanical_foliage_clusters", "plan_botanical_asset_preset", "create_botanical_asset_preset", "inspect_texture_quality", "inspect_vegetation_bake_adoption", "adopt_vegetation_bakes", "prepare_vegetation_bake", "export_botanical_lods", "validate_botanical_lod_bundle", "inspect_botanical_lod_source", "create_botanical_lods", "create_botanical_tree", "regenerate_botanical_tree", "plan_botanical_tree", "inspect_botanical_coverage", "plan_botanical_foliage", "configure_botanical_foliage", "remove_botanical_foliage", "create_botanical_wind_preview", "render_animation", "render_video", "render_animation_preview", "render_camera_batch", "download_asset", "upload_asset", "request_asset_api", "sample_rigid_bodies", "bake_rigid_bodies", "sample_simulation", "bake_simulation", "bake_fluid", "bake_textures", "build_texture_atlas", "sample_constraint_animation", "bake_constraint_animation", "configure_nla_strip", "remove_nla_strip", "move_nla_track", "configure_nla_playback", "retarget_animation", "set_skin_weights", "repair_skin_weights", "smooth_skin_weights", "mirror_skin_weights", "edit_armature_rest", "generate_lod_chain", "export_lod_chain", "sample_lod_chain", "inspect_glb_deformation", "create_asset_assembly", "realize_asset_instances", "generate_asset_proxies", "export_asset_package", "rebuild_lod_chain", "adopt_lod_chain", "readopt_lod_chain", "recover_export_job", "cleanup_export_job", "list_export_jobs")
+        default_wait = command not in ("inspect_botanical_depth_layers", "create_botanical_depth_layers", "inspect_botanical_depth_source", "create_botanical_depth_asset", "inspect_botanical_depth_asset", "remove_botanical_depth_asset", "inspect_botanical_capture_data", "inspect_botanical_view_capture", "capture_botanical_views", "export_foliage_card_family", "validate_foliage_card_family_bundle", "inspect_foliage_card_family_source", "create_foliage_card_family", "inspect_projected_normal_transfer", "inspect_foliage_card_views", "compare_png_images", "compare_exr_images", "create_botanical_foliage_cluster", "inspect_botanical_foliage_clusters", "plan_botanical_asset_preset", "create_botanical_asset_preset", "inspect_texture_quality", "inspect_vegetation_bake_adoption", "adopt_vegetation_bakes", "prepare_vegetation_bake", "export_botanical_lods", "validate_botanical_lod_bundle", "inspect_botanical_lod_source", "create_botanical_lods", "create_botanical_tree", "regenerate_botanical_tree", "plan_botanical_tree", "inspect_botanical_coverage", "plan_botanical_foliage", "configure_botanical_foliage", "remove_botanical_foliage", "create_botanical_wind_preview", "render_animation", "render_video", "render_animation_preview", "render_camera_batch", "download_asset", "upload_asset", "request_asset_api", "sample_rigid_bodies", "bake_rigid_bodies", "sample_simulation", "bake_simulation", "bake_fluid", "bake_textures", "build_texture_atlas", "sample_constraint_animation", "bake_constraint_animation", "configure_nla_strip", "remove_nla_strip", "move_nla_track", "configure_nla_playback", "retarget_animation", "set_skin_weights", "repair_skin_weights", "smooth_skin_weights", "mirror_skin_weights", "edit_armature_rest", "generate_lod_chain", "export_lod_chain", "sample_lod_chain", "inspect_glb_deformation", "create_asset_assembly", "realize_asset_instances", "generate_asset_proxies", "export_asset_package", "rebuild_lod_chain", "adopt_lod_chain", "readopt_lod_chain", "recover_export_job", "cleanup_export_job", "list_export_jobs")
 
         async def operation(params=None, wait: bool = default_wait, request_id: str | None = None) -> dict:
             # Preserve explicit disabled comparison criteria before State.prepare.
-            values = params.model_dump(exclude_none=command!="compare_png_images") if params is not None else {}
+            values = params.model_dump(exclude_none=command not in {"compare_png_images","compare_exr_images"}) if params is not None else {}
             queued = await state.submit(command, values, request_id)
             if not wait:
                 return queued
@@ -731,7 +732,7 @@ def build_http_app(server, state):
 def addon_zip(destination: Path):
     source = Path(__file__).parent
     with zipfile.ZipFile(destination, "x", zipfile.ZIP_DEFLATED) as archive:
-        for path in [*(source / name for name in ("__init__.py","graph_digest.py","wire.py","broker.py","retention.py","network.py","storage.py","fluid_files.py","texture_files.py","skin_math.py","uv_math.py","uv_quality.py","uv_chart_layout.py","animation_graph.py","driver_graph.py","rest_math.py","lod_files.py","skin_glb.py","package_files.py","export_jobs.py","lod_recipe.py","render_jobs.py","botany.py","foliage.py","foliage_coverage.py","gltf_units.py","card_fit.py","atlas_layout.py","wind.py","attribute_values.py","attribute_glb.py","vegetation_interchange.py","vegetation_lod.py","vegetation_lod_files.py","vegetation_materials.py","vegetation_adoption.py","vegetation_uv.py","botanical_presets.py","environment_files.py","collision_hulls.py","vegetation_sampling.py","json_text.py","foliage_clusters.py","image_comparison.py","atlas_pixels.py","normal_transfer.py","card_family.py","card_family_files.py","card_views.py","tree_capture.py","exr_scanline.py","capture_data.py","capture_material_fields.py","normal_moments.py","normal_quadrature.py","normal_support.py","projected_microfacets.py","moment_depth.py","depth_tiles.py","adaptive_depth.py","depth_shadow.py")), *sorted((source / "blender").glob("*.py"))]:
+        for path in [*(source / name for name in ("__init__.py","graph_digest.py","wire.py","broker.py","retention.py","network.py","storage.py","fluid_files.py","texture_files.py","skin_math.py","uv_math.py","uv_quality.py","uv_chart_layout.py","animation_graph.py","driver_graph.py","rest_math.py","lod_files.py","skin_glb.py","package_files.py","export_jobs.py","lod_recipe.py","render_jobs.py","botany.py","foliage.py","foliage_coverage.py","gltf_units.py","card_fit.py","atlas_layout.py","wind.py","attribute_values.py","attribute_glb.py","vegetation_interchange.py","vegetation_lod.py","vegetation_lod_files.py","vegetation_materials.py","vegetation_adoption.py","vegetation_uv.py","botanical_presets.py","environment_files.py","collision_hulls.py","vegetation_sampling.py","json_text.py","foliage_clusters.py","image_comparison.py","exr_comparison.py","atlas_pixels.py","normal_transfer.py","card_family.py","card_family_files.py","card_views.py","tree_capture.py","exr_scanline.py","capture_data.py","capture_material_fields.py","normal_moments.py","normal_quadrature.py","normal_support.py","projected_microfacets.py","moment_depth.py","depth_tiles.py","adaptive_depth.py","depth_shadow.py")), *sorted((source / "blender").glob("*.py"))]:
             archive.write(path, str(Path("mcpblender") / path.relative_to(source)))
 
 

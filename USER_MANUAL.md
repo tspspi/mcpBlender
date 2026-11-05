@@ -704,6 +704,53 @@ matched silhouette gate. The corrected projected-alpha policy passes the same
 fixed-view gates for that cluster, as recorded in VALIDATION.md; this does not
 qualify other views, shadows, wind or receiving-renderer filtering.
 
+### Comparing scene-linear EXR renders
+
+`compare_exr_images` applies the same multi-scale alpha/RGB checks directly to
+scene-linear float32 RGBA data, without Python execution or PNG conversion:
+
+```json
+{
+  "reference": "reference.exr",
+  "candidate": "candidate.exr",
+  "reference_pass": "ViewLayer.Combined",
+  "candidate_pass": "ViewLayer.Combined",
+  "quality": {
+    "max_overlap_rgb_rmse": 0.05,
+    "max_abs_overlap_luminance_relative_bias": 0.1
+  }
+}
+```
+
+Pass prefixes are required and explicit; use the actual view-layer/pass name,
+for example `TreeCapture.Combined`, or an empty string for bare `R/G/B/A`
+channels. The tool never guesses a pass or substitutes an AOV. Both alpha modes
+are `PREMULTIPLIED` by default, suitable for native Combined EXR output. Set
+`reference_alpha_mode` or `candidate_alpha_mode` to `STRAIGHT` only when that
+file contains straight RGB; it is then premultiplied once before filtering.
+Incorrect alpha interpretation changes foreground error even when alpha matches.
+
+Only finite float32 RGBA NONE/ZIPS/ZIP scanline EXRs are supported, including
+bounded multipart files. HALF, deep, tiled, subsampled and other codec profiles
+refuse. Inputs need identical dimensions and zero-origin full-frame data windows.
+`max_pixels` limits each input before pixel decoding: default 1,048,576, ceiling
+4,194,304, with the decoder's existing 2048-axis, 512 MiB encoded-file, chunk and
+decoded-work bounds. Library read containment, file identity/hash checks,
+cooperative cancellation and operation free-space reporting apply. No image
+cache, native datablock, recovery checkpoint or scene edit is created.
+
+The declared `color_space` is `LINEAR_REC709`. Data is not display-transformed,
+clamped, or converted through OCIO; file-header primaries are not inferred.
+Ensure both renders use this same working space and matched camera/frame/light
+settings. Finite HDR and negative RGB remain available to the error metrics;
+alpha must lie in `[0,1]`. EXR RGB-error limits can exceed one, independently of
+the alpha/IoU limits. Relative brightness is unavailable when shared reference
+luminance is zero or negative; enabling that gate then rejects the comparison.
+Explicit null gates remain disabled. Results include input SHA-256 values,
+selected passes, alpha modes and all per-scale measurements. Quality rejection
+returns `passed: false` as a successful measurement, not an operation failure.
+Matching images do not establish optical or receiving-renderer equivalence.
+
 ## Native whole-tree reference captures
 
 Use `inspect_botanical_view_capture` before `capture_botanical_views`, carrying

@@ -6163,3 +6163,80 @@ public MCP proof/scene/archive and check logs. Native helpers and focused tests
 are committed; captures and local planning/evidence remain ignored. Wider mature
 canopy, output-density, all-angle, shadow, wind and population qualification, and
 the original broader workflow ledger, remain open.
+
+## Structured scene-linear EXR comparison and dense shadow rejection
+
+`compare_exr_images` now exposes raw scene-linear RGBA measurements through the
+read-only structured MCP surface. It shares the PNG comparator's box scales and
+alpha/RGB gates, preserving its existing defaults and PNG results. Pass prefixes
+and input alpha modes are explicit. Premultiplied data is not multiplied again;
+straight RGB is premultiplied once. Finite HDR/negative RGB is retained, normalized
+alpha is required, and nonpositive shared reference luminance makes relative
+brightness unavailable. EXR RGB-error thresholds may exceed one. No display/OCIO
+or primaries conversion is performed; LINEAR_REC709 is an explicit interpretation,
+not inferred provenance. The tool does not prove matching scene/camera settings.
+
+A per-input pixel budget is enforced by the existing float32 scanline decoder
+before output buffers/decompression, retaining all previous file/chunk/work/hash/
+identity checks. Nonzero-origin/cropped windows, mismatched dimensions, missing
+channels, invalid samples and unsupported EXR formats refuse. Native dispatch is
+classified read-only: no image caches, native datablocks or recovery checkpoint.
+Library containment and explicit disabled/null gate transport apply to both PNG
+and EXR commands. Progress and normal operation storage reporting remain active.
+
+The focused numeric/contract/decoder/addon regression passed 46 cases in 15.82s
+(one existing anyio warning). Fixtures were encoded independently with the
+already installed OpenEXR C++ library; no package/environment changes occurred.
+They exercise HDR values, signed RGB, partial coverage, premultiplication exactly
+once, alpha-mode/pass mistakes, bare RGBA, HDR bounds above one, null criteria,
+nonpositive reference luminance, invalid alpha/nonfinite data, dimensions/windows,
+predecode pixel budget, cancellation and unchanged inputs. Existing decoder
+corruption/profile/nonregular-file cases and PNG measurements remain green.
+
+Three native Python-disabled MCP checks passed in 57.39s: synthetic HDR modes/
+quality rejection/relaxed gates and contained reads; actual dense canopy image
+measurements; and the existing PNG comparison workflow. No native scene changes
+or recovery checkpoints were observed. The new tool reproduces every scale-one
+metric from the independently retained native proof, including failures, and
+reports all three requested scales rather than reducing the gate to one scale.
+
+The dense source is the retained 88,704-leaf Canopy3 reference, with 17,457,216
+expanded render triangles. Its immutable 512px/8-sample input-field capture was
+validated; the reconstruction declares a matched 128px output (4x capture density).
+ADAPTIVE_NORMAL/max_slope=64 planning at 32,768 triangles gives equivalent normal
+errors 27.975/27.985 degrees (FRONT/BACK), with 9,874/9,810 budget-blocked candidates.
+Using the existing explicit 131,072-triangle ceiling gives 12.042/11.965 degrees,
+but still leaves 4,829/4,692 locally unmet tolerance cells and 4,775/4,643 blocked
+candidates. The higher budget does not claim every local normal meets tolerance.
+Both layers passed native packed-data creation, save/reopen and final inspection.
+
+Nine actual Cycles CPU2, 256-sample, 128px renders compare source, primary, and
+primary plus guarded opposed BACK SHADOW_ONLY mask (minimum span 0m). All three
+lighting conditions reject the unchanged absolute relative-brightness gate 0.10:
+
+| Lighting | Primary bias | Masked rear bias | Masked shared RGB RMSE |
+| --- | ---: | ---: | ---: |
+| Uniform world | +41.449% | +41.449% | 0.02165 |
+| Front sun | +35.589% | +28.491% | 0.01384 |
+| Rear sun | +150.354% | +16.889% | 0.00282 |
+
+At base scale, mask IoU is 0.9738, soft-alpha IoU 0.9705 and alpha MAE 0.00881
+for all variants. Those alpha gates and overlap RGB <=0.05 pass while the relative
+brightness criterion fails. The public EXR tool confirms the rejection at scales
+1/2/4; source-versus-itself passes all gates. These are accepted quality-failure
+measurements, not an accepted dense/mature far representation. The smaller
+canopy's preceding three-light pass remains limited to that fixture.
+
+Of 108,584 covered rear pixels, 77,102 have valid pairs, 31,482 are unknown and
+60,893 exceed zero span. Rear alpha mass changes from 77,157.75 to 54,065.375.
+The shadow-only mask improves the two sun controls but does not repair world
+illumination or meet the full target. No albedo gain, weakened threshold, dropped
+light case or changed reference was used. Additional transport/normal/occlusion
+work is required before angular, wind, population and mature-reference acceptance.
+
+Evidence: ignored `tmp/qualification/dense-shadow-20261105/` contains validated
+preflight/budget reports, original native probe, packed scene, nine EXRs, measured
+proof, public MCP per-scale comparisons and check logs. Independent encoder and
+comparison tests are committed. The original broader workflow ledger is active;
+production service, original capture archives, packages and environment remain
+unchanged.

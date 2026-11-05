@@ -99,7 +99,8 @@ def unpack_zip(packed,expected,cancelled):
     return output
 
 
-def decode(path,channels,*,expected_sha256=None,cancelled=lambda:None,progress=lambda value:None):
+def decode(path,channels,*,expected_sha256=None,max_pixels=4*1024**2,cancelled=lambda:None,progress=lambda value:None):
+    if type(max_pixels) is not int or not 1<=max_pixels<=4*1024**2:raise ValueError('Invalid EXR pixel budget')
     requested=set(channels)
     if not requested or len(requested)!=len(channels) or len(requested)>32:raise ValueError('Request 1..32 distinct EXR channels')
     descriptor=os.open(Path(path),os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK)
@@ -112,6 +113,7 @@ def decode(path,channels,*,expected_sha256=None,cancelled=lambda:None,progress=l
         multipart,parts=headers(stream);present={n for p in parts for n in p['channels']}
         if not requested<=present:raise ValueError('Requested EXR channels missing: '+', '.join(sorted(requested-present)))
         width=parts[0]['width'];height=parts[0]['height'];pixels=width*height
+        if pixels>max_pixels:raise ValueError('EXR pixel budget exceeded')
         if pixels*len(requested)*4>MAX_OUTPUT_BYTES:raise ValueError('EXR output memory budget exceeded')
         chosen=[p for p in parts if requested.intersection(p['channels'])]
         if sum(pixels*len(p['channels'])*4 for p in chosen)>MAX_DECODED_BYTES:raise ValueError('EXR decompression work budget exceeded')

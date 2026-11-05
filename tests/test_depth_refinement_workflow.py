@@ -23,7 +23,13 @@ def test_depth_normal_refinement_guards_and_portable_maps(assets_live):
             cap=await wait(client,'inspect_botanical_view_capture',**capture)
             await wait(client,'capture_botanical_views',**capture,directory='depth-refine-input',expected_capture=cap['capture_sha256'])
             settings={'geometry_mode':'ADAPTIVE_DEPTH_NORMAL','depth_tolerance_m':.05,'output_resolution':8,'max_slope':64}
-            args={'directory':'depth-refine-input','view':'FRONT','settings':settings}
+            geo_settings=settings|{'plane_normal_source':'GEOMETRIC_AOV'}
+            with pytest.raises(ToolError,match='recapture'):
+                await wait(client,'inspect_botanical_depth_source',directory='depth-refine-input',view='FRONT',settings=geo_settings)
+            capture['geometric_normals']=True
+            cap=await wait(client,'inspect_botanical_view_capture',**capture)
+            await wait(client,'capture_botanical_views',**capture,directory='depth-geometric-input',expected_capture=cap['capture_sha256'])
+            args={'directory':'depth-geometric-input','view':'FRONT','settings':settings}
             plan=await wait(client,'inspect_botanical_depth_source',**args)
             report=plan['geometry'];depth=report['depth_residuals']
             assert report['format']=='mcpblender-adaptive-depth-normal-v1' and depth['measured_depth_pixels']>0
@@ -37,19 +43,33 @@ def test_depth_normal_refinement_guards_and_portable_maps(assets_live):
                 await wait(client,'inspect_botanical_depth_source',**(args|{'settings':settings|{'max_refinement_work':1}}))
             made=await wait(client,'create_botanical_depth_asset',**args,collection='DepthProxy',expected_plan=plan['plan_sha256'],accept_approximate_optics=True)
             assert made['valid'] and made['packed_images']==6 and made['plan']['geometry']['depth_residuals']==depth
+            geo_args=args|{'settings':geo_settings}
+            geo=await wait(client,'inspect_botanical_depth_source',**geo_args)
+            assert geo['maps']==plan['maps'] and geo['geometry']['plane_normal_source']['source']=='GEOMETRIC_AOV'
+            assert geo['plan_sha256']!=plan['plan_sha256']
+            explicit=await wait(client,'inspect_botanical_depth_source',**(args|{'settings':settings|{'plane_normal_source':'SHADING_PASS'}}))
+            assert explicit==plan
+            with pytest.raises(ToolError,match='stale'):
+                await wait(client,'create_botanical_depth_asset',**geo_args,collection='GeometricProxy',expected_plan=plan['plan_sha256'],accept_approximate_optics=True)
+            geo_made=await wait(client,'create_botanical_depth_asset',**geo_args,collection='GeometricProxy',expected_plan=geo['plan_sha256'],accept_approximate_optics=True)
+            assert geo_made['valid'] and geo_made['packed_images']==6
             assert (await wait(client,'inspect_botanical_tree',collection='DepthTree'))['tree_sha256']==before['tree_sha256']
             await client.call_tool('save_blend',{'path':'depth-refinement.blend'})
             await client.call_tool('open_blend',{'path':'depth-refinement.blend'})
             if destination:=os.environ.get('MCPBLENDER_DEPTH_REFINEMENT_EVIDENCE'):
                 out=Path(destination);out.mkdir(parents=True,exist_ok=True)
-                shutil.copytree(library/'depth-refine-input',out/'capture',dirs_exist_ok=True);shutil.copy2(library/'depth-refinement.blend',out/'depth-refinement.blend')
+                shutil.copytree(library/'depth-geometric-input',out/'capture',dirs_exist_ok=True);shutil.copy2(library/'depth-refinement.blend',out/'depth-refinement.blend')
             shutil.rmtree(library/'depth-refine-input')
+            shutil.rmtree(library/'depth-geometric-input')
             reopened=await wait(client,'inspect_botanical_depth_asset',collection='DepthProxy')
             assert reopened['valid'] and reopened['asset_sha256']==made['asset_sha256'] and not reopened['source_files_required']
             removed=await wait(client,'remove_botanical_depth_asset',collection='DepthProxy',expected_asset=reopened['asset_sha256']);assert removed['private_datablocks']==11
+            geo_reopened=await wait(client,'inspect_botanical_depth_asset',collection='GeometricProxy')
+            assert geo_reopened['valid'] and geo_reopened['asset_sha256']==geo_made['asset_sha256'] and not geo_reopened['source_files_required']
+            geo_removed=await wait(client,'remove_botanical_depth_asset',collection='GeometricProxy',expected_asset=geo_reopened['asset_sha256']);assert geo_removed['private_datablocks']==11
             after=await wait(client,'inspect_botanical_tree',collection='DepthTree');assert after['valid']
             for key in ('model_sha256','members','foliage','root_world_matrix','geometry','metrics'):assert after[key]==before[key]
-            return {'plan':plan,'legacy':legacy,'created':made,'reopened':reopened,'removed':removed}
+            return {'plan':plan,'legacy':legacy,'created':made,'reopened':reopened,'removed':removed,'geometric':{'plan':geo,'created':geo_made,'reopened':geo_reopened,'removed':geo_removed}}
     proof=asyncio.run(run())
     if destination:=os.environ.get('MCPBLENDER_DEPTH_REFINEMENT_EVIDENCE'):
         (Path(destination)/'structured-proof.json').write_text(json.dumps(proof,indent=2))

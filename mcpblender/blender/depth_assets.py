@@ -46,6 +46,10 @@ def prepared(p,*,progress_context=None):
     if mask_options:depth_shadow.frame(view,rows[1][0],meta['scene_unit_scale'],size)
     if texture_bytes>settings['max_texture_bytes']:raise ValueError('Depth asset decoded texture budget exceeded')
     names=['TreeCapture.Combined.A','TreeCapture.Depth.Z',*('TreeCapture.Normal.'+a for a in 'XYZ')]
+    if settings.get('plane_normal_source')=='GEOMETRIC_AOV':
+        from mcpblender import geometric_normals
+        if not meta['material_fields'].get('geometric_normals'):raise ValueError('Geometric plane normals require recapture with geometric_normals=true')
+        names+=geometric_normals.channels()
     moment_mode=settings['geometry_mode']=='MOMENT_FACETS'
     if moment_mode:
         if not meta['material_fields'].get('normal_moments'):raise ValueError('Moment facets require captured input moments; recapture with normal_moments=true')

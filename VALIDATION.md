@@ -6410,3 +6410,32 @@ face-normal field. Ignored evidence: `tmp/qualification/geometric-normals-202611
 (check logs, 16 native EXRs/proof, MCP material bundle/proof). Byte-verified
 retention allowed removal of 1,076,324 bytes of our terminal native fixtures
 from `/tmp`; shared fixtures and production service were untouched.
+
+### Explicit geometric-normal plane fitting
+
+`settings.plane_normal_source=GEOMETRIC_AOV` selects captured face-normal means
+for `ADAPTIVE_NORMAL` and `ADAPTIVE_DEPTH_NORMAL` plane slopes and angular error.
+The report pins source/contract provenance, and plan guards include this choice.
+The private geometry-channel view leaves the caller's raw native Normal arrays
+and all six shader maps unchanged. `SHADING_PASS` is the default and is omitted
+from normalized options, preserving existing plans, buffers and saved assets.
+Missing captures require recapture; incompatible geometry modes, altered
+contracts, missing/mismatched channels and covered invalid/zero vectors refuse.
+
+Analytic controls distinguish a depth plane's true normal from a flat shading
+normal: explicit geometric fitting reduces measured float32 depth residuals
+below 1e-5m at the same two-triangle cap, while the shading-normal fit exceeds
+0.1m. Both adaptive modes, unchanged packed shading map inputs, exact explicit
+versus omitted defaults, cancellation, hard budgets and provenance are checked.
+24 focused pure/contracts checks passed (7.11s). This is a selectable estimator;
+filtered face-normal means need not identify the surface producing a depth hit.
+No dense lighting gate is waived or claimed by this analytic result.
+
+The structured MCP lifecycle also passed (1 check, 64.12s), with arbitrary
+execution disabled: reject a capture lacking geometric normals, recapture,
+compare both sources and identical six-map hashes, reject selector-stale plans,
+create both assets, preserve original source guards, save/reopen, remove source
+archives, inspect packed ownership and remove eleven private IDs per asset.
+Ignored evidence: `tmp/qualification/geometric-planes-20261105/` retains check
+logs and the MCP capture, packed scene and lifecycle proof. No production service
+restart or package/environment change was needed.

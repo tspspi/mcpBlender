@@ -881,6 +881,19 @@ An angle between filtered means does not establish correspondence between
 individual depth, material and normal samples, or recover a complete surface.
 Capture and inspection do not select a new depth-plane fit or certify lighting.
 
+For `inspect_botanical_depth_source` / `create_botanical_depth_asset`, set
+`settings.plane_normal_source: GEOMETRIC_AOV` to fit adaptive planes against
+these captured geometric-normal means. It requires a capture with
+`geometric_normals: true` and either `ADAPTIVE_NORMAL` or
+`ADAPTIVE_DEPTH_NORMAL`. `FLAT` and `MOMENT_FACETS` refuse this selector.
+The default `SHADING_PASS` retains existing plans and geometry. Only slopes and
+their angular residuals change; the six material maps, including the original
+native shading normals, stay unchanged. The geometry report pins the chosen
+normal source and its capture-contract digest; switching sources invalidates a
+creation plan. All triangle, work, clipping, storage and edge-policy limits still
+apply. Filtered face normals do not necessarily describe the first-hit depth
+surface; this control does not guarantee better rendering.
+
 ### Optional material normal-input moments
 
 Set both `material_fields: true` and `normal_moments: true` when planning and

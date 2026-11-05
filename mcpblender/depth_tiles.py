@@ -29,6 +29,8 @@ def floats_sha(values):
 
 def options(values):
     values=dict(values);depth_tolerance=values.pop('depth_tolerance_m',None)
+    plane_normal_source=values.pop('plane_normal_source','SHADING_PASS')
+    if plane_normal_source not in ('SHADING_PASS','GEOMETRIC_AOV'):raise ValueError('Invalid plane normal source')
     p=DEFAULTS|values
     if set(p)!=set(DEFAULTS):raise ValueError('Unknown depth patch option')
     for key,low,high in [('tile_pixels',1,64),('edge_radius_pixels',0,64),('max_triangles',2,131072),('max_pixels',1024,1048576),('max_texture_bytes',1024,512*1024**2),('max_search_work',1,8000000),('max_refinement_work',1,16000000),('max_moment_candidates',1,64)]:
@@ -44,6 +46,9 @@ def options(values):
         if type(depth_tolerance) not in (int,float) or not math.isfinite(depth_tolerance) or not 1e-6<=depth_tolerance<=1000:raise ValueError('ADAPTIVE_DEPTH_NORMAL requires explicit depth_tolerance_m in [1e-6,1000]')
         p['depth_tolerance_m']=float(depth_tolerance)
     elif depth_tolerance is not None:raise ValueError('depth_tolerance_m requires ADAPTIVE_DEPTH_NORMAL')
+    if plane_normal_source=='GEOMETRIC_AOV':
+        if p['geometry_mode'] not in {'ADAPTIVE_NORMAL','ADAPTIVE_DEPTH_NORMAL'}:raise ValueError('GEOMETRIC_AOV requires adaptive geometry')
+        p['plane_normal_source']=plane_normal_source
     return p
 
 
@@ -96,6 +101,16 @@ def nearest_depth_pixel(cx,cy,radius,w,h,eligible,charge,cancelled):
 
 def geometry(decoded,metadata,view,values,*,cancelled=lambda:None,progress=lambda v:None):
     original=options(values);sampling=output_sampling(decoded['width'],original)
+    normal_contract=None
+    if original.get('plane_normal_source')=='GEOMETRIC_AOV':
+        from . import geometric_normals
+        fields=metadata.get('material_fields',{});normal_contract=fields.get('geometric_normals')
+        if not normal_contract:raise ValueError('Geometric plane normals require recapture with geometric_normals=true')
+        geometric_normals.validate(normal_contract,fields['materials'])
+        if any(n not in decoded['channels'] for n in geometric_normals.channels()):raise ValueError('Missing captured geometric-normal channels')
+        # Only this private geometry view changes. The caller retains its raw
+        # native Normal pass for all material maps and later source inspection.
+        decoded=decoded|{'channels':decoded['channels']|dict(zip(('TreeCapture.Normal.'+a for a in 'XYZ'),(decoded['channels'][n] for n in geometric_normals.channels())))}
     p=original|({'tile_pixels':sampling['base_tile_capture_pixels']} if sampling else {})
     if p['geometry_mode'] in {'ADAPTIVE_NORMAL','ADAPTIVE_DEPTH_NORMAL'}:
         from . import adaptive_depth
@@ -104,8 +119,11 @@ def geometry(decoded,metadata,view,values,*,cancelled=lambda:None,progress=lambd
         from . import moment_depth
         result=moment_depth.geometry(decoded,metadata,view,p,cancelled=cancelled,progress=progress)
     else:result=_geometry(decoded,metadata,view,p,cancelled=cancelled,progress=progress)
-    if sampling:
-        report=result['report'];report['options']=original;report['output_sampling']=sampling
+    if sampling or normal_contract:
+        report=result['report'];report['options']=original
+        if sampling:report['output_sampling']=sampling
+        if normal_contract:report['plane_normal_source']={'source':'GEOMETRIC_AOV','normals_sha256':normal_contract['normals_sha256'],
+            'scope':'Adaptive plane slopes and angular residuals use captured geometric-normal means. Shader maps retain the original native Normal pass. Filtered geometric normals do not identify the surface producing a centre depth.'}
         report['geometry_sha256']=botany.digest({k:v for k,v in report.items() if k!='geometry_sha256'}|{'patch_records':result['patch_records']})
     return result
 

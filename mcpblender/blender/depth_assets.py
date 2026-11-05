@@ -6,12 +6,13 @@ import uuid
 from array import array
 import bpy
 from mathutils import Matrix
-from mcpblender import botany,capture_data,depth_tiles,exr_scanline
+from mcpblender import botany,capture_data,depth_tiles,exr_scanline,normal_moments
 from . import card_families
 
 COMMANDS={'inspect_botanical_depth_source','create_botanical_depth_asset','inspect_botanical_depth_asset','remove_botanical_depth_asset','inspect_botanical_depth_layers','create_botanical_depth_layers'}
 META='mcpblender_depth_asset';OWNER='mcpblender_depth_owner';FORMAT='mcpblender-directional-depth-asset-v1'
 SHADER_RECIPE='CAPTURED_INPUT_PBR_V2_SIDED_NORMAL'
+MOMENT_SHADER_RECIPE='CAPTURED_INPUT_PBR_V3_GEOMETRIC_MOMENTS'
 LEGACY_SHADER_RECIPE='CAPTURED_INPUT_PBR_V1'
 RAY_FLAGS=tuple(k for k in card_families.RENDER_FLAGS if k.startswith('visible_'))
 RAY_ROLES={'ALL_RAYS':RAY_FLAGS,'CAMERA_ONLY':('visible_camera',),
@@ -41,6 +42,10 @@ def prepared(p,*,progress_context=None):
     view,row=rows[0];size=proof['botanical_capture']['options']['resolution'];texture_bytes=size*size*len(depth_tiles.MAPS)*16
     if texture_bytes>settings['max_texture_bytes']:raise ValueError('Depth asset decoded texture budget exceeded')
     names=['TreeCapture.Combined.A','TreeCapture.Depth.Z',*('TreeCapture.Normal.'+a for a in 'XYZ')]
+    moment_mode=settings['geometry_mode']=='MOMENT_FACETS'
+    if moment_mode:
+        if not meta['material_fields'].get('normal_moments'):raise ValueError('Moment facets require captured input moments; recapture with normal_moments=true')
+        names+=['TreeCapture.MCP_SurfaceWeight.X',*normal_moments.channels()]
     decoded=exr_scanline.decode(root/row['file'],names,expected_sha256=row['sha256'],cancelled=check_cancelled,progress=report_progress)
     geometry=depth_tiles.geometry(decoded,meta,view,settings,cancelled=check_cancelled,progress=report_progress);maps={};map_rows=[]
     for name,components in depth_tiles.MAPS:
@@ -49,16 +54,19 @@ def prepared(p,*,progress_context=None):
         pixels=depth_tiles.texture_map(values,decoded,meta,view,settings,name,cancelled=check_cancelled);maps[name]=pixels
         map_rows.append({'map':name,'components':list(components),'float32_sha256':depth_tiles.floats_sha(pixels),'decoded_bytes':len(pixels)*4});del values
     placement=Matrix.Scale(meta['scene_unit_scale']/unit,4)@Matrix(meta['source_root_matrix_world'])
-    summary={'format':FORMAT,'shader_recipe':SHADER_RECIPE,'render_role':role,'ray_visibility':ray_visibility,'view':p['view'],'width':size,'height':size,'geometry':geometry['report'],'maps':map_rows,'decoded_texture_bytes':texture_bytes,
+    summary={'format':FORMAT,'shader_recipe':MOMENT_SHADER_RECIPE if moment_mode else SHADER_RECIPE,'render_role':role,'ray_visibility':ray_visibility,'view':p['view'],'width':size,'height':size,'geometry':geometry['report'],'maps':map_rows,'decoded_texture_bytes':texture_bytes,
              'target_unit_scale':unit,'root_matrix_world':[list(r) for r in placement],
              'source':{'capture_sha256':meta['capture_sha256'],'frame':meta['frame'],'snapshot_sha256':proof['source_sha256'],'exr_sha256':row['sha256'],'material_fields_sha256':meta['material_fields']['fields_sha256'],'material_fields':meta['material_fields'],'source_root_matrix_world':meta['source_root_matrix_world'],'scene_unit_scale':meta['scene_unit_scale'],'bounds_root_local_m':meta['bounds_root_local_m'],'view':view},
              'optical_equivalence':False,'scope':'Single directional approximate depth layer; median measured-witness depth anchors, optional bounded normal-aligned refinement and explicitly counted edge estimates. Native view-evaluated shader-input maps, normalized raw root-local normals and artistic backlighting, with coverage applied once. Unknown physical thickness and omitted BSDF inputs; no optical/shadow/wind/interpolation/population qualification.'}
+    if moment_mode:
+        summary['material_transport']={'use_bump_map_correction':True}
+        summary['scope']='Single directional projected-area normal-input moment facets with implicit geometric shading normals. Raw normal texture retained as witness; six packed input maps and coverage applied once. No fallback or filtered-pixel/color/depth/PBR/closure/occlusion/angular/shadow/wind equivalence.'
     if len(json.dumps(summary,allow_nan=False))>512*1024:raise ValueError('Depth asset source metadata exceeds budget')
     summary['plan_sha256']=botany.digest(summary)
     return summary,geometry,maps
 
 
-def material(name,maps,created):
+def material(name,maps,created,*,geometric_normals=False):
     mat=bpy.data.materials.new(name);created.append(mat);mat.use_nodes=True;tree=mat.node_tree;tree.nodes.clear();links=tree.links
     def node(kind):return tree.nodes.new(kind)
     outputs={}
@@ -69,14 +77,17 @@ def material(name,maps,created):
     base=outputs['base_coverage'];normal=outputs['normal_roughness'];emission=outputs['emission'];thin=outputs['thin'];surface=outputs['surface']
     bs=node('ShaderNodeBsdfPrincipled')
     for source,key in [(base[0],'Base Color'),(normal[4],'Roughness'),(surface[1],'Metallic'),(surface[2],'IOR'),(surface[3],'Transmission Weight'),(emission[0],'Emission Color'),(emission[4],'Emission Strength')]:links.new(source,bs.inputs[key])
-    transform=node('ShaderNodeVectorTransform');transform.vector_type='NORMAL';transform.convert_from='OBJECT';transform.convert_to='WORLD';links.new(normal[0],transform.inputs[0])
-    normalized=node('ShaderNodeVectorMath');normalized.operation='NORMALIZE';links.new(transform.outputs[0],normalized.inputs[0])
+    backlight=node('ShaderNodeBsdfTranslucent');links.new(thin[0],backlight.inputs['Color'])
     # Captured normals describe the front side of the projected patch. Unlike
     # implicit shader normals, an explicit vector is not reversed by Cycles on
     # a back face. Use geometric sidedness, never a guessed normal/camera dot.
-    geometry=node('ShaderNodeNewGeometry');sign=node('ShaderNodeMath');sign.operation='MULTIPLY_ADD';sign.inputs[1].default_value=-2;sign.inputs[2].default_value=1;links.new(geometry.outputs['Backfacing'],sign.inputs[0])
-    sided=node('ShaderNodeVectorMath');sided.operation='SCALE';links.new(normalized.outputs[0],sided.inputs[0]);links.new(sign.outputs[0],sided.inputs['Scale']);links.new(sided.outputs[0],bs.inputs['Normal'])
-    backlight=node('ShaderNodeBsdfTranslucent');links.new(thin[0],backlight.inputs['Color']);links.new(sided.outputs[0],backlight.inputs['Normal'])
+    if geometric_normals:
+        mat.cycles.use_bump_map_correction=True
+    else:
+        transform=node('ShaderNodeVectorTransform');transform.vector_type='NORMAL';transform.convert_from='OBJECT';transform.convert_to='WORLD';links.new(normal[0],transform.inputs[0])
+        normalized=node('ShaderNodeVectorMath');normalized.operation='NORMALIZE';links.new(transform.outputs[0],normalized.inputs[0])
+        geometry=node('ShaderNodeNewGeometry');sign=node('ShaderNodeMath');sign.operation='MULTIPLY_ADD';sign.inputs[1].default_value=-2;sign.inputs[2].default_value=1;links.new(geometry.outputs['Backfacing'],sign.inputs[0])
+        sided=node('ShaderNodeVectorMath');sided.operation='SCALE';links.new(normalized.outputs[0],sided.inputs[0]);links.new(sign.outputs[0],sided.inputs['Scale']);links.new(sided.outputs[0],bs.inputs['Normal']);links.new(sided.outputs[0],backlight.inputs['Normal'])
     blend=node('ShaderNodeMixShader');links.new(thin[4],blend.inputs[0]);links.new(bs.outputs[0],blend.inputs[1]);links.new(backlight.outputs[0],blend.inputs[2])
     transparent=node('ShaderNodeBsdfTransparent');coverage=node('ShaderNodeMixShader');links.new(base[4],coverage.inputs[0]);links.new(transparent.outputs[0],coverage.inputs[1]);links.new(blend.outputs[0],coverage.inputs[2])
     output=node('ShaderNodeOutputMaterial');links.new(coverage.outputs[0],output.inputs['Surface'])
@@ -137,6 +148,8 @@ def inspect(p):
         capture_data.pose([list(r) for r in root.matrix_basis]);current=native_content(owned,root)
     except (ValueError,TypeError) as exc:current=None;issues.append(str(exc))
     if current!=meta['content_sha256']:issues.append('Depth asset native content changed')
+    transport={v.name:{'use_bump_map_correction':v.cycles.use_bump_map_correction} for v in owned if isinstance(v,bpy.types.Material)} if 'material_transport' in plan else None
+    if transport is not None and any(value!=plan['material_transport'] for value in transport.values()):issues.append('Depth asset material transport settings changed')
     for value in owned:
         if value.library or value.override_library or value.use_fake_user:blockers.append('Linked/persistent depth resource: '+value.name)
         for user in users.get(value,set()):
@@ -144,6 +157,7 @@ def inspect(p):
             blockers.append('External depth resource reference: '+value.name)
     guard={'meta':meta,'content':current,'root_basis':[list(r) for r in root.matrix_basis],'visibility':[(o.name,o.hide_viewport,o.hide_render,o.hide_get()) for o in (root,obj)],'collection_visibility':[col.hide_viewport,col.hide_render],
            'unit':bpy.context.scene.unit_settings.scale_length,'issues':issues,'users':sorted((v.bl_rna.identifier,v.name,sorted((u.bl_rna.identifier,u.name) for u in users.get(v,set()))) for v in owned)}
+    if transport is not None:guard['material_transport']=transport
     state={'collection':col.name,'root':root.name,'object':obj.name,'valid':not issues and not blockers,'issues':issues,'ownership_blockers':sorted(set(blockers)),'source_files_required':False,'shader_recipe':meta['plan'].get('shader_recipe',LEGACY_SHADER_RECIPE),
            'render_role':meta['plan'].get('render_role','ALL_RAYS'),'ray_visibility':{key:getattr(obj,key) for key in RAY_FLAGS},
            'triangles':meta['plan']['geometry']['triangles'],'packed_images':6,'decoded_texture_bytes':meta['plan']['decoded_texture_bytes'],'plan':meta['plan'],'optical_equivalence':False,'asset_sha256':botany.digest(guard)}
@@ -190,7 +204,7 @@ def create(p,*,progress_context=None,checkpoint_estimate=None):
             flipped=array('f')
             for y in range(h-1,-1,-1):flipped.extend(pixels[y*w*4:(y+1)*w*4])
             image.pixels.foreach_set(flipped);image.pack();images[key]=image
-        mat=material(prefix+'-Material',images,made);mesh.materials.append(mat)
+        mat=material(prefix+'-Material',images,made,geometric_normals=info['shader_recipe']==MOMENT_SHADER_RECIPE);mesh.materials.append(mat)
         for value in made:value[OWNER]=owner
         meta={'format':FORMAT,'owner':owner,'root':root.name,'object':obj.name,'owned':[{'type':v.bl_rna.identifier,'name':v.name} for v in made],'images':{key:image.name for key,image in images.items()},'plan':info}
         # Creation/checkpoint content includes packed data and original view data;

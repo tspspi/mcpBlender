@@ -18,6 +18,10 @@ def test_strict_patch_settings_and_default_approximation_acceptance():
     for role in ('CAMERA',True,None):
         with pytest.raises(ValueError):Source(directory='capture',view='FRONT',render_role=role)
     assert not Create(directory='capture',view='FRONT',collection='Far',expected_plan='a'*64).accept_approximate_optics
+    assert Settings(geometry_mode='MOMENT_FACETS').max_slope==16
+    for patch in ({'max_slope':32},{'max_slope':True}):
+        with pytest.raises(ValueError):Settings(geometry_mode='MOMENT_FACETS',**patch)
+        with pytest.raises(ValueError):depth_tiles.options({'geometry_mode':'MOMENT_FACETS',**patch})
 
 
 def test_readonly_tools_and_capture_path_containment(tmp_path):

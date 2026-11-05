@@ -879,8 +879,8 @@ from up to four positive directions in an orthographic camera frame. It checks
 the resulting triangle normals and projected-area moments, reports tiny omitted
 unsupported mass, and refuses significant backward/grazing mass, clipping,
 precision loss or exhausted triangle budgets. It is included in the bridge
-archive for subsequent integration; there is no new public tool or depth-asset
-geometry option yet. A controlled diffuse fixture recovers world and sun lighting
+archive and used by the experimental `MOMENT_FACETS` depth geometry option below.
+A controlled diffuse fixture recovers world and sun lighting
 using actual geometric normals. This does not qualify canopy/PBR reconstruction,
 filtered pixel equivalence, secondary-ray occlusion or angular behavior.
 
@@ -916,7 +916,7 @@ with progress/cancellation and storage feedback. The capture directory stays an
 active cleanup input while these operations run. Only creation/removal require
 scene-edit permission; source plans do not create a checkpoint.
 
-Each active tile becomes an independent projected quad at its median measured
+With default flat geometry, each active tile becomes an independent projected quad at its median measured
 centre depth. Neighbouring tiles never share geometry across depth jumps. Partial
 coverage with no centre hit uses the nearest measured witness inside the explicit
 pixel radius, with separate estimate counts and distances. `REFUSE` rejects such
@@ -946,14 +946,46 @@ ties and charges each visited candidate once. Fit/work limits and estimates are
 creation guards, not optical certification. Review multiple lighting conditions;
 improved normal alignment alone does not restore missing canopy occlusion.
 
+Experimental `MOMENT_FACETS` requires a capture made with both `material_fields`
+and `normal_moments`. For each active base tile, it averages input moments using
+captured surface weights, reconstructs up to four weighted directions, and builds
+independent geometric strips with those projected-area weights. Every plane passes
+through the tile's measured/estimated witness pixel at its recorded depth. Final
+root-local float32 triangles must reproduce all nine camera-frame moments within
+1e-5, preserve projection within 1e-5 pixel and remain inside near/far clipping.
+There is no adaptive splitting or flat fallback. Source bounds are reported;
+unlike adaptive mode, this mode does not clip slopes to the source bounding box.
+
+`max_slope` is at most 16 in this mode. Significant backward or grazing mass in
+the reconstructed directions refuses; tiny unsupported mass or float32-collapsed
+strips can be omitted only within a combined 1e-6 mass bound and the independent
+moment-error bound. Both omission reasons are reported separately. This does not
+prove a supported decomposition is impossible: the current solver finds a valid
+unit-sphere quadrature without optimizing its hemisphere. Retained ordinary and
+dense canopy captures currently encounter this refusal. Use the other modes for
+those captures while constrained reconstruction is being developed.
+
+Pixel inputs are checked before aggregation so invalid moments cannot cancel
+each other in an average. `max_refinement_work` bounds reconstruction at 10 units
+per visited tile pixel plus 220 per bounded tile fit. All existing pixel, texture,
+triangle and nearest-witness search limits apply. Plans pin the new shader recipe
+`CAPTURED_INPUT_PBR_V3_GEOMETRIC_MOMENTS`: Principled and translucent closures use
+implicit geometric normals; the raw normal image remains a witness and supplies
+roughness through its alpha lane. The material's enabled bump correction is
+included in this recipe's creation/inspection guard. Existing assets keep their
+stored guards and graphs. Controlled diffuse transport and the structured MCP
+lifecycle pass, but full canopy/PBR, filtering, color/depth correlation, angular
+and secondary-ray behavior remain unqualified.
+
 The six RGBA32 data images retain base color/coverage, raw source-root-local
 normal/roughness, emission color/strength, artistic thin color/weight,
 metallic/IOR/Principled transmission/intrinsic alpha, and thin-mode/culling/
 material-ID/surface-weight witnesses. Inputs divide by the constant-one AOV
 weight; coverage is applied once. Intrinsic shader alpha must currently be opaque.
-No beauty RGB enters base color or emission. Shading explicitly normalizes the raw
-normal and transforms it from object to world, so root movement/rotation works.
-New assets use shader recipe `CAPTURED_INPUT_PBR_V2_SIDED_NORMAL`: geometric
+No beauty RGB enters base color or emission. Default/adaptive shading explicitly
+normalizes the raw normal and transforms it from object to world, so root
+movement/rotation works. Those new assets use shader recipe
+`CAPTURED_INPUT_PBR_V2_SIDED_NORMAL`: geometric
 back faces reverse that explicit normal for both Principled and thin-surface
 shading. Planning pins the recipe in the creation guard; inspection reports it.
 Existing assets without a recipe retain their original `CAPTURED_INPUT_PBR_V1`

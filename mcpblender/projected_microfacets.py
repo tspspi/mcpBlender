@@ -14,7 +14,7 @@ FORMAT = 'mcpblender-projected-microfacets-v1'
 
 def build(rect, atoms, *, depth, near, far, max_slope=16.,
           triangle_budget=8, omitted_mass_tolerance=1e-6,
-          residual_tolerance=1e-5, cancelled=lambda: None):
+          residual_tolerance=1e-5, anchor=None, cancelled=lambda: None):
     """Partition a rectangle into at most four independent planar strips.
 
     Only negligible unsupported mass may be omitted, and both that omission
@@ -45,6 +45,8 @@ def build(rect, atoms, *, depth, near, far, max_slope=16.,
         raise ValueError('Invalid residual tolerance')
     if not 1 <= len(atoms) <= 4:
         raise ValueError('One to four weighted directions required')
+    if anchor is not None and (len(anchor) != 2 or not all(finite(v) for v in anchor)):
+        raise ValueError('Finite plane depth anchor required')
     kept = []
     omitted = 0.
     source = []
@@ -66,8 +68,8 @@ def build(rect, atoms, *, depth, near, far, max_slope=16.,
         raise ValueError('Unit projected mass required')
     if omitted > omitted_mass_tolerance or not kept:
         raise ValueError('Unsupported normal mass exceeds omission bound')
-    if 2 * len(kept) > triangle_budget:
-        raise ValueError('Triangle budget exhausted')
+    unsupported_mass = omitted
+    precision_mass = 0.
     target = moments(source)
     kept_mass = math.fsum(a['weight'] for a in kept)
 
@@ -81,12 +83,25 @@ def build(rect, atoms, *, depth, near, far, max_slope=16.,
         return result
 
     # Endpoints are shared in projection even though each face owns its corners.
-    edges = [f32(left)]
-    cumulative = 0.
-    for atom in kept[:-1]:
-        cumulative += atom['weight'] / kept_mass
-        edges.append(f32(left + (right - left) * cumulative))
-    edges.append(f32(right))
+    while True:
+        edges = [f32(left)]
+        cumulative = 0.
+        for atom in kept[:-1]:
+            cumulative += atom['weight'] / kept_mass
+            edges.append(f32(left + (right - left) * cumulative))
+        edges.append(f32(right))
+        collapsed = next((i for i, (a, b) in enumerate(zip(edges, edges[1:])) if a >= b), None)
+        if collapsed is None:
+            break
+        candidate = kept[collapsed]['weight']
+        if len(kept)==1 or omitted+candidate>omitted_mass_tolerance:
+            raise ValueError('Projected intervals collapse in float32')
+        precision_mass += candidate
+        omitted += candidate
+        del kept[collapsed]
+        kept_mass = math.fsum(a['weight'] for a in kept)
+    if 2 * len(kept) > triangle_budget:
+        raise ValueError('Triangle budget exhausted')
     low, high = f32(bottom), f32(top)
     if low >= high or any(a >= b for a, b in zip(edges, edges[1:])):
         raise ValueError('Projected intervals collapse in float32')
@@ -98,7 +113,7 @@ def build(rect, atoms, *, depth, near, far, max_slope=16.,
     for index, atom in enumerate(kept):
         cancelled()
         a, b = edges[index:index + 2]
-        centre_u, centre_v = (a + b) / 2, (low + high) / 2
+        centre_u, centre_v = anchor if anchor is not None else ((a + b) / 2, (low + high) / 2)
         nx, ny, nz = atom['direction']
         face = []
         for u, v in ((a, low), (b, low), (b, high), (a, high)):
@@ -130,8 +145,10 @@ def build(rect, atoms, *, depth, near, far, max_slope=16.,
     cancelled()
     return {'format': FORMAT, 'vertices': vertices, 'faces': faces, 'uvs': uvs,
             'rect': list(rect), 'depth': depth, 'near': near, 'far': far,
+            'anchor': list(anchor) if anchor is not None else None,
             'max_slope': max_slope, 'triangle_budget': triangle_budget,
             'triangle_count': len(faces) * 2, 'omitted_mass': omitted,
+            'unsupported_mass_omitted': unsupported_mass, 'precision_mass_omitted': precision_mass,
             'retained_mass': kept_mass, 'source_mass': mass,
             'source_moments': target, 'moments': actual, 'max_component_residual': residual,
             'projected_area_relative_error': area_error,

@@ -5679,6 +5679,76 @@ shader-normal mixture is sufficient. No production setting is changed.
 
 Evidence is retained under `tmp/qualification/projected-microfacets-20261105/`.
 This qualifies only the internal primitive and the controlled unoccluded diffuse
-case. No public tool consumes it yet. Canopy integration, input/geometric-normal
+case. The subsequent structured integration is described below. Input/geometric-normal
 differences, color/depth correlation, filtered pixel sampling, PBR, multiple views,
 secondary-ray transport and the existing strict image gates remain open.
+
+## Structured moment-facet depth assets
+
+`settings.geometry_mode=MOMENT_FACETS` integrates the projected geometry primitive
+into source planning, guarded single creation and the existing multi-layer
+planner/creator. Flat remains the default; adaptive behavior and old saved assets
+retain their shaders and guard format. The new mode requires the optional archived
+normal-input moments. It validates every contributing pixel's finite fields,
+surface weight, unit trace and covariance before aggregating moments by captured
+surface contribution. The shifted covariance uses Sylvester's criterion to bound
+its least eigenvalue at -1e-5; the tile's bounded quadrature independently checks
+moment-matrix admissibility and adjustment.
+
+Each reconstructed plane passes through the actual recorded depth witness at
+its pixel centre, including when its projected strip is elsewhere in the tile.
+There is no adaptive split, flat fallback, slope clipping or source-box clipping.
+Near/far bounds and slope/triangle/work budgets refuse. The returned root-local
+float32 buffers are independently transformed back into the camera frame: both
+triangle normals, projected area, moment residual (1e-5) and footprint error
+(1e-5 pixel) must pass. Output bounds and hashes cover actual rounded geometry.
+The primitive now also handles a supported but float32-collapsed tiny strip by
+explicitly charging its omitted mass; combined unsupported/precision omission
+must stay <=1e-6, with independent final moment checks. Omission reasons remain
+separate in records and aggregate reports.
+
+The new shader recipe `CAPTURED_INPUT_PBR_V3_GEOMETRIC_MOMENTS` leaves both closure
+Normal inputs implicit. Six packed maps retain the original raw normal witness
+and roughness, color, PBR/thin and coverage inputs. The plan pins enabled material
+bump correction; inspection detects a change and invalidates the guard/removal
+until restored. This new transport field applies only to the new recipe, so
+existing saved guards are not retroactively rehashed with an added field.
+
+The Python-disabled MCP lifecycle passed (26.39s): a small managed woody source
+uses a constant camera-facing normal input authored with the public typed shader
+graph API. Its captured moments support the new geometry, allowing guarded plan,
+creation, source preservation, native save/reopen, inspection after capture-file
+deletion and removal of all eleven private IDs. This is a deliberately supported
+input control, not an ordinary-canopy result. Independent native checks passed
+together with the existing transport regression (two tests, 11.83s), verifying
+implicit normals, unsmoothed polygons, the bump-correction guard/stale removal,
+restoration/reopen stability and full native-resource rollback after an injected
+failure following material allocation. Replayed numerical buffers isolate that
+last allocation/rollback check; the MCP test covers real source planning.
+
+Read-only admission trials on retained ordinary (64px) and dense (512px) canopy
+FRONT captures refuse at 4px/8px base tiles because the unconstrained unit-sphere
+quadrature contains significant backward/grazing support. A 1px dense grid also
+hits the existing triangle ceiling before reconstruction. These results do not
+establish that the underlying input distribution lacks a supported decomposition:
+the current factorization does not optimize hemisphere support. No source normal
+is flipped and no significant weight is silently discarded to pass admission.
+Constrained quadrature is the next required step for general canopy admission.
+
+Evidence is retained under `tmp/qualification/moment-depth-20261105/`, including
+structured and native guard proofs, a packed native asset, transport EXRs and
+ordinary/dense source-admission refusals. Current geometry reproduces continuous
+projected-area moments, not each filtered pixel's joint color/depth/normal sample.
+Canopy image gates, full PBR/closure differences, angular and secondary-ray
+transport, wind/population/reference quality and the original broader workflow
+remain open. Existing quality gates are unchanged.
+
+The final focused regression passed 61 tests (76.66s), including existing flat/
+adaptive Python-disabled MCP lifecycles, native packed-lane/root-rotation and
+transactional/ownership controls, geometry/contracts and add-on packaging. The
+existing anyio deprecation warning remains. Separate read-only native reopening
+of frozen V1 and V2 packed assets passed with their original stored content hashes
+and no migration. The new controlled moment asset has 23 tiles/46 triangles,
+one explicitly estimated edge tile, 8,740 work units and zero measured moment
+residual. Redundant terminal `/tmp` fixtures and empty owned Blender caches were
+removed after evidence readback; the retained native asset/proofs remain local.

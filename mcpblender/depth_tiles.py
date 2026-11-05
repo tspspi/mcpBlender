@@ -34,10 +34,11 @@ def options(values):
         if type(p[key]) is not int or not low<=p[key]<=high:raise ValueError('Invalid depth patch option: '+key)
     if p['tile_pixels'] not in (1,2,4,8,16,32,64) or p['edge_depth_policy'] not in {'NEAREST','OMIT','REFUSE'}:raise ValueError('Invalid depth patch tile/edge policy')
     if type(p['alpha_threshold']) not in (int,float) or not math.isfinite(p['alpha_threshold']) or not 0<p['alpha_threshold']<1:raise ValueError('Invalid depth patch alpha threshold')
-    if p['geometry_mode'] not in {'FLAT','ADAPTIVE_NORMAL'}:raise ValueError('Invalid depth patch geometry mode')
+    if p['geometry_mode'] not in {'FLAT','ADAPTIVE_NORMAL','MOMENT_FACETS'}:raise ValueError('Invalid depth patch geometry mode')
     for key,low,high in [('normal_tolerance_degrees',.1,90),('max_slope',.01,64)]:
         if type(p[key]) not in (int,float) or not math.isfinite(p[key]) or not low<=p[key]<=high:raise ValueError('Invalid depth patch option: '+key)
     for key in ('normal_tolerance_degrees','max_slope'):p[key]=float(p[key])
+    if p['geometry_mode']=='MOMENT_FACETS' and p['max_slope']>16:raise ValueError('Moment facets require max_slope <=16')
     return p
 
 
@@ -78,6 +79,9 @@ def geometry(decoded,metadata,view,values,*,cancelled=lambda:None,progress=lambd
     if p['geometry_mode']=='ADAPTIVE_NORMAL':
         from . import adaptive_depth
         return adaptive_depth.geometry(decoded,metadata,view,p,cancelled=cancelled,progress=progress)
+    if p['geometry_mode']=='MOMENT_FACETS':
+        from . import moment_depth
+        return moment_depth.geometry(decoded,metadata,view,p,cancelled=cancelled,progress=progress)
     return _geometry(decoded,metadata,view,p,cancelled=cancelled,progress=progress)
 
 

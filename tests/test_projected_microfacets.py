@@ -100,3 +100,21 @@ def test_cancellation_propagates_without_partial_output():
             raise RuntimeError('cancelled')
     with pytest.raises(RuntimeError, match='cancelled'):
         build([{'weight': 1, 'direction': (0, 0, 1)}], cancelled=cancelled)
+
+
+def test_explicit_depth_witness_anchor():
+    result = build([{'weight': 1, 'direction': (.6, 0, .8)}], anchor=(-1, 0))
+    assert result['vertices'][0][2] == result['vertices'][3][2] == -5
+    assert result['vertices'][1][2] == result['vertices'][2][2] == -6.5
+    assert result['anchor'] == [-1, 0]
+    with pytest.raises(ValueError, match='anchor'):
+        build([{'weight': 1, 'direction': (0, 0, 1)}], anchor=(0, float('nan')))
+
+
+def test_only_negligible_collapsed_support_can_be_omitted():
+    atoms = [{'weight': 1-1e-10, 'direction': (0,0,1)}, {'weight':1e-10, 'direction':(.6,0,.8)}]
+    result = build(atoms)
+    assert result['precision_mass_omitted']==1e-10 and result['unsupported_mass_omitted']==0
+    assert result['max_component_residual']<1e-9 and result['triangle_count']==2
+    with pytest.raises(ValueError,match='collapse'):
+        build(atoms,omitted_mass_tolerance=0)

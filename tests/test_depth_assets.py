@@ -8,7 +8,7 @@ from test_asset_editing import assets_live,client_for,tool,pytestmark
 from test_botanical_trees import wait
 
 
-@pytest.mark.parametrize('geometry_mode',['FLAT','ADAPTIVE_NORMAL'])
+@pytest.mark.parametrize('geometry_mode',['FLAT','ADAPTIVE_NORMAL','MOMENT_FACETS'])
 def test_structured_native_depth_asset_lifecycle(assets_live,geometry_mode):
     root,path=assets_live;source_name='DepthSource_'+geometry_mode;blend_name='depth-packed-'+geometry_mode.lower()+'.blend'
     async def run():
@@ -17,10 +17,21 @@ def test_structured_native_depth_asset_lifecycle(assets_live,geometry_mode):
             recipe={'attractors':64,'iterations':4,'node_budget':128}
             model=await wait(client,'plan_botanical_tree',recipe=recipe)
             state=await wait(client,'create_botanical_tree',collection=source_name,recipe=recipe,expected_model=model['model_sha256'],location=[4,3,1])
-            f={'shoots_per_bud':2,'attachment_nodes':4}
-            layout=await wait(client,'plan_botanical_foliage',collection=source_name,foliage=f)
-            state=await wait(client,'configure_botanical_foliage',collection=source_name,foliage=f,expected_tree=state['tree_sha256'],expected_foliage=layout['foliage_sha256'])
+            if geometry_mode=='MOMENT_FACETS':
+                # Controlled supported distribution, authored through the public
+                # shader surface. Arbitrary captured trees may refuse support.
+                await wait(client,'configure_shader_graph',material=state['geometry']['bark_material'],replace=True,
+                    nodes=[{'name':'Surface','type':'ShaderNodeBsdfPrincipled','inputs':[{'socket':'Base Color','value':[.2,.2,.2,1]}]},
+                        {'name':'Normal','type':'ShaderNodeVectorMath','properties':{'operation':'ADD'},'inputs':[{'socket':0,'value':[0,-1,0]}]},
+                        {'name':'Output','type':'ShaderNodeOutputMaterial'}],
+                    links=[{'from_node':'Normal','from_socket':'Vector','to_node':'Surface','to_socket':'Normal'},
+                        {'from_node':'Surface','from_socket':'BSDF','to_node':'Output','to_socket':'Surface'}])
+            else:
+                f={'shoots_per_bud':2,'attachment_nodes':4}
+                layout=await wait(client,'plan_botanical_foliage',collection=source_name,foliage=f)
+                state=await wait(client,'configure_botanical_foliage',collection=source_name,foliage=f,expected_tree=state['tree_sha256'],expected_foliage=layout['foliage_sha256'])
             args={'collection':source_name,'views':['FRONT'],'resolution':32,'samples':2,'material_fields':True}
+            if geometry_mode=='MOMENT_FACETS':args['normal_moments']=True
             plan=await wait(client,'inspect_botanical_view_capture',**args)
             await wait(client,'capture_botanical_views',**args,directory='depth-input',expected_capture=plan['capture_sha256'])
             source_before=await wait(client,'inspect_botanical_tree',collection=source_name)
@@ -33,7 +44,10 @@ def test_structured_native_depth_asset_lifecycle(assets_live,geometry_mode):
             assert info['optical_equivalence'] is False and info['render_role']==role
             assert info['ray_visibility']['visible_camera'] is False and info['ray_visibility']['visible_shadow'] is True
             assert info['ray_visibility']['visible_diffuse']==(role=='DIFFUSE_SHADOW')
-            assert info['shader_recipe']=='CAPTURED_INPUT_PBR_V2_SIDED_NORMAL'
+            assert info['shader_recipe']==('CAPTURED_INPUT_PBR_V3_GEOMETRIC_MOMENTS' if geometry_mode=='MOMENT_FACETS' else 'CAPTURED_INPUT_PBR_V2_SIDED_NORMAL')
+            if geometry_mode=='MOMENT_FACETS':
+                assert info['geometry']['moment_tiles']>0 and info['geometry']['max_component_residual']<=1e-5
+                assert info['material_transport']=={'use_bump_map_correction':True}
             assert info['geometry']['options']['geometry_mode']==geometry_mode
             if geometry_mode=='ADAPTIVE_NORMAL':assert info['geometry']['refinement_work']>0
             changed=source|{'settings':source['settings']|{'geometry_mode':'FLAT' if geometry_mode=='ADAPTIVE_NORMAL' else 'ADAPTIVE_NORMAL'}}

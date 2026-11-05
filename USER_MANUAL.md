@@ -1018,6 +1018,38 @@ ties and charges each visited candidate once. Fit/work limits and estimates are
 creation guards, not optical certification. Review multiple lighting conditions;
 improved normal alignment alone does not restore missing canopy occlusion.
 
+Optional `ADAPTIVE_DEPTH_NORMAL` also considers measured depth discontinuities.
+It requires an explicit physical `depth_tolerance_m` (1e-6 to 1000 metres), for
+example:
+
+```json
+{"geometry_mode":"ADAPTIVE_DEPTH_NORMAL", "depth_tolerance_m":0.05,
+ "output_resolution":128, "max_triangles":131072}
+```
+
+This keeps the existing normal plane fit and median measured/estimated witness,
+then prioritizes coverage-weighted normal/depth improvement per extra patch.
+The normal term is divided by its mean-cosine tolerance; the measured L1 depth
+term is divided by the declared depth tolerance. Nonpositive immediate-gain
+candidates are considered last rather than treated as proof that deeper splits
+cannot help. Source pixel data, source-unit conversion, clipping, bounds, edge
+policy and triangle/work caps remain in force. This option can reduce depth
+error while leaving more normal error under a fixed budget. Other geometry modes
+refuse a non-null depth tolerance; leaving it unset preserves their existing plans.
+
+`geometry.depth_residuals` measures the actual source-root float32 mesh vertices
+and their projected triangle intersections against measured covered pixel-centre
+depths, after clipping/bounds adjustments. It reports coverage-weighted MAE/RMSE,
+maximum error in metres, measured/unknown counts, projected sample misses and
+unmet-cell counts. `measured_tolerance_met` applies only to measured samples in
+emitted patch domains. Unknown depth, omitted tiles, projection misses, original
+surface identity, filtered subpixel samples and target-placement rounding are
+not silently certified. Median sorts and final residual projections are charged
+to `max_refinement_work`; work exhaustion refuses, and triangle exhaustion can
+leave explicitly reported residuals above tolerance. No target tolerance or
+lighting equivalence is guaranteed. The six material maps are unchanged; use
+`compare_exr_images` to test resulting appearance separately.
+
 Experimental `MOMENT_FACETS` requires a capture made with both `material_fields`
 and `normal_moments`. For each active base tile, it averages input moments using
 captured surface weights, reconstructs up to four weighted directions, and builds

@@ -29,14 +29,18 @@ def geometry(decoded,metadata,view,p,*,cancelled=lambda:None,progress=lambda v:N
         n=[v[i] for v in raw];length=math.sqrt(sum(v*v for v in n))
         if not math.isfinite(length) or length<1e-8:raise ValueError('Covered native normal is nonfinite or zero; no inferred replacement')
         camera=[capture_data.dot(n,axis)/length for axis in axes];normals[i*3:i*3+3]=array('f',camera);backward+=camera[2]<0
+    depth_tolerance=p.get('depth_tolerance_m');depth_scale=depth_tolerance/metadata['scene_unit_scale'] if depth_tolerance is not None else None
+    if depth_tolerance is not None:
+        from . import depth_accuracy
     tolerance=1-math.cos(math.radians(p['normal_tolerance_degrees']))
     def fit(rect):
-        x,y,r,b=rect;weight=0.;moment=[0.,0.,0.]
+        x,y,r,b=rect;weight=0.;moment=[0.,0.,0.];hits=[]
         for yy in range(y,b):
             for xx in range(x,r):
                 charge();i=yy*w+xx;a=alpha[i]
                 if a<=p['alpha_threshold']:continue
                 weight+=a
+                if depth_tolerance is not None and math.isfinite(depth[i]) and near<=depth[i]<=far:hits.append((depth[i],i,a))
                 for j in range(3):moment[j]+=a*normals[3*i+j]
         if not weight:return None
         unsupported=moment[2]<=1e-8*weight
@@ -44,18 +48,23 @@ def geometry(decoded,metadata,view,p,*,cancelled=lambda:None,progress=lambda v:N
         if limited:slope=tuple(v*p['max_slope']/size for v in slope)
         normal=[*slope,1.];size=math.sqrt(sum(v*v for v in normal));normal=[v/size for v in normal]
         loss=max(0.,weight-capture_data.dot(moment,normal))
-        return {'rect':rect,'weight':weight,'moment':moment,'slope':slope,'loss':loss,'unsupported':unsupported,'slope_limited':limited}
+        cell={'rect':rect,'weight':weight,'moment':moment,'slope':slope,'loss':loss,'unsupported':unsupported,'slope_limited':limited}
+        if depth_tolerance is not None:cell['depth_loss'],cell['max_depth_error']=depth_accuracy.fit_loss(hits,w,view['ortho_scale']/w,slope,charge)
+        return cell
     step=p['tile_pixels'];leaves={};heap=[];candidate_count=0
     def candidate(cell):
         nonlocal candidate_count
-        if cell['loss']<=cell['weight']*tolerance:return
+        if cell['loss']<=cell['weight']*tolerance and (depth_tolerance is None or cell['max_depth_error']<=depth_scale):return
         x,y,r,b=cell['rect']
         if r-x==1 and b-y==1:return
         xs=[(x,r)] if r-x==1 else [(x,(x+r)//2),((x+r)//2,r)]
         ys=[(y,b)] if b-y==1 else [(y,(y+b)//2),((y+b)//2,b)]
         children=[fit((a,c,d,e)) for c,e in ys for a,d in xs];children=[c for c in children if c is not None]
         extra=len(children)-1;gain=cell['loss']-sum(c['loss'] for c in children)
-        if gain<=1e-12*cell['weight']:return
+        if depth_tolerance is not None:
+            gain=gain/tolerance+(cell['depth_loss']-sum(c['depth_loss'] for c in children))/depth_scale
+            gain=max(0.,gain) # Nonpositive immediate gain is last priority, not proof that deeper splits cannot help.
+        elif gain<=1e-12*cell['weight']:return
         # A one-child split costs no triangles; deterministic score and rectangle
         # ordering make budget decisions reproducible across repeated plans.
         score=math.inf if extra==0 else gain/extra
@@ -97,5 +106,12 @@ def geometry(decoded,metadata,view,p,*,cancelled=lambda:None,progress=lambda v:N
         flat_equivalent_normal_error_degrees=angle(flat_loss,weight),initial_equivalent_normal_error_degrees=angle(initial_loss,weight),equivalent_normal_error_degrees=angle(loss,weight),
         input_alpha_mass=sum(alpha),represented_input_alpha_mass=represented,omitted_input_alpha_mass=max(0.,sum(alpha)-represented),
         scope='Independent normal-aligned directional patches with deterministic coverage-weighted mean-cosine refinement. Median centre-depth anchors and explicit bounded partial-edge estimates; slopes and camera clipping limited. Budget/tolerance residuals reported. No depth bridges, native surface recovery, hidden layers, optical/shadow/wind/angular guarantee.')
+    if depth_tolerance is not None:
+        report['format']='mcpblender-adaptive-depth-normal-v1'
+        report['depth_residuals']=depth_accuracy.measure(decoded,metadata,view,result,depth_tolerance,charge=charge,cancelled=cancelled,progress=progress,alpha_threshold=p['alpha_threshold'])
+        report['refinement_work']=work
+        report['refinement_priority']='Coverage-weighted mean-cosine gain / normal tolerance plus measured L1 depth gain / physical depth tolerance, per extra patch; nonpositive gain candidates last, one-child splits free.'
+        report['work_unit']='Pixel visits plus n*bit_length(n) per median witness sort, residual visits and 32 per final source-frame float32 patch projection.'
+        report['scope']='Independent depth/normal-refined patches. Explicit measured centre-depth objective and actual float32 source-frame residuals; unknown samples excluded/countable. Hard triangle/work, edge policy, slope, clipping and source bounds preserved. Remaining tolerance/budget stops reported; no physical surface, filtered-pixel, optical, shadow, angular or wind equivalence.'
     report['geometry_sha256']=botany.digest({k:v for k,v in report.items() if k!='geometry_sha256'}|{'patch_records':result['patch_records']})
     return result

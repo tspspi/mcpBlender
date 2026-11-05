@@ -6296,3 +6296,77 @@ role scenes/proofs/EXRs, check logs and cleanup record. Native control/authoring
 helpers distinguish unsupported edits from guarded supported creation. The broad
 workflow goal and dense-canopy optical acceptance remain incomplete; production
 service, package environment and immutable source archives are unchanged.
+
+## Explicit depth-aware directional refinement
+
+`ADAPTIVE_DEPTH_NORMAL` adds an explicit physical `depth_tolerance_m` to the
+existing bounded normal-plane refinement. The tolerance is required for this
+mode and refused when supplied non-null to other modes. Disabled/None preserves
+legacy option dictionaries, float buffers and reports. No triangle, texture,
+search or work ceiling was raised. Six input maps, witness/edge policies,
+clipping/source bounds, source placement and existing material recipes remain.
+
+Candidate priority combines coverage-weighted mean-cosine gain divided by its
+normal tolerance with measured L1 depth gain divided by physical depth tolerance,
+per extra quad. Nonpositive immediate gains are tried last rather than taken as
+proof that deeper splits cannot help. Median sorting and final depth projections
+are charged to the existing work cap. The resulting `depth_residuals` uses actual
+source-root float32 vertices and projected triangle intersections, including
+clipping/bounds effects, against covered measured pixel-centre depths. Weighted
+MAE/RMSE, maximum metres, measured/unknown/missed counts and unmet cells are
+recorded. Unknown/omitted coverage, source identity, filtered subpixel surfaces
+and target-placement rounding are outside that measured subset. Triangle stops
+may leave tolerance unmet; work exhaustion refuses. This is not optical proof.
+
+Focused pure/contracts/addon checks passed 55 cases in 13.21s (one existing anyio
+warning). Cases include a depth jump with identical normals, physical units,
+sloped planes, deterministic refinement, hard budget stops, actual float-buffer
+changes, projection misses, unknown samples, malformed coverage and early/late
+cancellation. The Python-disabled MCP workflow passed in 45.11s: create/capture a
+small leafy source, inspect the new mode, compare unchanged six-map hashes with
+the normal-only mode, reject changed-tolerance stale plans and insufficient work,
+create/save/reopen, erase capture inputs, inspect/remove eleven IDs, preserve the
+source guard and compare portable source content across reopen.
+
+The dense native test passed in 507.51s. It replaces the preceding source-planned
+primary with the new mode, verifies identical packed material maps, creates at
+the unchanged 131,072-triangle ceiling, saves/reopens with the same guard, renders
+nine native/primary/private-hybrid controls, restores flags and removes both owned
+assets. Original native controls exactly reproduce the frozen reference. The
+hybrid is deliberately private: changing an ALL_RAYS asset to CAMERA_ONLY while
+using the original source for secondary rays invalidates that creation role until
+restored. No supported hybrid-delivery claim is made.
+
+Dense 512px capture / declared 128px output, explicit 5cm depth tolerance:
+
+| Geometry | Mean normal error | Measured depth MAE | Depth RMSE | Maximum depth error | Cells over 5cm |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Normal-only | 12.042 deg | 0.30370m | 1.09148m | 11.01185m | 6,064 |
+| Depth/normal | 14.916 deg | 0.11030m | 0.63693m | 10.29185m | 3,327 |
+
+Both use the same 77,159 measured / 31,503 unknown pixels and zero projection
+misses. New work is 5,183,334 units under the declared 16,000,000 cap. The hard
+triangle limit remains reached, normal error increases, and measured depth
+tolerance remains unmet. Lower positional residual does not prove better light
+transport. Raw shared-coverage brightness measurements show:
+
+| Light | Normal-only primary | Depth-refined primary | Normal-only hybrid | Depth-refined hybrid |
+| --- | ---: | ---: | ---: | ---: |
+| Uniform world | +41.449% | +40.670% | -23.938% | -25.059% |
+| Front sun | +35.589% | +35.430% | -21.019% | -19.366% |
+| Rear sun | +150.354% | +151.152% | -2.988% | -3.065% |
+
+Postprocessing the native EXRs with the structured comparator's existing policy
+at scales 1/2/4 confirms the primary rejects the 10% relative-brightness gate in
+all three lights. The hybrid rejects world/front and passes rear; alpha/RGB gates
+pass. Frozen original controls pass. No metric/threshold was weakened, no source
+was swapped and no albedo adjustment was made. The useful geometry-accuracy
+improvement and remaining transport failure are retained separately.
+
+Evidence: ignored `tmp/qualification/hybrid-secondary-20261105/` holds the original
+hybrid control/proof/nine EXRs. `tmp/qualification/depth-refinement-20261105/` holds
+the dense preflight, public workflow capture/packed scene/guards, native packed
+asset/proof/nine EXRs, multiscale quality report, check logs and cleanup record.
+Native/pure/MCP helpers are committed. This milestone qualifies the explicit
+geometry control and its measurements; the full dense/mature, angular, shadow,
+wind, population and original broader workflow requirements remain open.

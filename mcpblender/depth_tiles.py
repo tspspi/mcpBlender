@@ -28,17 +28,22 @@ def floats_sha(values):
 
 
 def options(values):
+    values=dict(values);depth_tolerance=values.pop('depth_tolerance_m',None)
     p=DEFAULTS|values
     if set(p)!=set(DEFAULTS):raise ValueError('Unknown depth patch option')
     for key,low,high in [('tile_pixels',1,64),('edge_radius_pixels',0,64),('max_triangles',2,131072),('max_pixels',1024,1048576),('max_texture_bytes',1024,512*1024**2),('max_search_work',1,8000000),('max_refinement_work',1,16000000),('max_moment_candidates',1,64)]:
         if type(p[key]) is not int or not low<=p[key]<=high:raise ValueError('Invalid depth patch option: '+key)
     if p['tile_pixels'] not in (1,2,4,8,16,32,64) or p['edge_depth_policy'] not in {'NEAREST','OMIT','REFUSE'}:raise ValueError('Invalid depth patch tile/edge policy')
     if type(p['alpha_threshold']) not in (int,float) or not math.isfinite(p['alpha_threshold']) or not 0<p['alpha_threshold']<1:raise ValueError('Invalid depth patch alpha threshold')
-    if p['geometry_mode'] not in {'FLAT','ADAPTIVE_NORMAL','MOMENT_FACETS'}:raise ValueError('Invalid depth patch geometry mode')
+    if p['geometry_mode'] not in {'FLAT','ADAPTIVE_NORMAL','ADAPTIVE_DEPTH_NORMAL','MOMENT_FACETS'}:raise ValueError('Invalid depth patch geometry mode')
     for key,low,high in [('normal_tolerance_degrees',.1,90),('max_slope',.01,64)]:
         if type(p[key]) not in (int,float) or not math.isfinite(p[key]) or not low<=p[key]<=high:raise ValueError('Invalid depth patch option: '+key)
     for key in ('normal_tolerance_degrees','max_slope'):p[key]=float(p[key])
     if p['output_resolution'] is not None and (type(p['output_resolution']) is not int or not 1<=p['output_resolution']<=1024):raise ValueError('Invalid declared output resolution')
+    if p['geometry_mode']=='ADAPTIVE_DEPTH_NORMAL':
+        if type(depth_tolerance) not in (int,float) or not math.isfinite(depth_tolerance) or not 1e-6<=depth_tolerance<=1000:raise ValueError('ADAPTIVE_DEPTH_NORMAL requires explicit depth_tolerance_m in [1e-6,1000]')
+        p['depth_tolerance_m']=float(depth_tolerance)
+    elif depth_tolerance is not None:raise ValueError('depth_tolerance_m requires ADAPTIVE_DEPTH_NORMAL')
     return p
 
 
@@ -92,7 +97,7 @@ def nearest_depth_pixel(cx,cy,radius,w,h,eligible,charge,cancelled):
 def geometry(decoded,metadata,view,values,*,cancelled=lambda:None,progress=lambda v:None):
     original=options(values);sampling=output_sampling(decoded['width'],original)
     p=original|({'tile_pixels':sampling['base_tile_capture_pixels']} if sampling else {})
-    if p['geometry_mode']=='ADAPTIVE_NORMAL':
+    if p['geometry_mode'] in {'ADAPTIVE_NORMAL','ADAPTIVE_DEPTH_NORMAL'}:
         from . import adaptive_depth
         result=adaptive_depth.geometry(decoded,metadata,view,p,cancelled=cancelled,progress=progress)
     elif p['geometry_mode']=='MOMENT_FACETS':

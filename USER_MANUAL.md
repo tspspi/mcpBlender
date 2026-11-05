@@ -2981,7 +2981,13 @@ ALTERNATE is the oak-oriented default; OPPOSITE and WHORLED are artistic alterna
 The native population uses a point mesh, an owned Geometry Nodes group and an
 unlinked collection of shared prototypes. It does not realize instances. Point
 attributes include `leaf_rotation`, `leaf_scale`, `leaf_variant`, `bot_branch_index`,
-`leaf_index`, `leaf_phase` and `leaf_flutter`. Phase/flutter are future motion inputs;
+`leaf_index`, `id`, `leaf_phase` and `leaf_flutter`. New populations pin native
+`id` values to their semantic `leaf_index`, including sparse source indices in
+LOD point meshes. Filtering an existing instancer can then retain native
+persistent IDs and per-instance randomization instead of renumbering selected
+leaves. This does not promise identical randomization between differently named
+instancer objects or receiving engines. Older saved populations remain readable;
+existing point meshes are not silently migrated. Phase/flutter are future motion inputs;
 no wind motion is generated. `list_botanical_leaves` reconstructs deterministic
 IDs, branch/shoot references and transforms with bounded `offset`/`limit` paging.
 The canonical foliage Text stores the versioned recipe and deterministic hashes;

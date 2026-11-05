@@ -6586,3 +6586,40 @@ under the same ignored evidence directory. The experiment does not justify a
 new public surface-frame option or acceptance of world/rear lighting. Subsequent
 work must examine secondary-source overlap/transport or a different geometric
 representation, rather than treating these extra normal observations as a fix.
+
+### Stable native foliage identity under selection
+
+New native foliage populations and LOD point meshes now write an explicit `id`
+attribute equal to the semantic source `leaf_index`. Instance on Points otherwise
+renumbers selected instances, changing persistent IDs and per-instance random
+values even when retained leaf transforms stay unchanged. Older saved meshes are
+inspected as stored; no migration or automatic rewrite occurs.
+
+A native regression renders two sparse semantic indices (13/79), filters the
+same instancer, then saves/reopens it. Retained native matrices, persistent IDs,
+random IDs, shader Instancer attributes and the Object Info Random AOV remain
+exactly unchanged. Removing the explicit `id` on the same instancer reproduces
+the old behavior: the retained pose is unchanged while persistent/random IDs
+and the actual shader Random output change. Five native renders establish the
+shader behavior, rather than only checking that an attribute exists.
+
+The new regression plus botanical lifecycle checks passed (2 tests, 34.41s).
+Affected foliage lifecycle/rollback and native multi-level LOD ownership,
+placement, cancellation, sparse indices and save/reopen checks passed (3 tests,
+72.18s). LODs retain `id == leaf_index` after reopen. These are local installed
+Blender 5.0.1 checks, not a receiving-engine identity guarantee or identical
+randomization across differently named instancer objects.
+
+A private dense selection probe independently checked 88,704 source instances.
+Filtering to 53,196 leaves without explicit IDs changed 53,194 persistent/random
+IDs; adding stable source IDs preserved every retained pose, persistent ID and
+random ID. The initial probe retained a Blender RNA attribute handle across
+CustomData mutation and crashed; the retry reacquires attributes by name and
+passed. The crash/log is retained locally, and subsequent probes disable core
+dumps. A separate temporary iterator-handle error in the regression was fixed
+by copying values during iteration before rerunning the successful checks.
+
+Ignored evidence: `tmp/qualification/component-transport-20261106/stable-ids/`
+holds five EXRs, the saved blend, native log and proof. The parent directory holds
+source-selection counts and the dense probe. Secondary-geometry partitioning
+and its optical gates are still separate, incomplete qualification work.

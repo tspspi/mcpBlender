@@ -48,11 +48,15 @@ assert {v.value for v in bpy.data.objects[result['levels'][-1]['objects'][0]].da
 owned=bpy.data.collections['OakLods'];sources=owned['mcpblender_leaf_sources'];assert len(sources.objects)==3
 for level in result['levels']:
     leaf=bpy.data.objects[level['objects'][2]];assert leaf.modifiers[0].node_group.nodes.get('Collection Info').inputs['Collection'].default_value==sources
+    assert [v.value for v in leaf.data.attributes['id'].data]==[v.value for v in leaf.data.attributes['leaf_index'].data]
 result=api.dispatch('activate_botanical_lod',{'lod_collection':'OakLods','expected_lods':result['lods_sha256'],'level':2});assert result['valid'] and result['active_level']==2
 for level in result['levels']:
     assert all(bpy.data.objects[n].hide_render==(level['level']!=2) for n in level['objects'])
 path=OUTPUT+'/lods.blend';bpy.ops.wm.save_as_mainfile(filepath=path);bpy.ops.wm.open_mainfile(filepath=path,load_ui=False,use_scripts=False)
 result=api.dispatch('inspect_botanical_lods',{'lod_collection':'OakLods'});assert result['valid'] and result['active_level']==2
+for level in result['levels']:
+    leaf=bpy.data.objects[level['objects'][2]]
+    assert [v.value for v in leaf.data.attributes['id'].data]==[v.value for v in leaf.data.attributes['leaf_index'].data]
 source=trees.inspect({'collection':'LodOak'});trees.remove({'collection':'LodOak','expected_tree':source['tree_sha256'],'discard_derived_edits':False})
 result=api.dispatch('inspect_botanical_lods',{'lod_collection':'OakLods'});assert result['valid']
 outside=bpy.data.objects.new('Outside',bpy.data.objects[result['levels'][0]['objects'][0]].data);bpy.context.scene.collection.objects.link(outside)

@@ -90,6 +90,9 @@ def instance_population(name,population,points,prototypes,layout,source_indices=
     for key,kind,values in (
       ('leaf_rotation','FLOAT_VECTOR',[v['rotation'] for v in layout['leaves']]),('leaf_scale','FLOAT_VECTOR',[(v['scale'],)*3 for v in layout['leaves']]),
       ('leaf_variant','INT',[v['variant'] for v in layout['leaves']]),('bot_branch_index','INT',[v['parent_branch_index'] for v in layout['leaves']]),
+      # Instance on Points otherwise numbers the selected output densely. Pin
+      # native identity to the semantic source index, including sparse LODs.
+      ('id','INT',source_indices if source_indices is not None else list(range(len(layout['leaves'])))),
       ('leaf_index','INT',source_indices if source_indices is not None else list(range(len(layout['leaves'])))),('leaf_phase','FLOAT',[v['phase'] for v in layout['leaves']]),('leaf_flutter','FLOAT',[v['flutter'] for v in layout['leaves']])):attribute(points,key,kind,values)
     group=bpy.data.node_groups.new(name+'_LeafInstances','GeometryNodeTree')
     group.interface.new_socket(name='Geometry',in_out='INPUT',socket_type='NodeSocketGeometry');group.interface.new_socket(name='Geometry',in_out='OUTPUT',socket_type='NodeSocketGeometry')

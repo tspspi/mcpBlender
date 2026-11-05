@@ -794,6 +794,23 @@ differ for transparent surfaces. Material IDs and values may be filtered mixture
 of surfaces. Normal data remain raw. Physical thickness is unknown; these fields
 do not reconstruct a complete BSDF or establish native-versus-far equivalence.
 
+`material_inputs.normal_filtering` additionally separates raw normal-vector
+length from surface coverage. It reports `raw_length`, `surface_weight` and
+`conditional_length` (raw length divided by the constant-one surface weight)
+for covered, opaque and partial pixels. Statistics are per-pixel count/min/max/
+mean/RMS; a mean of conditional lengths differs from a ratio of group means.
+Missing/invalid weights, nonfinite normals, zero vectors and conditional lengths
+above the unit bound are counted. Values are not clamped or written back.
+
+Native opaque-surface controls establish matching accumulation weights for the
+normal pass and constant-one AOV. A partially covered plane can have raw normal
+length 0.5 but conditional length 1; fully covered mixed directions can have
+conditional length near 0.5. A below-unit value therefore need not be corrupt
+data. It does not identify a unique normal distribution, roughness, thickness or
+material correction. Captures contain a filtered first normal moment; the extra
+second-moment probes used for qualification are not part of the capture format.
+No shader or captured data changes when requesting these statistics.
+
 ### Experimental directional depth assets
 
 `inspect_botanical_depth_source` plans a reduced directional mesh from a completed

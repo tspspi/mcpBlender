@@ -67,6 +67,9 @@ def test_native_tree_multiview_reference_capture(assets_live):
             field_data=await wait(client,'inspect_botanical_capture_data',directory='tree-material-fields',material_inputs=True,views=['FRONT'],alpha_threshold=.01)
             material=field_data['views'][0]['material_inputs']
             assert material['covered_with_surface_weight']>0 and material['covered_without_surface_weight']==0
+            filtering=material['normal_filtering'];assert filtering['method']=='SURFACE_CONDITIONAL_NORMAL_LENGTH_V1'
+            counts=filtering['groups'];assert counts['covered']['conditional_length']['count']==material['covered_with_surface_weight']
+            assert counts['opaque']['conditional_length']['count']+counts['partial']['conditional_length']['count']==counts['covered']['conditional_length']['count']
             assert material['normalized_inputs']['roughness']['min'][0]>=0
             assert material['normalized_inputs']['alpha']['min'][0]>.99999
             assert material['normalized_inputs']['thin_weight']['max'][0]>.21

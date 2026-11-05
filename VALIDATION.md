@@ -5434,3 +5434,66 @@ The next layer fails archive validation and the completed first layer is removed
 leaving the original native resource inventory unchanged. The test restores its
 archive copy before exercising successful batch creation and reopen. No shared
 qualification archive is modified.
+
+
+## Coverage-conditioned normal filtering diagnostic
+
+`inspect_botanical_capture_data(material_inputs=true)` now reports raw normal
+length, constant-one surface weight and their ratio for covered, opaque and
+partial pixels. Counts distinguish unavailable/invalid observations and above-
+unit conditional lengths. No clamping, data repair or shader correction occurs;
+the material-field capture format and saved depth assets remain unchanged.
+
+A native unoccluded diffuse fixture measures geometry-normal scalar AOVs,
+constant-one weight and six second moments alongside Blender's standard Normal
+pass. It renders full/partial planes and alternating +/-60-degree facets under
+uniform world and front-facing sun, using 32px, 256 fixed CPU samples, two threads
+and no denoising. Both box filtering (width 1) and the installed default
+Blackman-Harris filter (width 1.5) are tested. Standard Normal and custom normal
+AOV accumulation agree within 1e-5 at every pixel in all 16 controls.
+
+At the box-filtered centre pixel:
+
+| Geometry | Surface weight | Raw normal length | Conditional length |
+| --- | ---: | ---: | ---: |
+| Full plane | 1 | 1 | 1 |
+| Partial plane | 0.50390625 | 0.50390625 | 1 |
+| Full mixed facets | 1 | 0.500046 | 0.500046 |
+| Partial mixed facets | 0.50390625 | 0.251976 | 0.500045 |
+
+For both filters, normalized second-moment trace remains one on the partial
+controls. Mixed facets receive half the flat plane's sun radiance, while their
+uniform-world radiance agrees within 1e-5. A universal material-brightness factor
+cannot preserve both cases. The fixture proves a controlled directional-mixing
+counterexample, not a recovered distribution or a complete real-canopy BSDF.
+Default filtering changes the edge facet mixture; conditional normal Z still
+matches 0.5 while conditional vector length is about 0.516 at that centre pixel.
+
+Read-only inspection of the retained 512px dense source gives these per-pixel
+means (alpha threshold 0.001):
+
+| View/group | Raw length | Surface weight | Conditional length |
+| --- | ---: | ---: | ---: |
+| FRONT opaque | 0.780728 | 1 | 0.780728 |
+| FRONT partial | 0.428740 | 0.551830 | 0.807901 |
+| BACK_LEFT opaque | 0.755081 | 1 | 0.755081 |
+| BACK_LEFT partial | 0.435698 | 0.572774 | 0.792398 |
+
+FRONT covers 108,662 pixels and BACK_LEFT 58,307. Neither has invalid/missing
+weights, nonfinite normals or conditional lengths above the unit bound. Coverage
+alone does not explain the opaque-pixel values. These means do not establish a
+unique orientation distribution or prove the cause of every lighting residual.
+Current material-field captures do not include the independent second-moment
+AOVs used in the calibration, so fitting additional shader lobes remains separate
+work requiring further data and qualification.
+
+Nine focused filtering/field/data tests passed (0.61s), including mutation-free
+statistics, coverage versus directional mixing, invalid/absent observations,
+no-clamping bounds, channel lengths and cancellation. The native 16-control test
+passed (9.56s). The Python-disabled MCP capture workflow passed (65.57s), including
+new group counts, existing beauty preservation, source preservation and copied-
+archive distinction. Evidence is local under
+`tmp/qualification/normal-filtering-20261105/`: native proof, direct calibration
+EXRs, dense read-only proof and check logs. No optical-equivalence or completed
+far-workflow claim follows; directional shading and the wider workflow remain
+open.

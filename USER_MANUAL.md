@@ -816,6 +816,48 @@ binding and required float32 pass headers as well as ordinary file/source hashes
 It does not certify decoded pass values, optical equivalence, far fitting,
 angular interpolation, shadow proxies, wind or population performance.
 
+### Sampling for reference images and depth data
+
+Use separate captures when you need both a clean reference image and data for
+directional depth geometry. `samples` already accepts `1`; no Python execution
+or additional capture mode is required. On the qualified Blender 5.0.1/Cycles
+path, one sample evaluates the orthographic pixel centre. Depth and Position
+come from the first sample, whereas normals and shader AOVs accumulate across
+camera samples. More samples can therefore mix material/normal observations
+from surfaces different from the first depth hit. These behaviors are explicit
+in Blender's [camera initialization](https://raw.githubusercontent.com/blender/blender/v5.0.1/intern/cycles/kernel/integrator/init_from_camera.h)
+and [data-pass accumulation](https://raw.githubusercontent.com/blender/blender/v5.0.1/intern/cycles/kernel/film/data_passes.h).
+
+For a static opaque tree's depth inputs, plan and capture with, for example:
+
+```json
+{"collection":"Tree","views":["FRONT","BACK"],"resolution":512,
+ "samples":1,"material_fields":true,"geometric_normals":true}
+```
+
+Pass the returned `capture_sha256` as `expected_capture` and use a new capture
+directory. Inspect its data with `material_inputs: true` and an explicit
+`alpha_threshold`, then plan depth geometry from that same archive. Check missing
+depth, surface weights, geometric-normal lengths and material mixtures rather
+than assuming a sample count proves correspondence for every shader. Existing
+`normal_moments` can additionally record input-normal observations. Neither the
+live tree nor its shader graph needs modification.
+
+One-sample beauty is noisy and lacks subpixel coverage averaging. Retain a
+separate higher-sample native reference capture, with material extensions off if
+unneeded. Before pairing archives, check the source-tree guard, root pose, scene
+units, frame and each view's camera geometry; output filenames alone do not
+identify matching views. Increasing source resolution can help represent thin
+coverage at a declared lower `output_resolution`, within the existing budgets,
+but requires rendered validation at that output resolution.
+
+One sample removes averaging across camera samples; texture filtering, shader
+closure mixtures, geometric approximation and secondary transport remain.
+The qualified opaque fixture has binary alpha, integer material IDs, unit face
+normals and no covered pixels without depth. This does not establish the same
+behavior for transparent materials or complete native-versus-depth lighting
+equivalence. Keep the original clean-reference image gates.
+
 ### Optional native material-input fields
 
 Set `material_fields: true` when planning and capturing to retain fourteen shader

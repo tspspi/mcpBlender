@@ -6507,3 +6507,82 @@ calibration fixtures were byte-verified and cleaned as recorded above. The full
 far/angular/shadow/wind/population/mature-oak and broader workflow ledger remains
 open. Neither cap increases, threshold changes nor material-energy adjustments
 were used to claim acceptance.
+
+### One-sample capture correspondence
+
+The existing `samples: 1` structured capture path was qualified with arbitrary
+Python execution disabled (1 MCP workflow check, 47.10s). A static opaque managed
+tree, FRONT/BACK at 32px, had 64 covered pixels per view: binary alpha, integer
+material IDs, geometric-normal length errors below 1.2e-7 and no covered pixels
+without measured depth. Depth/Position and camera projection checks passed;
+input moments were valid. The geometric-normal depth asset used no estimated
+edge cells, met 5cm tolerance in this fixture, preserved source guards, retained
+six packed maps through save/reopen without capture files, and removed eleven
+private IDs cleanly. This does not qualify all transparent shaders or lighting.
+
+Blender 5.0.1's [camera initialization](https://raw.githubusercontent.com/blender/blender/v5.0.1/intern/cycles/kernel/integrator/init_from_camera.h)
+fixes the first sample at the filter centre. Its [data-pass kernel](https://raw.githubusercontent.com/blender/blender/v5.0.1/intern/cycles/kernel/film/data_passes.h)
+writes first-sample Depth/Position while accumulating normals across samples.
+Separate higher-sample reference and one-sample data captures are therefore a
+supported workflow, with distinct quality limits documented in USER_MANUAL.md.
+Texture filtering, closure-normal correction and secondary transport remain.
+
+A private dense control additionally pinned BOX filtering and disabled adaptive
+sampling/denoising in a new archive. This explicit profile is experimental, not
+a new supported tool option. FRONT/BACK had 77,161/77,160 covered pixels, no missing
+depth, fractional material IDs or partial alpha, and geometric-normal lengths
+within 2.7e-7 of one. The 131,072-triangle adaptive depth-aware primary had MAE
+0.021014m, RMSE 0.258580m, maximum 9.425340m and 1,422 cells above 5cm; the target
+was not met. Work was 5,165,321/16,000,000, with no unknown depth/projection misses.
+No source colors or energy parameters were tuned.
+
+Against the same frozen native reference, primary world/front/rear brightness
+biases were +31.304%/+0.987%/+112.255%; only front passes the unchanged complete
+multiscale policy. The private full-source-secondary hybrid gave
+-21.506%/-39.115%/-13.774%, all rejecting that policy. Replacing only the private
+normal map with captured unit input-normal means gave primary
++30.948%/+0.200%/+112.008% and hybrid -21.719%/-39.562%/-13.792%. Again, only front
+primary passes. The ownership-invalidating material/image swap was restored
+and its new IDs removed before final owned inspections/removals succeeded.
+
+A further private full capture-pixel geometric-normal control used two spatial
+bands, 76,836 and 77,486 triangles, each under the existing per-ID cap. Maximum
+measured depth residuals fell to 17.68/19.01 micrometres. Primary biases were
++31.201%/+1.130%/+112.229%; hybrid -21.054%/-37.944%/-13.753%. Only front primary
+passes. All source controls match exactly; shared-root/material ownership was
+restored after removing new geometry. Near-zero measured centre-depth error and
+input-normal substitution still do not establish full optical equivalence.
+
+Ignored evidence: `tmp/qualification/centre-sampling-20261105/` retains MCP proof
+and packed scene, the private archive and explicit profile, geometry measurements,
+27 rendered EXRs, original comparison policies, control logs and restore/removal
+assertions. Temporary MCP state was automatically removed. These are forward
+lighting and data-correspondence improvements with remaining world/rear failures,
+not acceptance of the complete dense/far workflow.
+
+A subsequent private surface-frame control captured the underlying Geometry
+Normal separately from the shared linked normal input and geometric face normal.
+This distinction is relevant to the renderer's [bump/normal shadowing term](https://raw.githubusercontent.com/blender/blender/v5.0.1/intern/cycles/kernel/closure/bsdf.h).
+The original bark and leaf materials have linked relief normals, so an earlier
+implicit-input-only prototype correctly refused those materials before rendering.
+The new private base-normal COLOR AOV fit the existing 32-part EXR cap; all six
+original map hashes remained exactly unchanged when adding it.
+
+The full-pixel meshes then used captured base normals as native custom corner
+normals, and the private material used the captured unit input normal rather
+than the closure-average Normal pass. Source bump-correction flags matched.
+Native custom-normal encoding was measured rather than assumed lossless:
+maximum component errors were 0.008138/0.007409 across the two meshes. An initial
+private 0.001 encoding assertion failed; its log is retained. The diagnostic
+rerun reports actual encoding errors and retains the original rendered policy.
+It makes no claim that the tighter intermediate normal target was met.
+
+Primary world/front/rear biases remained +31.094%/+0.327%/+112.253%, and hybrid
+-21.141%/-38.381%/-13.568%. Only front primary passes; every frozen original
+control is exact. New materials/images/geometry were removed and original owned
+guards passed again. All runs are terminal. These nine additional EXRs, the
+32-part private frame archive, source/map checks and encoding measurements remain
+under the same ignored evidence directory. The experiment does not justify a
+new public surface-frame option or acceptance of world/rear lighting. Subsequent
+work must examine secondary-source overlap/transport or a different geometric
+representation, rather than treating these extra normal observations as a fix.

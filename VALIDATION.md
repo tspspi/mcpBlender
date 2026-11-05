@@ -5239,8 +5239,8 @@ brightness bias from +78.89% to -2.04%, while other lighting still failed. It is
 not a production shadow or bounce representation. A separate plane control found
 that the existing explicit mapped normal stays facing forward on a back face,
 which renders black where a default two-sided normal remains lit. This inherited
-shader limitation is recorded for a separate fix; it does not alter the primary
-front-view geometry qualification. Single-leaf reflect/translucent/mixed controls
+shader limitation was present in the V1 recipe used by those dense controls.
+The separate V2 correction below does not revise their recorded measurements. Single-leaf reflect/translucent/mixed controls
 all have unit centre Normal passes, ruling out simple opposite-closure cancellation
 as the explanation for the canopy's non-unit filtered Normal data.
 
@@ -5248,3 +5248,27 @@ Evidence is local under `tmp/qualification/adaptive-depth-20261105/`. Full nativ
 optics, normal-distribution filtering, secondary visibility/bounce information,
 compact shadow representation, angular blending, wind/population/reference
 quality and the original wider workflow requirements remain open.
+
+
+## Captured-normal geometric sidedness
+
+New directional depth assets pin `CAPTURED_INPUT_PBR_V2_SIDED_NORMAL` in their
+plan. The shader reverses normalized world-space captured normals on geometric
+back faces, for both Principled and Translucent closures. Legacy assets keep
+their original graph and inspect as V1; no automatic migration occurs.
+
+A native 32px, 16-sample CPU plane control compares V2 against an implicit-normal
+reference and a V1 control, with identity/rotated roots, uniform scale and
+zero/0.22 thin-surface weight. All front Combined/Normal buffers match V1 exactly.
+Back centre RGB matches the implicit reference within 1e-6, with reversed world
+normal; the zero-thin V1 back face is black. This isolated front preservation
+does not imply unchanged canopy indirect lighting or recover missing back color.
+
+The sidedness and packed-channel controls passed (2 tests, 14.24s); native
+lifecycle/rollback/guard controls passed (3, 25.31s), including recipe changes
+invalidating stale creation plans before allocation. Python-disabled MCP
+lifecycles for both geometry modes passed (2, 71.49s), with recipe reporting
+after save/reopen. Focused geometry/contracts/server checks passed (22, 34.16s).
+Evidence is retained locally under `tmp/qualification/sided-normals-20261105/`.
+Dense relighting and secondary visibility controls still require requalification
+with this recipe; the broader far-asset optical limitations remain open.

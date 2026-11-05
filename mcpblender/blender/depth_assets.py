@@ -11,6 +11,8 @@ from . import card_families
 
 COMMANDS={'inspect_botanical_depth_source','create_botanical_depth_asset','inspect_botanical_depth_asset','remove_botanical_depth_asset'}
 META='mcpblender_depth_asset';OWNER='mcpblender_depth_owner';FORMAT='mcpblender-directional-depth-asset-v1'
+SHADER_RECIPE='CAPTURED_INPUT_PBR_V2_SIDED_NORMAL'
+LEGACY_SHADER_RECIPE='CAPTURED_INPUT_PBR_V1'
 TABLES={'Collection':'collections','Object':'objects','Mesh':'meshes','Material':'materials','Image':'images'}
 
 
@@ -34,7 +36,7 @@ def prepared(p):
         pixels=depth_tiles.texture_map(values,decoded,meta,view,settings,name,cancelled=check_cancelled);maps[name]=pixels
         map_rows.append({'map':name,'components':list(components),'float32_sha256':depth_tiles.floats_sha(pixels),'decoded_bytes':len(pixels)*4});del values
     placement=Matrix.Scale(meta['scene_unit_scale']/unit,4)@Matrix(meta['source_root_matrix_world'])
-    summary={'format':FORMAT,'view':p['view'],'width':size,'height':size,'geometry':geometry['report'],'maps':map_rows,'decoded_texture_bytes':texture_bytes,
+    summary={'format':FORMAT,'shader_recipe':SHADER_RECIPE,'view':p['view'],'width':size,'height':size,'geometry':geometry['report'],'maps':map_rows,'decoded_texture_bytes':texture_bytes,
              'target_unit_scale':unit,'root_matrix_world':[list(r) for r in placement],
              'source':{'capture_sha256':meta['capture_sha256'],'frame':meta['frame'],'snapshot_sha256':proof['source_sha256'],'exr_sha256':row['sha256'],'material_fields_sha256':meta['material_fields']['fields_sha256'],'material_fields':meta['material_fields'],'source_root_matrix_world':meta['source_root_matrix_world'],'scene_unit_scale':meta['scene_unit_scale'],'bounds_root_local_m':meta['bounds_root_local_m'],'view':view},
              'optical_equivalence':False,'scope':'Single directional approximate depth layer; median measured-witness depth anchors, optional bounded normal-aligned refinement and explicitly counted edge estimates. Native view-evaluated shader-input maps, normalized raw root-local normals and artistic backlighting, with coverage applied once. Unknown physical thickness and omitted BSDF inputs; no optical/shadow/wind/interpolation/population qualification.'}
@@ -55,8 +57,13 @@ def material(name,maps,created):
     bs=node('ShaderNodeBsdfPrincipled')
     for source,key in [(base[0],'Base Color'),(normal[4],'Roughness'),(surface[1],'Metallic'),(surface[2],'IOR'),(surface[3],'Transmission Weight'),(emission[0],'Emission Color'),(emission[4],'Emission Strength')]:links.new(source,bs.inputs[key])
     transform=node('ShaderNodeVectorTransform');transform.vector_type='NORMAL';transform.convert_from='OBJECT';transform.convert_to='WORLD';links.new(normal[0],transform.inputs[0])
-    normalized=node('ShaderNodeVectorMath');normalized.operation='NORMALIZE';links.new(transform.outputs[0],normalized.inputs[0]);links.new(normalized.outputs[0],bs.inputs['Normal'])
-    backlight=node('ShaderNodeBsdfTranslucent');links.new(thin[0],backlight.inputs['Color']);links.new(normalized.outputs[0],backlight.inputs['Normal'])
+    normalized=node('ShaderNodeVectorMath');normalized.operation='NORMALIZE';links.new(transform.outputs[0],normalized.inputs[0])
+    # Captured normals describe the front side of the projected patch. Unlike
+    # implicit shader normals, an explicit vector is not reversed by Cycles on
+    # a back face. Use geometric sidedness, never a guessed normal/camera dot.
+    geometry=node('ShaderNodeNewGeometry');sign=node('ShaderNodeMath');sign.operation='MULTIPLY_ADD';sign.inputs[1].default_value=-2;sign.inputs[2].default_value=1;links.new(geometry.outputs['Backfacing'],sign.inputs[0])
+    sided=node('ShaderNodeVectorMath');sided.operation='SCALE';links.new(normalized.outputs[0],sided.inputs[0]);links.new(sign.outputs[0],sided.inputs['Scale']);links.new(sided.outputs[0],bs.inputs['Normal'])
+    backlight=node('ShaderNodeBsdfTranslucent');links.new(thin[0],backlight.inputs['Color']);links.new(sided.outputs[0],backlight.inputs['Normal'])
     blend=node('ShaderNodeMixShader');links.new(thin[4],blend.inputs[0]);links.new(bs.outputs[0],blend.inputs[1]);links.new(backlight.outputs[0],blend.inputs[2])
     transparent=node('ShaderNodeBsdfTransparent');coverage=node('ShaderNodeMixShader');links.new(base[4],coverage.inputs[0]);links.new(transparent.outputs[0],coverage.inputs[1]);links.new(blend.outputs[0],coverage.inputs[2])
     output=node('ShaderNodeOutputMaterial');links.new(coverage.outputs[0],output.inputs['Surface'])
@@ -124,7 +131,7 @@ def inspect(p):
             blockers.append('External depth resource reference: '+value.name)
     guard={'meta':meta,'content':current,'root_basis':[list(r) for r in root.matrix_basis],'visibility':[(o.name,o.hide_viewport,o.hide_render,o.hide_get()) for o in (root,obj)],'collection_visibility':[col.hide_viewport,col.hide_render],
            'unit':bpy.context.scene.unit_settings.scale_length,'issues':issues,'users':sorted((v.bl_rna.identifier,v.name,sorted((u.bl_rna.identifier,u.name) for u in users.get(v,set()))) for v in owned)}
-    state={'collection':col.name,'root':root.name,'object':obj.name,'valid':not issues and not blockers,'issues':issues,'ownership_blockers':sorted(set(blockers)),'source_files_required':False,
+    state={'collection':col.name,'root':root.name,'object':obj.name,'valid':not issues and not blockers,'issues':issues,'ownership_blockers':sorted(set(blockers)),'source_files_required':False,'shader_recipe':meta['plan'].get('shader_recipe',LEGACY_SHADER_RECIPE),
            'triangles':meta['plan']['geometry']['triangles'],'packed_images':6,'decoded_texture_bytes':meta['plan']['decoded_texture_bytes'],'plan':meta['plan'],'optical_equivalence':False,'asset_sha256':botany.digest(guard)}
     return col,owned,meta,state
 

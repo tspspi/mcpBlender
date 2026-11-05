@@ -23,7 +23,13 @@ source=Matrix(plan['source']['source_root_matrix_world']);target=Matrix(plan['ro
 for point in [(0,0,0),(1,2,3),(-3,4,1)]:
     assert ((source@Vector(point))*plan['source']['scene_unit_scale']-(target@Vector(point))*.1).length<1e-5
 p=Create(**args,collection='DepthNative',expected_plan=plan['plan_sha256'],accept_approximate_optics=True).model_dump()
-before=set(bpy.data.user_map());original_objects={o.name:(o.type,[tuple(v.co) for v in o.data.vertices] if o.type=='MESH' else None) for o in scene.objects}
+before=set(bpy.data.user_map());recipe=api.SHADER_RECIPE;api.SHADER_RECIPE='CHANGED_RECIPE_CONTROL'
+try:api.create(p)
+except ValueError as exc:assert 'stale' in str(exc)
+else:raise AssertionError('Changed shader recipe did not invalidate plan')
+finally:api.SHADER_RECIPE=recipe
+assert set(bpy.data.user_map())==before
+original_objects={o.name:(o.type,[tuple(v.co) for v in o.data.vertices] if o.type=='MESH' else None) for o in scene.objects}
 def fail(value):
     if value.get('phase')=='creating packed directional data images' and value['completed']==1:raise bridge.OperationCancelled('cancel after first packed image')
 bridge.report_progress=fail

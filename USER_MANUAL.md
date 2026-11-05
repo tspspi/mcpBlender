@@ -863,6 +863,13 @@ material-ID/surface-weight witnesses. Inputs divide by the constant-one AOV
 weight; coverage is applied once. Intrinsic shader alpha must currently be opaque.
 No beauty RGB enters base color or emission. Shading explicitly normalizes the raw
 normal and transforms it from object to world, so root movement/rotation works.
+New assets use shader recipe `CAPTURED_INPUT_PBR_V2_SIDED_NORMAL`: geometric
+back faces reverse that explicit normal for both Principled and thin-surface
+shading. Planning pins the recipe in the creation guard; inspection reports it.
+Existing assets without a recipe retain their original `CAPTURED_INPUT_PBR_V1`
+graph and remain inspectable; they are not automatically upgraded. Isolated
+front-face rendering is unchanged, but corrected back-face shading can change
+indirect illumination in a scene. Captured view-conditioned colors are retained.
 This does not restore filtered surface layers, omitted BSDF inputs or physical
 thickness. At 512px the six float images occupy 24 MiB decoded; compressed blend
 size is a different budget. No texture quantization is applied.

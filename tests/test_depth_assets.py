@@ -30,6 +30,7 @@ def test_structured_native_depth_asset_lifecycle(assets_live,geometry_mode):
             assert info['geometry']['triangles']>0 and info['decoded_texture_bytes']==32*32*96 and len(info['maps'])==6
             assert info['root_matrix_world'][0][3]==4 and info['root_matrix_world'][1][3]==3
             assert info['optical_equivalence'] is False
+            assert info['shader_recipe']=='CAPTURED_INPUT_PBR_V2_SIDED_NORMAL'
             assert info['geometry']['options']['geometry_mode']==geometry_mode
             if geometry_mode=='ADAPTIVE_NORMAL':assert info['geometry']['refinement_work']>0
             changed=source|{'settings':source['settings']|{'geometry_mode':'FLAT' if geometry_mode=='ADAPTIVE_NORMAL' else 'ADAPTIVE_NORMAL'}}
@@ -43,7 +44,7 @@ def test_structured_native_depth_asset_lifecycle(assets_live,geometry_mode):
                 await wait(client,'inspect_botanical_depth_source',directory='depth-input',view='FRONT',settings={'max_texture_bytes':1024})
             made=await wait(client,'create_botanical_depth_asset',**source,collection='Approximate',expected_plan=info['plan_sha256'],accept_approximate_optics=True)
             assert made['valid'] and made['packed_images']==6 and made['triangles']==info['geometry']['triangles']
-            assert made['source_files_required'] is False
+            assert made['source_files_required'] is False and made['shader_recipe']==info['shader_recipe']
             assert (await wait(client,'inspect_botanical_tree',collection=source_name))['tree_sha256']==before
             await client.call_tool('save_blend',{'path':blend_name})
             # Reopen native packed data and prove lifecycle no longer reads input.

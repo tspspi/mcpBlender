@@ -807,9 +807,46 @@ normal pass and constant-one AOV. A partially covered plane can have raw normal
 length 0.5 but conditional length 1; fully covered mixed directions can have
 conditional length near 0.5. A below-unit value therefore need not be corrupt
 data. It does not identify a unique normal distribution, roughness, thickness or
-material correction. Captures contain a filtered first normal moment; the extra
-second-moment probes used for qualification are not part of the capture format.
+material correction. The native Normal pass contains a filtered renderer-normal first moment.
+Optional input-normal moments are described below.
 No shader or captured data changes when requesting these statistics.
+
+### Optional material normal-input moments
+
+Set both `material_fields: true` and `normal_moments: true` when planning and
+capturing botanical views. The option defaults off. It adds a versioned
+`material_fields.normal_moments` contract and nine float32 scalar AOVs:
+`MCP_NormalX/Y/Z` and `MCP_NormalXX/XY/XZ/YY/YZ/ZZ` (scalar EXR suffix `.X`).
+They record sample/filter-weighted first and second moments of the unit material
+normal input in world space, with the existing constant-one surface weight.
+They do not record a fitted shader distribution.
+
+Unlinked normal sockets use the Geometry node's Normal output; their stored
+socket defaults do not override that renderer input. Linked inputs are normalized
+per hit. The `PER_HIT_SAFE_UNIT_INPUT` recipe records its zero-length fallback as
+`GEOMETRY_NORMAL`: the Geometry node's Normal output (`sd.N`, including smooth
+shading). This matches the renderer fallback. Managed reflective/translucent
+branches must share the same linked source, or both use implicit normals;
+different sources refuse moment capture. Binding and recipe digests are included
+in source guards. Wiring is confined to the independent worker; original surface
+links and editing materials remain unchanged.
+
+With `material_inputs: true`, the data inspector reports unit-trace, mean-length
+and covariance bounds, finite/available observation counts and summary statistics.
+`input_moments_valid` means those checks pass on the selected covered pixels.
+Separately, `normal_pass_first_moment_agrees` compares the captured first moments
+with the native Normal pass; every selected covered observation must be available
+and finite to establish agreement. The renderer can adjust closure normals after reading
+a material normal input, so valid input moments can disagree with that pass.
+Agreement of first moments does not establish an equivalent distribution or BSDF.
+No data is clamped to make these flags pass.
+
+Extra AOVs contribute to the existing render storage estimates, byte/time limits,
+progress, cancellation and archive validation. Capturing them preserves the
+existing material fields and adds nine scalar channels per pixel. Existing
+captures without the option remain readable. Current depth-asset shaders retain
+their existing six-map representation; capturing moments does not automatically
+change those shaders, add texture maps or qualify optical equivalence.
 
 ### Experimental directional depth assets
 

@@ -34,12 +34,19 @@ def validate(value):
             width=4 if field['type']=='COLOR' else 1
             if len(values)!=width or any(type(v) not in (int,float) or not math.isfinite(v) for v in values):raise ValueError('Invalid material field default width/value')
         if material['bindings']['surface_weight']!={'constant':1.} or material['bindings']['material_id']!={'constant':float(material['id'])} or material['bindings']['thin_mode']!={'constant':float(material['model']=='MANAGED_THIN_FOLIAGE')}:raise ValueError('Native material field witness/identity changed')
+    if 'normal_moments' in value:
+        from . import normal_moments
+        normal_moments.validate(value['normal_moments'],materials)
     return value
 
 
 def validate_header(header,value):
     validate(value);present={r['name']:r['pixel_type'] for r in header['channels']}
-    for name in channels():
+    names=channels()
+    if 'normal_moments' in value:
+        from . import normal_moments
+        names+=normal_moments.channels()
+    for name in names:
         if present.get(name)!=2:raise ValueError('Native material field EXR lacks float32 channel: '+name)
 
 
@@ -121,5 +128,9 @@ def inspect_view(path,expected_sha256,geometry,threshold,contract,*,cancelled=la
                 for j,v in enumerate(values):low[j]=min(low[j],v);high[j]=max(high[j],v);sums[j]+=v
                 if field['key']=='material_id':counts['fractional_material_id_pixels']+=abs(values[0]-round(values[0]))>.001
             output[field['key']]={'count':count,'nonfinite_pixels':invalid,'min':low if count else None,'max':high if count else None,'mean':[v/count for v in sums] if count else None}
-    return {'fields_sha256':contract['fields_sha256'],**counts,'raw_surface_weight':weight_stats,'normal_filtering':filtering,'normalized_inputs':output,
+    extra={}
+    if contract.get('normal_moments'):
+        from . import normal_moments
+        extra['normal_moments']=normal_moments.inspect_view(path,expected_sha256,geometry,threshold,cancelled=cancelled,progress=progress)
+    return {**extra,'fields_sha256':contract['fields_sha256'],**counts,'raw_surface_weight':weight_stats,'normal_filtering':filtering,'normalized_inputs':output,
             'interpretation':'Straight input statistics divide raw AOVs by their constant-one surface weight, not beauty alpha. Integer averaged material IDs do not prove a single material. No clamping, physical thickness inference or optical-equivalence gate.'}

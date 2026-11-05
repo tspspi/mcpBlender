@@ -59,13 +59,20 @@ def test_native_tree_multiview_reference_capture(assets_live):
             # The same native shaders are sampled into raw input fields in the
             # worker, with beauty outputs preserved and the live tree untouched.
             with pytest.raises(ToolError,match='recapture'):await wait(client,'inspect_botanical_capture_data',directory='tree-capture',material_inputs=True,views=['FRONT'])
-            field_args=args|{'material_fields':True}
+            field_args=args|{'material_fields':True,'normal_moments':True}
             field_plan=await wait(client,'inspect_botanical_view_capture',**field_args)
             await wait(client,'capture_botanical_views',**field_args,directory='tree-material-fields',expected_capture=field_plan['capture_sha256'])
             field_proof=await tool(client,'validate_render_job',directory='tree-material-fields')
             assert len(field_proof['botanical_capture']['material_fields']['fields'])==14
+            assert len(field_proof['botanical_capture']['material_fields']['normal_moments']['fields'])==9
             field_data=await wait(client,'inspect_botanical_capture_data',directory='tree-material-fields',material_inputs=True,views=['FRONT'],alpha_threshold=.01)
             material=field_data['views'][0]['material_inputs']
+            if dest:=os.environ.get('MCPBLENDER_TREE_CAPTURE_EVIDENCE_DIR'):
+                out=Path(dest);out.mkdir(parents=True,exist_ok=True);shutil.copytree(root/'library/tree-material-fields',out/'material-bundle',dirs_exist_ok=True);(out/'material-proof.json').write_text(json.dumps(field_data,indent=2))
+            assert material['normal_moments']['input_moments_valid'],material['normal_moments']
+            # Smooth real geometry exposes closure corrections absent from the
+            # material normal input; retain the distinction instead of clamping.
+            assert not material['normal_moments']['normal_pass_first_moment_agrees'] and material['normal_moments']['normal_pass_disagreements']>0
             assert material['covered_with_surface_weight']>0 and material['covered_without_surface_weight']==0
             filtering=material['normal_filtering'];assert filtering['method']=='SURFACE_CONDITIONAL_NORMAL_LENGTH_V1'
             counts=filtering['groups'];assert counts['covered']['conditional_length']['count']==material['covered_with_surface_weight']

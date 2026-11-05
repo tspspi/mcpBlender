@@ -13,7 +13,7 @@ def binding(node,socket):
     return {'node':node.name,'socket':port.identifier,'source':{'node':port.links[0].from_node.name,'socket':port.links[0].from_socket.identifier} if port.links else None,'default':shaders.plain(port.default_value)}
 
 
-def describe(materials):
+def describe(materials,*,normal_moments=False):
     rows=[]
     for index,mat in enumerate(sorted(set(materials),key=lambda v:v.name)):
         if not mat.use_nodes or mat.animation_data or mat.node_tree.animation_data:raise ValueError('Material fields require static enabled node shaders')
@@ -34,6 +34,9 @@ def describe(materials):
             'normal_source':'Native world-space Normal pass; no normalization or inferred replacement.',
             'weighting':'Raw shader AOVs with separate constant-one surface_weight. Divide by this weight only where valid, never by beauty alpha. Values may average different source surfaces/materials within one pixel.',
             'scope':'View-evaluated native shader inputs, not beauty colors. Managed thin-leaf backfacing, procedural/texture links and backlighting inputs are retained; no front forcing. No physical thickness, complete BSDF reconstruction, transport/optical equivalence or dynamic side recovery from one view.'}
+    if normal_moments:
+        from . import capture_normal_moments
+        result['normal_moments']=capture_normal_moments.describe(materials,rows)
     result['fields_sha256']=botany.digest(result);schema.validate(result);return result
 
 
@@ -41,7 +44,9 @@ def register(scene,contract):
     schema.validate(contract)
     for layer in scene.view_layers:
         existing={v.name:v.type for v in layer.aovs}
-        for field in schema.FIELDS:
+        fields=list(schema.FIELDS)
+        if contract.get('normal_moments'):fields+=contract['normal_moments']['fields']
+        for field in fields:
             if field['name'] in existing:
                 if existing[field['name']]!=field['type']:raise ValueError('Capture AOV type mismatch')
             else:
@@ -54,7 +59,7 @@ def install(scene,contract):
         mat=bpy.data.materials.get(row['material'])
         if mat is None:raise ValueError('Capture material missing from snapshot')
         materials.append(mat)
-    if describe(materials)!=contract:raise ValueError('Snapshot material field bindings changed')
+    if describe(materials,normal_moments=bool(contract.get('normal_moments')))!=contract:raise ValueError('Snapshot material field bindings changed')
     register(scene,contract)
     fields={f['key']:f for f in schema.FIELDS}
     for row,mat in zip(contract['materials'],materials):
@@ -64,3 +69,7 @@ def install(scene,contract):
             if b.get('source'):
                 source=b['source'];socket=next(s for s in tree.nodes[source['node']].outputs if s.identifier==source['socket']);tree.links.new(socket,port)
             else:port.default_value=b['constant'] if 'constant' in b else b['default']
+
+    if contract.get('normal_moments'):
+        from . import capture_normal_moments
+        capture_normal_moments.install(contract['normal_moments'])

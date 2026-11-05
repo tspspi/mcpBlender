@@ -5483,9 +5483,9 @@ FRONT covers 108,662 pixels and BACK_LEFT 58,307. Neither has invalid/missing
 weights, nonfinite normals or conditional lengths above the unit bound. Coverage
 alone does not explain the opaque-pixel values. These means do not establish a
 unique orientation distribution or prove the cause of every lighting residual.
-Current material-field captures do not include the independent second-moment
-AOVs used in the calibration, so fitting additional shader lobes remains separate
-work requiring further data and qualification.
+The material-field captures used in that study did not include the independent
+second-moment AOVs. The optional input-moment capture below adds those observations;
+fitting shader lobes remains separate work requiring qualification.
 
 Nine focused filtering/field/data tests passed (0.61s), including mutation-free
 statistics, coverage versus directional mixing, invalid/absent observations,
@@ -5497,3 +5497,79 @@ archive distinction. Evidence is local under
 EXRs, dense read-only proof and check logs. No optical-equivalence or completed
 far-workflow claim follows; directional shading and the wider workflow remain
 open.
+
+
+## Optional unit material normal-input moments
+
+`normal_moments=true` requires `material_fields=true` and adds a versioned optional
+nine-scalar contract to the existing material-field metadata. Source bindings,
+world-space unit-input semantics and the zero-length fallback are hashed. The
+worker adds first moments X/Y/Z and symmetric second moments XX/XY/XZ/YY/YZ/ZZ;
+surface output links remain unchanged. Managed thin-material closures require
+identical normal sources or shared implicit normals. Default captures and existing
+six-map depth-asset shaders retain their previous behavior.
+
+Native controls compare implicit normals, ignored unlinked socket defaults,
+linked unit/nonunit normals, procedural bump and shared thin-material normals,
+including front/back faces. A grazing linked normal is a distinct control for
+renderer closure correction. The final safe recipe matches Cycles normalization
+and its zero-length fallback to the Geometry node Normal output (`sd.N`). Linked
+zero inputs therefore capture the renderer's fallback instead of inventing a
+replacement. Inconsistent thin-branch normals refuse before wiring. Twenty front/back
+comparisons (40 renders) preserve Combined RGBA exactly; input moment bounds
+pass while the grazing case retains explicit Normal-pass disagreement.
+
+The distinction is supported by Blender 5.0.1's implementation: the Normal pass
+calls a normalized, closure-weighted average, while Principled reflection can
+use a corrected normal. See the official
+[data-pass implementation](https://raw.githubusercontent.com/blender/blender/v5.0.1/intern/cycles/kernel/film/data_passes.h),
+[closure-normal averaging](https://raw.githubusercontent.com/blender/blender/v5.0.1/intern/cycles/kernel/integrator/surface_shader.h)
+and [Principled closure construction](https://raw.githubusercontent.com/blender/blender/v5.0.1/intern/cycles/kernel/svm/closure.h).
+A private copy of the small captured tree reproduces all original normal/input
+buffers. Disabling specular in that copy removes 66 Normal-pass disagreements
+(maximum component error 0.18681037 before, below 1.8e-7 after), with input-moment
+buffers exactly unchanged. This diagnoses the tested distinction without changing
+the live source or treating renderer-normal disagreement as invalid input moments.
+
+The data inspector separates `input_moments_valid` (availability, finite values,
+unit trace, mean-length and covariance positive-semidefinite bounds) from
+`normal_pass_first_moment_agrees`. Violations and differences are counted without
+clamping. Observations remain finite-sample/filter-weighted moments; neither flag
+recovers a unique orientation distribution or a complete native BSDF.
+
+Final focused field/schema/data/server checks passed (22 tests, 22.26s); the
+native material-input control passed (9.67s), and the Python-disabled MCP capture
+workflow passed (43.63s), including the optional packet, source/beauty preservation,
+read-only diagnostics and archive binding. The final full-density MCP run passed
+in 407.44s: the retained 88,704-leaf source rendered all ten 512px views at eight
+CPU samples/two threads, with all decoded PNG pixels exact to the previous
+material-field baseline. Editing in the isolated live scene continued during the
+independent worker. The native snapshot still has one scene, the 88,704-point
+instance source, fewer than 500,000 stored vertices and no Realize Instances node.
+The aggregate render estimate includes the extra scalar fields (729,848,704 bytes
+for this run); runtime storage observations remain available to the caller.
+
+FRONT and BACK_LEFT moment bounds were independently decoded at alpha threshold
+0.5. Both pass all input checks:
+
+| View | Covered pixels | Mean input-vector length | Mean covariance trace | Normal-pass disagreements | Maximum component difference |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| FRONT | 75,585 | 0.765787 | 0.384266 | 17,429 | 0.565643 |
+| BACK_LEFT | 41,487 | 0.744029 | 0.419084 | 9,070 | 0.351293 |
+
+All ten output packets pass immutable hash/header/contract validation; the table
+covers the two views receiving full moment analysis. New packets have 31 EXR
+parts and remain within the bounded decoder profile. Covariance statistics are
+sample moments, not an unbiased physical population estimate or an optical gate.
+Evidence is local under `tmp/qualification/normal-inputs-20261105/`, including the
+final `dense/` and `mcp/` archives, native proof and specular-isolation control.
+The earlier no-fallback experiment is frozen separately with its declared recipe.
+Normal-distribution reconstruction, color/normal correlation, angular blending,
+shadow/wind/population/reference qualification and the original wider workflow
+remain open. No generated material has been silently upgraded to consume moments.
+
+A final missing-observation regression passed with the seven targeted moment
+checks (0.44s): agreement cannot be established from only the available subset
+when another selected covered pixel has no valid surface weight. This strengthens
+the data-report flag without changing captured buffers; qualified complete-data
+results above are unchanged.

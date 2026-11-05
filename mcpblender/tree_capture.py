@@ -16,6 +16,7 @@ def validate(metadata,job):
     if job['width']!=metadata['options']['resolution'] or job['height']!=job['width'] or job['samples']!=metadata['options']['samples']:raise ValueError('Botanical capture render settings binding mismatch')
     fields=metadata.get('material_fields')
     if bool(fields)!=bool(metadata['options'].get('material_fields',False)):raise ValueError('Capture material field option/contract mismatch')
+    if bool(fields and fields.get('normal_moments'))!=bool(metadata['options'].get('normal_moments',False)):raise ValueError('Capture normal-moment option/contract mismatch')
     if fields is not None:
         from . import capture_material_fields
         capture_material_fields.validate(fields)

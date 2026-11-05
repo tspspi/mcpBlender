@@ -32,7 +32,8 @@ def test_full_density_tree_capture_and_live_editing(assets_live):
                     assert time.monotonic()<deadline
             await client.call_tool('open_blend',{'path':'native-tree.blend'})
             before=await operation('inspect_botanical_tree',collection='Canopy3')
-            args={'collection':'Canopy3','views':list(DIRECTIONS),'resolution':512,'samples':8,'material_fields':True}
+            moments=os.environ.get('MCPBLENDER_TREE_CAPTURE_NORMAL_MOMENTS')=='1'
+            args={'collection':'Canopy3','views':list(DIRECTIONS),'resolution':512,'samples':8,'material_fields':True,'normal_moments':moments}
             plan=await operation('inspect_botanical_view_capture',**args)
             assert plan['leaf_instances']==88704 and plan['expanded_render_triangles']>17000000
             queued=(await client.call_tool('capture_botanical_views',{'params':args|{'directory':'dense-bundle','expected_capture':plan['capture_sha256']}})).data
@@ -50,8 +51,11 @@ def test_full_density_tree_capture_and_live_editing(assets_live):
             assert len(proof['outputs'])==20 and proof['botanical_capture']['capture_sha256']==plan['capture_sha256']
             assert (await operation('inspect_botanical_tree',collection='Canopy3'))['tree_sha256']==before['tree_sha256']
             verified=await operation('validate_render_job',directory='dense-bundle');assert verified['valid']
+            if evidence:shutil.copytree(library/'dense-bundle',evidence/'dense-bundle',dirs_exist_ok=True)
             material_data=await operation('inspect_botanical_capture_data',directory='dense-bundle',material_inputs=True,views=['FRONT','BACK_LEFT'])
+            if evidence:(evidence/'dense-material-inputs.json').write_text(json.dumps(material_data,indent=2))
             for view in material_data['views']:
+                if moments:assert view['material_inputs']['normal_moments']['input_moments_valid'],view['material_inputs']['normal_moments']
                 fields=view['material_inputs'];assert fields['covered_with_surface_weight']>0 and fields['covered_without_surface_weight']==0
                 assert fields['normalized_inputs']['thin_weight']['max'][0]>.219
                 assert fields['normalized_inputs']['thin_mode']['max'][0]>.999

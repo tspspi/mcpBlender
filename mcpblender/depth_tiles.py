@@ -19,7 +19,7 @@ MAPS=[('base_coverage',('base_color.R','base_color.G','base_color.B','coverage')
       ('surface',('metallic','ior','transmission_weight','alpha')),
       ('witness',('thin_mode','cull_weight','material_id','surface_weight'))]
 DEFAULTS={'tile_pixels':4,'alpha_threshold':.001,'edge_depth_policy':'NEAREST','edge_radius_pixels':16,
-          'max_triangles':32768,'max_pixels':1048576,'max_texture_bytes':256*1024**2,'max_search_work':2000000,'geometry_mode':'FLAT','normal_tolerance_degrees':15.,'max_slope':16.,'max_refinement_work':8000000,'max_moment_candidates':32}
+          'max_triangles':32768,'max_pixels':1048576,'max_texture_bytes':256*1024**2,'max_search_work':2000000,'geometry_mode':'FLAT','normal_tolerance_degrees':15.,'max_slope':16.,'max_refinement_work':8000000,'max_moment_candidates':32,'output_resolution':None}
 
 
 def floats_sha(values):
@@ -38,7 +38,23 @@ def options(values):
     for key,low,high in [('normal_tolerance_degrees',.1,90),('max_slope',.01,64)]:
         if type(p[key]) not in (int,float) or not math.isfinite(p[key]) or not low<=p[key]<=high:raise ValueError('Invalid depth patch option: '+key)
     for key in ('normal_tolerance_degrees','max_slope'):p[key]=float(p[key])
+    if p['output_resolution'] is not None and (type(p['output_resolution']) is not int or not 1<=p['output_resolution']<=1024):raise ValueError('Invalid declared output resolution')
     return p
+
+
+def output_sampling(width,p):
+    """Declare a matched square output grid while retaining capture data pixels."""
+    output=p['output_resolution']
+    if output is None:return None
+    if type(width) is not int or width<1 or width%output:raise ValueError('Capture/output resolution ratio must be an integer power of two')
+    ratio=width//output
+    if ratio not in (1,2,4,8,16,32,64):raise ValueError('Capture/output resolution ratio must be a power of two through 64')
+    tile=p['tile_pixels']*ratio
+    if tile>64:raise ValueError('Output tile exceeds 64 capture pixels; reduce tile_pixels or the capture/output ratio')
+    return {'format':'mcpblender-depth-output-sampling-v1','capture_resolution':width,'output_resolution':output,
+            'capture_texels_per_output_pixel':ratio,'base_tile_output_pixels':p['tile_pixels'],
+            'base_tile_capture_pixels':tile,'edge_radius_pixel_space':'CAPTURE_DATA',
+            'scope':'Matched square source-camera frame only. Capture data and texture budgets stay at source resolution; declared output controls base grid and moment projection units. Coverage is filtered again during rendering. Density alone does not certify silhouette, PBR, lighting, other cameras or population quality.'}
 
 
 def frame(decoded,metadata,view,p):
@@ -74,14 +90,19 @@ def nearest_depth_pixel(cx,cy,radius,w,h,eligible,charge,cancelled):
 
 
 def geometry(decoded,metadata,view,values,*,cancelled=lambda:None,progress=lambda v:None):
-    p=options(values)
+    original=options(values);sampling=output_sampling(decoded['width'],original)
+    p=original|({'tile_pixels':sampling['base_tile_capture_pixels']} if sampling else {})
     if p['geometry_mode']=='ADAPTIVE_NORMAL':
         from . import adaptive_depth
-        return adaptive_depth.geometry(decoded,metadata,view,p,cancelled=cancelled,progress=progress)
-    if p['geometry_mode']=='MOMENT_FACETS':
+        result=adaptive_depth.geometry(decoded,metadata,view,p,cancelled=cancelled,progress=progress)
+    elif p['geometry_mode']=='MOMENT_FACETS':
         from . import moment_depth
-        return moment_depth.geometry(decoded,metadata,view,p,cancelled=cancelled,progress=progress)
-    return _geometry(decoded,metadata,view,p,cancelled=cancelled,progress=progress)
+        result=moment_depth.geometry(decoded,metadata,view,p,cancelled=cancelled,progress=progress)
+    else:result=_geometry(decoded,metadata,view,p,cancelled=cancelled,progress=progress)
+    if sampling:
+        report=result['report'];report['options']=original;report['output_sampling']=sampling
+        report['geometry_sha256']=botany.digest({k:v for k,v in report.items() if k!='geometry_sha256'}|{'patch_records':result['patch_records']})
+    return result
 
 
 def _geometry(decoded,metadata,view,values,*,rectangles=None,slopes=None,cancelled=lambda:None,progress=lambda v:None):

@@ -916,6 +916,31 @@ with progress/cancellation and storage feedback. The capture directory stays an
 active cleanup input while these operations run. Only creation/removal require
 scene-edit permission; source plans do not create a checkpoint.
 
+To use denser capture data for a smaller matched output, declare
+`settings.output_resolution`. For example, capture at 256px, then plan a 64px
+output with `{"output_resolution":64,"tile_pixels":4}`. The base grid becomes
+16 capture pixels per tile, preserving a four-pixel grid in the intended output.
+Configure the renderer to that resolution and the matched source camera frame
+separately. The source and output must be square, with a capture/output ratio
+that is a power of two from 1 through 64; effective capture tiles stay at most 64
+pixels. Leaving `output_resolution` unset retains capture-pixel grid units.
+
+The plan reports `geometry.output_sampling`, including source/output dimensions,
+density and effective base tiles. All packed maps stay at capture resolution.
+Pixel, texture and traversal budgets count the actual source data;
+`edge_radius_pixels` remains in capture pixels. Moment geometry checks projection
+error in the declared output-pixel units, or capture-pixel units when unset.
+Options and sampling metadata are creation guards. Four times the capture width
+costs sixteen times the data pixels/texture storage; inspect the capture/storage
+plan before rendering. Unsupported ratios, tile sizes and existing budgets refuse.
+
+Captured coverage is already filtered. Rendering it as transparency filters it
+again, which can erase thin silhouettes at equal capture/output density. Native
+thin-strip and small-canopy controls improve with four-times-denser data at a
+fixed output grid. This is measured for those matched views, not a general
+sampling guarantee. Keep the existing image gates: passing alpha/coverage checks
+does not qualify PBR relighting, other cameras, animation or population delivery.
+
 With default flat geometry, each active tile becomes an independent projected quad at its median measured
 centre depth. Neighbouring tiles never share geometry across depth jumps. Partial
 coverage with no centre hit uses the nearest measured witness inside the explicit

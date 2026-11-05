@@ -40,6 +40,7 @@ def prepared(p,*,progress_context=None):
     root,proof,meta,rows=capture_data.source(args,report_progress,cancelled)
     if not meta.get('material_fields'):raise ValueError('Native material fields required; recapture with material_fields=true')
     view,row=rows[0];size=proof['botanical_capture']['options']['resolution'];texture_bytes=size*size*len(depth_tiles.MAPS)*16
+    depth_tiles.output_sampling(size,settings)
     if texture_bytes>settings['max_texture_bytes']:raise ValueError('Depth asset decoded texture budget exceeded')
     names=['TreeCapture.Combined.A','TreeCapture.Depth.Z',*('TreeCapture.Normal.'+a for a in 'XYZ')]
     moment_mode=settings['geometry_mode']=='MOMENT_FACETS'

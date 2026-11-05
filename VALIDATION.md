@@ -6014,3 +6014,78 @@ dense admission, native units/placement file, profile renders, frozen-asset proo
 structured lifecycles and check logs. Source capture files and the production
 service are unchanged. Temporary terminal fixtures are removed after retaining
 and verifying useful evidence; the full workflow goal remains incomplete.
+
+## Declared output sampling and filtered coverage reuse
+
+Depth settings now optionally declare `output_resolution`. Capture data/maps keep
+source dimensions; the base tile grid is expressed in output pixels and converted
+once to capture pixels. Capture/output ratios must be integer powers of two
+through 64, and the effective capture tile must remain <=64 pixels. Without a
+declaration, existing capture-pixel semantics remain. Plans pin the declaration,
+density/effective-grid report and resulting geometry; equal geometry under a
+manual capture grid still has a distinct creation guard. Edge searches, pixel,
+texture and work budgets continue to count capture data. Moment geometry v6
+measures the unchanged 1e-5-pixel projection tolerance against the declared
+matched output grid, or capture pixels when unset. No automatic camera/render
+configuration, image resampling, alpha sharpening or albedo change occurs.
+
+Independent tests compare identical buffers/UVs/faces against manually scaled
+capture grids for flat, adaptive and moment geometry. Unsupported ratios/tiles
+and invalid output controls refuse. Source planning preflights sampling before
+EXR decode; output declarations cannot shrink source texture/pixel accounting.
+The focused geometry/contracts/add-on regression passed 104 tests (38.98s), with
+the existing anyio deprecation warning only.
+
+A native 32px/256-sample opacity control isolates filtered-coverage reuse. Opaque
+emission geometry is captured at 1x/2x/4x output width, then reconstructed using
+nearest float coverage textures and the same Cycles output filter. Both source
+and reconstructed images are measured directly as linear multilayer EXRs:
+
+| Thin-strip capture density | Mask IoU | Soft-alpha IoU | Alpha MAE |
+| --- | ---: | ---: | ---: |
+| 1x | 0.0000 | 0.7397 | 0.05155 |
+| 2x | 0.6218 | 0.8770 | 0.02257 |
+| 4x | 1.0000 | 0.9659 | 0.00597 |
+
+The broad-edge control already exceeds 0.97 soft IoU at 1x, so testing only large
+edges would conceal the thin-detail failure. Its image/card border also limits
+improvement independently of interior filtering. The native regression passed
+(14.35s); 2x density is deliberately not treated as universally sufficient.
+
+A Python-disabled MCP workflow passed (64.98s): create a small managed woody/
+foliage source, capture one FRONT view at 32px and 128px with material fields and
+input moments, preserve the original tree guard, plan a 32px output grid from
+128px data, verify equality with a manual 16-capture-pixel grid, reject stale and
+invalid sampling/budget requests, create/save/reopen, delete capture inputs, then
+inspect and remove all eleven private resources. The 128px packed data still
+costs 128*128*96=1,572,864 decoded bytes; declaring 32px output does not reduce it.
+
+Separate native source/proxy renders at 32px and 256 samples compare these actual
+canopy archives with the same 66-triangle flat grid:
+
+| Capture width / output width | Mask IoU | Soft-alpha IoU | Alpha MAE | Shared-coverage luminance bias |
+| --- | ---: | ---: | ---: | ---: |
+| 32 / 32 | 0.8049 | 0.7787 | 0.01438 | -11.12% |
+| 128 / 32 | 0.9756 | 0.9614 | 0.00227 | -21.97% |
+
+The denser control passes the existing alpha gates (IoUs >=0.8, alpha MAE <=0.05),
+without extra triangles. RGB remains unqualified; improved silhouette does not
+repair the known geometric-normal/transport approximation. The real-canopy
+native regression passed (6.26s). Five native lifecycle/placement/packed-lane and
+frozen-v5 moment-asset checks also passed (23.47s), preserving preceding saved
+formats and default capture-grid behavior.
+
+A retained exploratory adaptive-normal run on the same high-density data improves
+world luminance bias to -5.52% with 2,320 triangles, while front/rear sun biases
+remain +11.28%/+102.76%. Its alpha IoUs remain approximately 0.976/0.961. The
+10% lighting criterion still fails outside the world case. Moment-facet planning
+on these particular 32/128 captures with a four-output-pixel grid still encounters
+supported-direction/depth refusals; no sampling option bypasses that admission.
+These exploratory runs do not establish complete relighting, angular, shadow,
+wind, population or mature-reference qualification.
+
+Evidence is retained under `tmp/qualification/coverage-density-20261105/`:
+control and real-canopy native proofs/EXRs, public-workflow capture archives and
+packed asset, adaptive exploration, moment-admission refusals and check logs.
+Reproducible native control/canopy helpers are committed in tests. Source and
+production service state remain unchanged; the complete workflow goal is active.

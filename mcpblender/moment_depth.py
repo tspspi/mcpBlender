@@ -3,7 +3,7 @@ from array import array
 import math
 from . import botany, capture_data, depth_tiles, normal_moments, normal_quadrature, projected_microfacets, normal_support
 
-FORMAT = 'mcpblender-moment-depth-patches-v5'
+FORMAT = 'mcpblender-moment-depth-patches-v6'
 TOLERANCE = 1e-5
 
 
@@ -118,7 +118,7 @@ def geometry(decoded, metadata, view, p, *, cancelled=lambda: None, progress=lam
                         max_slope=p['max_slope'],anchor=anchor,origin=(*anchor,record['depth_scene_units']),precision_omissions=omissions,triangle_budget=remaining,cancelled=cancelled)
                     try:
                         native_vertices,native_uvs,residual,area_error=native_piece(piece,target,
-                            (camera,axes,mesh_root,root_axes,squares,span/w,span,near,far))
+                            (camera,axes,mesh_root,root_axes,squares,span/(p['output_resolution'] or w),span,near,far))
                         break
                     except CollapsedFacet as exc:
                         # Rebuild only when actual native collapse identifies a
@@ -159,6 +159,7 @@ def geometry(decoded, metadata, view, p, *, cancelled=lambda: None, progress=lam
     report = base['report'] | {'format': FORMAT, 'patches': len(faces), 'triangles': 2*len(faces),
         'moment_tiles': fits, 'depth_anchor': 'WITNESS_PIXEL_CENTRE', 'refinement_work': work,
         'construction_frame':'WITNESS_RELATIVE_CAMERA',
+        'projection_reference_resolution':p['output_resolution'] or w,
         'mesh_origin_root_local':origin,'mesh_origin_policy':'SOURCE_BOUNDS_CENTRE_FLOAT32' if 'bounds_root_local_m' in metadata else 'ROOT_ORIGIN_NO_SOURCE_BOUNDS',
         'work_unit': '10 per visited tile pixel plus 64 per direction-cap preflight plus 328 per bounded candidate fit and up to four geometry checks',
         'direction_cap_method':normal_support.FORMAT,'direction_cap_minimum_margin':minimum_support_margin,

@@ -874,6 +874,32 @@ This does not restore filtered surface layers, omitted BSDF inputs or physical
 thickness. At 512px the six float images occupy 24 MiB decoded; compressed blend
 size is a different budget. No texture quantization is applied.
 
+The source planner and creator accept `render_role` separately from geometry
+`settings`. Its exact Cycles ray flags are pinned in the plan, so changing the
+role requires a fresh `expected_plan`. Every created collection starts hidden.
+
+| `render_role` | Enabled Cycles ray types |
+| --- | --- |
+| `ALL_RAYS` (default) | Camera, diffuse, glossy, transmission, volume, shadow |
+| `CAMERA_ONLY` | Camera |
+| `SECONDARY` | Diffuse, glossy, transmission, volume, shadow |
+| `SHADOW_ONLY` | Shadow |
+| `DIFFUSE_SHADOW` | Diffuse, shadow |
+
+For example, plan a BACK view with `render_role: "DIFFUSE_SHADOW"`, then create
+with the same source arguments, returned `plan_sha256` as `expected_plan`, and
+`accept_approximate_optics: true`. Geometry and captured maps do not change with
+the role. Inspect returns the creation `render_role` and current `ray_visibility`.
+Saved assets predating roles report their original `ALL_RAYS` role.
+
+These are Cycles visibility choices, not portable engine settings or qualified
+lighting presets. A camera-excluded layer can still change rendered alpha: the
+recorded dense control changes one pixel through secondary-ray participation.
+Review alpha and lighting in the intended scene. Generic
+`configure_render_visibility` edits change an owned asset's content; inspection
+marks it invalid until the original flags are restored. Create a new planned
+asset to use a different permanent role.
+
 `inspect_botanical_depth_asset` works after save/reopen without capture files.
 It checks ownership, private dependencies, actual vertex/UV buffers and every
 packed float image against plan hashes. Source field bindings and omissions stay

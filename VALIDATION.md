@@ -5313,3 +5313,63 @@ Scripts, snapshots, comparisons, raw statistics and inspected PNG/EXR controls
 are retained locally under `tmp/qualification/sided-normals-20261105/dense/`.
 Next controls must isolate secondary ray roles and the changed alpha pixel
 before introducing a managed secondary-layer workflow.
+
+
+## Guarded depth-layer render roles and ray ablation
+
+Directional source plans and creation now accept `render_role`: `ALL_RAYS`
+(default), `CAMERA_ONLY`, `SECONDARY`, `SHADOW_ONLY` or `DIFFUSE_SHADOW`. Plans
+pin the exact Cycles visibility flags; inspection reports both the creation role
+and actual flags. Existing role-less assets retain their graphs and inspect as
+`ALL_RAYS`. Collections still start hidden. Geometry and captured input textures
+are independent of the role. This supplies structured layer construction, not
+a claim of native optical equivalence.
+
+A six-condition native ablation reuses the V2 dense front geometry and a newly
+created BACK layer. It applies guarded production render-visibility actions. The
+no-rear and three-role rear controls exactly reproduce their previous decoded
+PNGs. Camera, glossy and volume rays remain disabled for all experimental rear
+conditions; this three-role combination differs from the full `SECONDARY` preset.
+
+| Enabled rear ray types | World luminance bias | Changed raw alpha pixels |
+| --- | ---: | ---: |
+| Layer excluded from rendering | +41.04% | 0 |
+| Shadow, diffuse, transmission | +27.73% | 1 |
+| Shadow | +41.04% | 1 |
+| Diffuse | +33.66% | 1 |
+| Transmission | +35.21% | 1 |
+| Diffuse and shadow | +33.66% | 1 |
+
+The common changed pixel is (88, 192) in decoded top-down EXR coordinates;
+alpha rises from 0.60505462 to 0.63413692. Removing transmission alone does not
+restore it; each enabled ray type reproduces the difference. The underlying
+renderer/path mechanism remains unresolved. None of these world-lighting cases
+passes the existing brightness gate. Camera exclusion must not be described as
+exact alpha preservation. A hidden native master is not part of this control.
+
+Evidence is retained locally under `tmp/qualification/secondary-roles-20261105/`,
+including scripts, per-condition PNG/EXR, guarded-action state, source plan,
+resource snapshot and comparisons. Runs enforce a 2 GiB free-storage floor and
+record current free bytes in progress/proof files.
+
+The new native lifecycle control exercises all five creation presets: role changes
+refuse stale plans before allocation; geometry/maps match across roles; actual
+flags match the plan; changing a flag invalidates ownership/removal until restored;
+all roles survive save/reopen with stable asset guards and clean removal. The
+portable baseline is saved/reopened first because Blender drops unused factory
+data on file load. Together with rollback/placement/foreign-user controls, four
+native tests passed in 38.69s. Structured MCP lifecycles for FLAT/SHADOW_ONLY and
+ADAPTIVE_NORMAL/DIFFUSE_SHADOW passed with arbitrary execution absent (2 tests,
+66.34s), including archive deletion, save/reopen, source preservation and removal.
+Focused contracts/geometry/server checks passed (22, 30.53s). Tests use the system
+Python with `python3 -m pytest` against the checkout; no environment/package
+changes were made.
+
+A final all-ray-invisible rear control (`hide_render=false`, every Cycles ray
+flag false) exactly matches the excluded-layer decoded PNG, with zero changed
+raw alpha pixels. Mere presence of the rear object is insufficient to reproduce
+the observed difference. This narrows the control to secondary-ray participation
+without identifying the underlying renderer mechanism. Two retained V1 flat and
+two role-less V2 assets independently inspect as valid with `ALL_RAYS`; their
+input blend files remain byte-identical after inspection. These controls are
+recorded in `legacy-invisible-proof.json` alongside the other local evidence.

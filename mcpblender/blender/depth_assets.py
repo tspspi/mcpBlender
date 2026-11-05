@@ -13,12 +13,19 @@ COMMANDS={'inspect_botanical_depth_source','create_botanical_depth_asset','inspe
 META='mcpblender_depth_asset';OWNER='mcpblender_depth_owner';FORMAT='mcpblender-directional-depth-asset-v1'
 SHADER_RECIPE='CAPTURED_INPUT_PBR_V2_SIDED_NORMAL'
 LEGACY_SHADER_RECIPE='CAPTURED_INPUT_PBR_V1'
+RAY_FLAGS=tuple(k for k in card_families.RENDER_FLAGS if k.startswith('visible_'))
+RAY_ROLES={'ALL_RAYS':RAY_FLAGS,'CAMERA_ONLY':('visible_camera',),
+           'SECONDARY':tuple(k for k in RAY_FLAGS if k!='visible_camera'),
+           'SHADOW_ONLY':('visible_shadow',),'DIFFUSE_SHADOW':('visible_diffuse','visible_shadow')}
 TABLES={'Collection':'collections','Object':'objects','Mesh':'meshes','Material':'materials','Image':'images'}
 
 
 def prepared(p):
     from .bridge import check_cancelled,report_progress
     if bpy.context.mode!='OBJECT':raise ValueError('Depth assets require Object mode')
+    role=p.get('render_role','ALL_RAYS')
+    if role not in RAY_ROLES:raise ValueError('Unknown depth asset render role')
+    ray_visibility={key:key in RAY_ROLES[role] for key in RAY_FLAGS}
     settings=depth_tiles.options(p['settings']);unit=bpy.context.scene.unit_settings.scale_length
     if not math.isfinite(unit) or unit<=0:raise ValueError('Positive target scene units required')
     args={'directory':p['directory'],'views':[p['view']],'max_pixels':settings['max_pixels'],'max_total_pixels':settings['max_pixels']}
@@ -36,7 +43,7 @@ def prepared(p):
         pixels=depth_tiles.texture_map(values,decoded,meta,view,settings,name,cancelled=check_cancelled);maps[name]=pixels
         map_rows.append({'map':name,'components':list(components),'float32_sha256':depth_tiles.floats_sha(pixels),'decoded_bytes':len(pixels)*4});del values
     placement=Matrix.Scale(meta['scene_unit_scale']/unit,4)@Matrix(meta['source_root_matrix_world'])
-    summary={'format':FORMAT,'shader_recipe':SHADER_RECIPE,'view':p['view'],'width':size,'height':size,'geometry':geometry['report'],'maps':map_rows,'decoded_texture_bytes':texture_bytes,
+    summary={'format':FORMAT,'shader_recipe':SHADER_RECIPE,'render_role':role,'ray_visibility':ray_visibility,'view':p['view'],'width':size,'height':size,'geometry':geometry['report'],'maps':map_rows,'decoded_texture_bytes':texture_bytes,
              'target_unit_scale':unit,'root_matrix_world':[list(r) for r in placement],
              'source':{'capture_sha256':meta['capture_sha256'],'frame':meta['frame'],'snapshot_sha256':proof['source_sha256'],'exr_sha256':row['sha256'],'material_fields_sha256':meta['material_fields']['fields_sha256'],'material_fields':meta['material_fields'],'source_root_matrix_world':meta['source_root_matrix_world'],'scene_unit_scale':meta['scene_unit_scale'],'bounds_root_local_m':meta['bounds_root_local_m'],'view':view},
              'optical_equivalence':False,'scope':'Single directional approximate depth layer; median measured-witness depth anchors, optional bounded normal-aligned refinement and explicitly counted edge estimates. Native view-evaluated shader-input maps, normalized raw root-local normals and artistic backlighting, with coverage applied once. Unknown physical thickness and omitted BSDF inputs; no optical/shadow/wind/interpolation/population qualification.'}
@@ -132,6 +139,7 @@ def inspect(p):
     guard={'meta':meta,'content':current,'root_basis':[list(r) for r in root.matrix_basis],'visibility':[(o.name,o.hide_viewport,o.hide_render,o.hide_get()) for o in (root,obj)],'collection_visibility':[col.hide_viewport,col.hide_render],
            'unit':bpy.context.scene.unit_settings.scale_length,'issues':issues,'users':sorted((v.bl_rna.identifier,v.name,sorted((u.bl_rna.identifier,u.name) for u in users.get(v,set()))) for v in owned)}
     state={'collection':col.name,'root':root.name,'object':obj.name,'valid':not issues and not blockers,'issues':issues,'ownership_blockers':sorted(set(blockers)),'source_files_required':False,'shader_recipe':meta['plan'].get('shader_recipe',LEGACY_SHADER_RECIPE),
+           'render_role':meta['plan'].get('render_role','ALL_RAYS'),'ray_visibility':{key:getattr(obj,key) for key in RAY_FLAGS},
            'triangles':meta['plan']['geometry']['triangles'],'packed_images':6,'decoded_texture_bytes':meta['plan']['decoded_texture_bytes'],'plan':meta['plan'],'optical_equivalence':False,'asset_sha256':botany.digest(guard)}
     return col,owned,meta,state
 
@@ -167,6 +175,7 @@ def create(p):
         for loop in mesh.loops:values.extend(geometry['uvs'][loop.vertex_index*2:loop.vertex_index*2+2])
         uv.data.foreach_set('uv',values)
         obj=bpy.data.objects.new(prefix+'-'+p['view'],mesh);made.append(obj);obj.parent=root;col.objects.link(obj)
+        for key,value in info['ray_visibility'].items():setattr(obj,key,value)
         images={};w=info['width'];h=info['height']
         for key,pixels in maps.items():
             check_cancelled();report_progress({'phase':'creating packed directional data images','map':key,'completed':len(images),'total':len(maps)})

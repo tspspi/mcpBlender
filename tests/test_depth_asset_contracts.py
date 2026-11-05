@@ -12,6 +12,11 @@ def test_strict_patch_settings_and_default_approximation_acceptance():
         with pytest.raises(ValueError):Settings(**patch)
     from mcpblender import depth_tiles
     assert depth_tiles.options({'normal_tolerance_degrees':15,'max_slope':16})==depth_tiles.options({'normal_tolerance_degrees':15.0,'max_slope':16.0})
+    assert Source(directory='capture',view='FRONT').render_role=='ALL_RAYS'
+    for role in ('ALL_RAYS','CAMERA_ONLY','SECONDARY','SHADOW_ONLY','DIFFUSE_SHADOW'):
+        assert Source(directory='capture',view='FRONT',render_role=role).render_role==role
+    for role in ('CAMERA',True,None):
+        with pytest.raises(ValueError):Source(directory='capture',view='FRONT',render_role=role)
     assert not Create(directory='capture',view='FRONT',collection='Far',expected_plan='a'*64).accept_approximate_optics
 
 

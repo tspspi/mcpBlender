@@ -25,11 +25,14 @@ def test_structured_native_depth_asset_lifecycle(assets_live,geometry_mode):
             await wait(client,'capture_botanical_views',**args,directory='depth-input',expected_capture=plan['capture_sha256'])
             source_before=await wait(client,'inspect_botanical_tree',collection=source_name)
             before=source_before['tree_sha256']
-            source={'directory':'depth-input','view':'FRONT','settings':{'max_triangles':2048,'geometry_mode':geometry_mode}}
+            role='SHADOW_ONLY' if geometry_mode=='FLAT' else 'DIFFUSE_SHADOW'
+            source={'directory':'depth-input','view':'FRONT','render_role':role,'settings':{'max_triangles':2048,'geometry_mode':geometry_mode}}
             info=await wait(client,'inspect_botanical_depth_source',**source)
             assert info['geometry']['triangles']>0 and info['decoded_texture_bytes']==32*32*96 and len(info['maps'])==6
             assert info['root_matrix_world'][0][3]==4 and info['root_matrix_world'][1][3]==3
-            assert info['optical_equivalence'] is False
+            assert info['optical_equivalence'] is False and info['render_role']==role
+            assert info['ray_visibility']['visible_camera'] is False and info['ray_visibility']['visible_shadow'] is True
+            assert info['ray_visibility']['visible_diffuse']==(role=='DIFFUSE_SHADOW')
             assert info['shader_recipe']=='CAPTURED_INPUT_PBR_V2_SIDED_NORMAL'
             assert info['geometry']['options']['geometry_mode']==geometry_mode
             if geometry_mode=='ADAPTIVE_NORMAL':assert info['geometry']['refinement_work']>0
@@ -43,6 +46,7 @@ def test_structured_native_depth_asset_lifecycle(assets_live,geometry_mode):
             with pytest.raises(ToolError,match='texture budget'):
                 await wait(client,'inspect_botanical_depth_source',directory='depth-input',view='FRONT',settings={'max_texture_bytes':1024})
             made=await wait(client,'create_botanical_depth_asset',**source,collection='Approximate',expected_plan=info['plan_sha256'],accept_approximate_optics=True)
+            assert made['render_role']==role and made['ray_visibility']==info['ray_visibility']
             assert made['valid'] and made['packed_images']==6 and made['triangles']==info['geometry']['triangles']
             assert made['source_files_required'] is False and made['shader_recipe']==info['shader_recipe']
             assert (await wait(client,'inspect_botanical_tree',collection=source_name))['tree_sha256']==before
@@ -58,6 +62,7 @@ def test_structured_native_depth_asset_lifecycle(assets_live,geometry_mode):
             reopened_source=source_after_open['tree_sha256']
             reopened=await wait(client,'inspect_botanical_depth_asset',collection='Approximate')
             assert reopened['valid'] and reopened['asset_sha256']==made['asset_sha256']
+            assert reopened['render_role']==role and reopened['ray_visibility']==info['ray_visibility']
             with pytest.raises(ToolError,match='stale'):
                 await wait(client,'remove_botanical_depth_asset',collection='Approximate',expected_asset='0'*64)
             removed=await wait(client,'remove_botanical_depth_asset',collection='Approximate',expected_asset=reopened['asset_sha256'])

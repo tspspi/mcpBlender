@@ -5373,3 +5373,64 @@ without identifying the underlying renderer mechanism. Two retained V1 flat and
 two role-less V2 assets independently inspect as valid with `ALL_RAYS`; their
 input blend files remain byte-identical after inspection. These controls are
 recorded in `legacy-invisible-proof.json` alongside the other local evidence.
+
+
+## Multiview secondary depth-layer study
+
+Four fresh BACK/SIDE/LEFT/TOP layers use the production `SECONDARY` preset,
+512px packed inputs, tile size 8 and an 8,192-triangle budget per layer. They
+support the same V2, witness-anchored adaptive front asset and camera used by
+the previous controls. CPU rendering uses two threads and eight samples. No
+hidden native master contributes to rendering. All five assets independently
+inspect as valid after save/reopen; the source blend hash remains unchanged.
+
+| Secondary views | Actual total triangles | Decoded float maps | World bias | Front-sun bias | Rear-sun bias |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| BACK | 135,246 | 48 MiB | +25.33% (fail) | +27.14% (fail) | +1.38% (pass) |
+| BACK, SIDE, LEFT | 143,302 | 96 MiB | +0.44% (pass) | +23.65% (fail) | -9.18% (pass) |
+| BACK, SIDE, LEFT, TOP | 147,594 | 120 MiB | -13.10% (fail) | +21.69% (fail) | -15.03% (fail) |
+
+Values are shared-alpha-weighted luminance biases from decoded display PNGs;
+pass/fail includes all existing RGB/alpha and relative-luminance gates/scales.
+Raw Noisy Image EXR biases are respectively +26.23/+28.49/+1.73%,
++0.41/+24.89/-9.80%, and -13.23/+22.96/-15.97%. More layers can add excessive
+occlusion instead of improving the complete result. Front-sun shading remains
+outside the required gate in every set; no full lighting-equivalence claim follows.
+
+The no-layer baseline exactly reproduces the earlier V2 front PNG. Disabling
+secondary rays with all four support layers present exactly reproduces the
+previous primary-only PNG. BACK and BACK/SIDE/LEFT repeat the known one-pixel
+alpha difference; adding TOP leaves alpha exact in these three conditions.
+This does not establish general silhouette invariance or explain the renderer's
+underlying secondary-path behavior. The horizon-layer world PNG was visually
+inspected. GPU, other primary camera angles, wind and population workload remain
+unqualified. Evidence is local under `tmp/qualification/multilayer-depth-20261105/`;
+runs enforce a 2 GiB free-space floor and retain free-byte observations.
+
+## Aggregate directional depth-layer authoring
+
+New structured batch planning/creation tools use the same per-layer guards,
+private ownership, packed data and shader recipe. Aggregate pixel/texture budgets
+are checked before geometry/map packing; actual triangle totals, generated names,
+source/target settings and limits are pinned in one batch guard. Names must be
+available before any layer is allocated. The archive is held as a read input by
+the server for the operation. Layers remain independent assets after completion.
+
+Focused schema/path/policy/geometry/server checks passed (24 tests, 29.52s).
+Native batch plus existing placement/rollback/ownership/shader checks passed
+(4 tests, 34.71s), including aggregate budgets, target-name collision before first
+allocation, stale batch plans, cancellation after the second layer starts,
+complete removal of new resources, and independent save/reopen without input
+files. A structured MCP pipeline passed (44.13s); its final asynchronous/storage
+variant and existing storage controls passed (3 tests, 31.50s). The latter checks
+whole-batch checkpoint estimates and current free bytes, source preservation,
+compact per-asset guards, archive deletion, reopen and individual removal with
+arbitrary execution absent. Evidence is retained in the same local qualification
+folder, including `mcp/mcp-proof.json` and `mcp/small-layers.blend`.
+
+An additional native source-mutation control passed (8.82s): after the first
+layer finishes, the test changes its private copy of the immutable source blend.
+The next layer fails archive validation and the completed first layer is removed,
+leaving the original native resource inventory unchanged. The test restores its
+archive copy before exercising successful batch creation and reopen. No shared
+qualification archive is modified.

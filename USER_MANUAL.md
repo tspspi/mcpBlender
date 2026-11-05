@@ -911,6 +911,53 @@ an asset to get a fresh `asset_sha256`. Supply it as `expected_asset` to
 renamed resources and stale guards refuse removal. Creation cancellation/failure
 removes only the newly allocated private resources.
 
+### Planning and creating several depth layers
+
+`inspect_botanical_depth_layers` plans up to ten distinct views from one capture.
+Supply a `prefix`, `directory`, and `layers`, each with `view`, optional
+`render_role` and optional geometry `settings`. For example:
+
+```json
+{
+  "directory": "oak-reference",
+  "prefix": "OakLayers",
+  "layers": [
+    {"view": "FRONT", "settings": {"geometry_mode": "ADAPTIVE_NORMAL"}},
+    {"view": "BACK", "render_role": "SECONDARY", "settings": {"tile_pixels": 8}}
+  ]
+}
+```
+
+The planner checks every target collection name (`OakLayers-FRONT`,
+`OakLayers-BACK`) and returns per-layer source guards, geometry reports, role
+flags, totals and one `plan_sha256`. Generated names must fit 63 UTF-8 bytes;
+duplicate views, occupied names and invalid settings refuse. All layers use the
+capture's physical placement in the target scene.
+
+Optional `limits` bound the complete request: `max_total_pixels` defaults to
+4,194,304 (ceiling 10,485,760), `max_total_texture_bytes` to 256 MiB (ceiling
+512 MiB), and `max_total_triangles` to 262,144 (ceiling 1,310,720). Pixel/texture
+admission precedes geometry/map packing; actual triangle totals are checked
+while planning. Individual layer settings retain their own limits. Totals count
+decoded float textures, separately from compressed blend size or GPU memory.
+
+Call `create_botanical_depth_layers` with the same arguments, `expected_plan`
+set to the returned `plan_sha256`, and `accept_approximate_optics: true`. It
+checks the complete plan before allocation and rechecks each source guard while
+creating layers. Cooperative failure or cancellation removes the new batch's
+private resources, including layers that finished before the failure. Progress
+includes the active layer and completed-layer count; storage reporting uses an
+aggregate heuristic for new packed data/checkpoint overhead plus current free
+space. This estimate does not measure full scene memory or compressed output.
+
+The result gives compact per-asset inspection/removal guards and resource
+totals. Collections start hidden and remain independently owned. Use
+`inspect_botanical_depth_asset` and `remove_botanical_depth_asset` on each result;
+saved layers retain their packed data after the input archive is removed.
+Selection, angular blending, wind and native lighting equivalence still require
+separate work. The operation supports both read-only planning and policy-gated
+scene creation without Python execution.
+
 ### Numerical reference-pass inspection
 
 `inspect_botanical_capture_data` reads completed captures without Blender,

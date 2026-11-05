@@ -24,10 +24,12 @@ class Settings(Model):
         if self.tile_pixels not in (1,2,4,8,16,32,64):raise ValueError('Tile size must be a power of two')
         return self
 
+RenderRole=Literal['ALL_RAYS','CAMERA_ONLY','SECONDARY','SHADOW_ONLY','DIFFUSE_SHADOW']
+
 class Source(Model):
     directory: str
     view: View
-    render_role: Literal['ALL_RAYS','CAMERA_ONLY','SECONDARY','SHADOW_ONLY','DIFFUSE_SHADOW'] = 'ALL_RAYS'
+    render_role: RenderRole = 'ALL_RAYS'
     settings: Settings = Field(default_factory=Settings)
 
 class Create(Source):
@@ -41,7 +43,34 @@ class Asset(Model):
 class Remove(Asset):
     expected_asset: Digest
 
+class Layer(Model):
+    view: View
+    render_role: RenderRole = 'ALL_RAYS'
+    settings: Settings = Field(default_factory=Settings)
+
+class LayerLimits(Model):
+    max_total_pixels: int = Field(default=4194304,strict=True,ge=1024,le=10485760)
+    max_total_texture_bytes: int = Field(default=256*1024**2,strict=True,ge=1024,le=512*1024**2)
+    max_total_triangles: int = Field(default=262144,strict=True,ge=2,le=1310720)
+
+class LayersSource(Model):
+    directory: str
+    prefix: Name
+    layers: list[Layer] = Field(min_length=1,max_length=10)
+    limits: LayerLimits = Field(default_factory=LayerLimits)
+    @model_validator(mode='after')
+    def unique_names(self):
+        if len({v.view for v in self.layers})!=len(self.layers):raise ValueError('Depth layers require distinct views')
+        if '\0' in self.prefix or any(len((self.prefix+'-'+v.view).encode('utf-8'))>63 for v in self.layers):raise ValueError('Generated collection names must fit 63 UTF-8 bytes without NUL')
+        return self
+
+class LayersCreate(LayersSource):
+    expected_plan: Digest
+    accept_approximate_optics: bool = False
+
 COMMANDS={
+ 'inspect_botanical_depth_layers':(LayersSource,(),'Plan up to ten independent directional depth layers from one immutable capture. Per-view geometry settings and Cycles render roles; aggregate pixel/texture/triangle budgets, target-name preflight, per-layer source guards and one batch plan guard. No allocation, optical equivalence, automatic angular blending or wind qualification.'),
+ 'create_botanical_depth_layers':(LayersCreate,('allow_scene_edit',),'Create a guarded batch of independently owned hidden depth assets, with layer progress and aggregate checkpoint/storage estimate. Preflight all target names and budgets; roll back newly created layers on cooperative failure/cancellation. Requires accept_approximate_optics=true. Return compact individual inspection/removal guards; each layer remains independently editable through its supported controls. No automatic view selection or optical certification.'),
  'inspect_botanical_depth_source':(Source,(),'Plan one directional depth-patch asset from an immutable native capture with material_fields=true. Bounded geometry/search/pixels/textures; report measured versus estimated edge tiles, source-root units, six packed float data maps and source/file/geometry/map guards. Pin a Cycles render_role and its ray flags in the creation plan. Optional bounded normal-aligned adaptive geometry reports residual error, slope/bounds limits and budget stops; flat geometry remains the default. No beauty-RGB material substitution. Requires Blender only for target scene units. This is a directional approximation, not qualified optical equivalence or complete far workflow.'),
  'create_botanical_depth_asset':(Create,('allow_scene_edit',),'Create guarded independent hidden directional depth patches with private packed native-input textures, Principled plus artistic thin backlighting and separate coverage. Requires accept_approximate_optics=true. Preserve source/native scene resources. Intrinsic shader alpha must be opaque. Six float maps retain raw root-local normals and all input witnesses. Apply the planned render_role on creation; collection remains hidden. Camera exclusion does not guarantee exact rendered alpha preservation. No closed geometry, view blending, shadows/wind or native optical-equivalence guarantee.'),
  'inspect_botanical_depth_asset':(Asset,(),'Inspect owned packed directional depth asset after save/reopen without source files. Return content/placement/user guard and blockers for removal. Display visibility and uniform positive root placement can change. Report creation render_role and actual ray_visibility; ray-flag edits invalidate owned content until restored. No optical certification.'),

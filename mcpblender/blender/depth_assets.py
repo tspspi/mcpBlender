@@ -9,7 +9,7 @@ from mathutils import Matrix
 from mcpblender import botany,capture_data,depth_tiles,exr_scanline
 from . import card_families
 
-COMMANDS={'inspect_botanical_depth_source','create_botanical_depth_asset','inspect_botanical_depth_asset','remove_botanical_depth_asset'}
+COMMANDS={'inspect_botanical_depth_source','create_botanical_depth_asset','inspect_botanical_depth_asset','remove_botanical_depth_asset','inspect_botanical_depth_layers','create_botanical_depth_layers'}
 META='mcpblender_depth_asset';OWNER='mcpblender_depth_owner';FORMAT='mcpblender-directional-depth-asset-v1'
 SHADER_RECIPE='CAPTURED_INPUT_PBR_V2_SIDED_NORMAL'
 LEGACY_SHADER_RECIPE='CAPTURED_INPUT_PBR_V1'
@@ -20,8 +20,14 @@ RAY_ROLES={'ALL_RAYS':RAY_FLAGS,'CAMERA_ONLY':('visible_camera',),
 TABLES={'Collection':'collections','Object':'objects','Mesh':'meshes','Material':'materials','Image':'images'}
 
 
-def prepared(p):
-    from .bridge import check_cancelled,report_progress
+def progress_writer(context):
+    from .bridge import report_progress
+    return lambda value:report_progress(value|(context or {}))
+
+
+def prepared(p,*,progress_context=None):
+    from .bridge import check_cancelled
+    report_progress=progress_writer(progress_context)
     if bpy.context.mode!='OBJECT':raise ValueError('Depth assets require Object mode')
     role=p.get('render_role','ALL_RAYS')
     if role not in RAY_ROLES:raise ValueError('Unknown depth asset render role')
@@ -152,16 +158,17 @@ def erase(owned):
         for value in groups[kind]:getattr(bpy.data,TABLES[kind]).remove(value,do_unlink=True)
 
 
-def create(p):
-    from .bridge import check_cancelled,report_progress,_bridge
+def create(p,*,progress_context=None,checkpoint_estimate=None):
+    from .bridge import check_cancelled,_bridge
+    report_progress=progress_writer(progress_context)
     if not p['accept_approximate_optics']:raise ValueError('Explicit accept_approximate_optics=true required; directional depth assets are not optically qualified')
     if p['collection'] in bpy.data.collections:raise ValueError('Depth asset collection already exists')
-    info,geometry,maps=prepared(p)
+    info,geometry,maps=prepared(p,progress_context=progress_context)
     if info['plan_sha256']!=p['expected_plan']:raise ValueError('Depth asset source plan is stale')
-    estimate=info['decoded_texture_bytes']*2+16*1024**2
+    estimate=checkpoint_estimate if checkpoint_estimate is not None else info['decoded_texture_bytes']*2+16*1024**2
     if _bridge and _bridge.active:
         from mcpblender.storage import require_space
-        policy=_bridge.active['storage'];policy.update(estimated_bytes=estimate,estimate_kind='packed_depth_asset_checkpoint_heuristic')
+        policy=_bridge.active['storage'];policy.update(estimated_bytes=estimate,estimate_kind='packed_depth_layers_checkpoint_heuristic' if checkpoint_estimate is not None else 'packed_depth_asset_checkpoint_heuristic')
         require_space(policy.get('path',_bridge.path.parent),estimate,reserve_bytes=policy.get('reserve_bytes',256*1024**2),estimate_kind=policy['estimate_kind'])
     owner=uuid.uuid4().hex;prefix='MCPDepth-'+owner[:12];made=[];success=False
     try:
@@ -203,7 +210,64 @@ def remove(p):
     name=col.name;erase(owned);return {'removed':name,'private_datablocks':len(owned)}
 
 
+LAYERS_FORMAT='mcpblender-directional-depth-layers-v1'
+
+
+def layer_plan(p):
+    from .bridge import check_cancelled,report_progress
+    if bpy.context.mode!='OBJECT':raise ValueError('Depth layers require Object mode')
+    layers=p['layers'];limits=p['limits'];names=[p['prefix']+'-'+row['view'] for row in layers]
+    if not 1<=len(layers)<=10 or len(set(names))!=len(names):raise ValueError('Depth layers require 1..10 distinct views')
+    for name in names:
+        if '\0' in name or len(name.encode('utf-8'))>63:raise ValueError('Generated collection name exceeds native naming budget')
+        if name in bpy.data.collections:raise ValueError('Depth layer collection already exists: '+name)
+    def cancelled():check_cancelled();return False
+    _,proof,meta,_=capture_data.source({'directory':p['directory'],'views':[row['view'] for row in layers],
+        'max_pixels':max(row['settings']['max_pixels'] for row in layers),'max_total_pixels':limits['max_total_pixels']},report_progress,cancelled)
+    size=proof['botanical_capture']['options']['resolution'];pixels=len(layers)*size*size;texture_bytes=pixels*len(depth_tiles.MAPS)*16
+    if texture_bytes>limits['max_total_texture_bytes']:raise ValueError('Depth layers aggregate texture budget exceeded')
+    rows=[];triangles=0
+    for index,(layer,name) in enumerate(zip(layers,names)):
+        check_cancelled();context={'layer_view':layer['view'],'completed_layers':index,'total_layers':len(layers)}
+        plan=prepared({'directory':p['directory'],**layer},progress_context=context)[0]
+        if plan['source']['capture_sha256']!=meta['capture_sha256'] or plan['source']['snapshot_sha256']!=proof['source_sha256']:raise ValueError('Depth layer source changed during planning')
+        triangles+=plan['geometry']['triangles']
+        if triangles>limits['max_total_triangles']:raise ValueError('Depth layers aggregate triangle budget exceeded')
+        rows.append({'collection':name,'view':layer['view'],'render_role':plan['render_role'],'ray_visibility':plan['ray_visibility'],
+                     'settings':plan['geometry']['options'],'source_plan_sha256':plan['plan_sha256'],'shader_recipe':plan['shader_recipe'],'geometry':plan['geometry']})
+    result={'format':LAYERS_FORMAT,'prefix':p['prefix'],'layers':rows,'limits':limits,
+            'source':{'capture_sha256':meta['capture_sha256'],'snapshot_sha256':proof['source_sha256']},
+            'totals':{'pixels':pixels,'decoded_texture_bytes':texture_bytes,'triangles':triangles},'optical_equivalence':False}
+    result['plan_sha256']=botany.digest(result);return result
+
+
+def create_layers(p):
+    from .bridge import check_cancelled
+    if not p['accept_approximate_optics']:raise ValueError('Explicit accept_approximate_optics=true required')
+    plan=layer_plan(p)
+    if plan['plan_sha256']!=p['expected_plan']:raise ValueError('Depth layers source plan is stale')
+    estimate=2*plan['totals']['decoded_texture_bytes']+len(plan['layers'])*16*1024**2;owners=[];assets=[]
+    try:
+        for index,row in enumerate(plan['layers']):
+            check_cancelled()
+            state=create({'directory':p['directory'],'view':row['view'],'render_role':row['render_role'],'settings':row['settings'],
+                'collection':row['collection'],'expected_plan':row['source_plan_sha256'],'accept_approximate_optics':True},
+                progress_context={'layer_view':row['view'],'completed_layers':index,'total_layers':len(plan['layers'])},checkpoint_estimate=estimate)
+            owners.append(bpy.data.collections[state['collection']][OWNER])
+            assets.append({k:state[k] for k in ('collection','root','object','valid','asset_sha256','triangles','packed_images','decoded_texture_bytes','render_role','ray_visibility')})
+        check_cancelled()
+        return {'format':LAYERS_FORMAT,'plan_sha256':plan['plan_sha256'],'created_count':len(assets),'assets':assets,'totals':plan['totals'],'optical_equivalence':False}
+    except BaseException:
+        # Owners are recorded only after each independently transactional create.
+        # The failing in-progress layer rolls itself back; erase completed new
+        # private layers without polling an already-cancelled operation again.
+        for owner in reversed(owners):erase({v for v in bpy.data.user_map() if v.get(OWNER)==owner})
+        raise
+
+
 def dispatch(command,p):
+    if command=='inspect_botanical_depth_layers':return layer_plan(p)
+    if command=='create_botanical_depth_layers':return create_layers(p)
     if command=='inspect_botanical_depth_source':return prepared(p)[0]
     if command=='create_botanical_depth_asset':return create(p)
     if command=='remove_botanical_depth_asset':return remove(p)

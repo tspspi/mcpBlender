@@ -38,7 +38,9 @@ def headers(stream):
     signature=read(stream,8);version=struct.unpack('<I',signature[4:])[0]
     if signature[:4]!=b'v/1\x01' or version&0xff!=2 or version&~0x1402:raise ValueError('Unsupported EXR version/deep/tiled profile')
     multipart=bool(version&0x1000);parts=[];names=set();channels=set()
-    for _ in range(32):
+    # A multipart header list has one extra empty-header terminator. Count
+    # actual parts, so exactly 32 parts still leave room to read that byte.
+    for _ in range(33):
         attributes={}
         for _ in range(256):
             name=cstring(stream)
@@ -51,6 +53,7 @@ def headers(stream):
         if not attributes:
             if multipart and parts:break
             raise ValueError('Missing EXR header')
+        if len(parts)>=32:raise ValueError('EXR part budget exceeded')
         name=attributes.get('name',('string',b''))[1].decode('utf-8')
         if name in names:raise ValueError('Duplicate EXR part name')
         names.add(name)

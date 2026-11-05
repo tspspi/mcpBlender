@@ -6370,3 +6370,12 @@ asset/proof/nine EXRs, multiscale quality report, check logs and cleanup record.
 Native/pure/MCP helpers are committed. This milestone qualifies the explicit
 geometry control and its measurements; the full dense/mature, angular, shadow,
 wind, population and original broader workflow requirements remain open.
+
+### Exact multipart EXR boundary
+
+The scanline decoder and render-job header validator accept exactly 32 actual
+parts plus the multipart-list terminator; a 33rd part still refuses. Independent
+installed OpenEXR C++ fixtures with 31/32/33 parts verify decoded negative float
+values, channel association, both boundary validators and the unchanged hard
+part cap. `tests/test_exr_scanline.py`: 18 checks passed. This fixes counting the
+terminator against the part budget; it does not expand image or channel budgets.

@@ -39,5 +39,22 @@ int main(int argc,char** argv) {
             for(int i=0;i<3;++i) {OutputPart part(out,i);part.setFrameBuffer(frames[i]);part.writePixels(h);}
         } else {OutputFile out(file.c_str(),headers[0]);out.setFrameBuffer(frames[0]);out.writePixels(h);}
     }
+    // Exercise the exact multipart boundary independently of Python parsing.
+    for(int count : {31,32,33}) {
+        std::vector<Header> headers;
+        for(int i=0;i<count;++i) {
+            Header header(1,1);header.setName("part"+std::to_string(i));
+            header.setType(SCANLINEIMAGE);header.compression()=NO_COMPRESSION;
+            header.channels().insert("field"+std::to_string(i),Channel(FLOAT));
+            headers.push_back(header);
+        }
+        std::string file=std::string(argv[1])+"/parts-"+std::to_string(count)+".exr";
+        MultiPartOutputFile out(file.c_str(),headers.data(),count);
+        for(int i=0;i<count;++i) {
+            float value=float(i)-16.5f;FrameBuffer frame;
+            frame.insert("field"+std::to_string(i),Slice(FLOAT,reinterpret_cast<char*>(&value),sizeof(float),sizeof(float)));
+            OutputPart part(out,i);part.setFrameBuffer(frame);part.writePixels(1);
+        }
+    }
     return 0;
 }

@@ -72,3 +72,17 @@ def test_nonregular_inputs_are_refused_before_reading(tmp_path):
     pipe=tmp_path/'fifo';os.mkfifo(pipe)
     for path in (tmp_path,pipe):
         with pytest.raises(ValueError,match='nonregular'):exr.decode(path,['channel'])
+
+
+@pytest.mark.parametrize('count',[31,32,33])
+def test_multipart_exact_part_budget_in_decoder_and_job_header(native_exrs,count):
+    from mcpblender.render_jobs import image_header
+    path=native_exrs/f'parts-{count}.exr'
+    if count>32:
+        with pytest.raises(ValueError,match='part budget'):exr.decode(path,['field0'])
+        with pytest.raises(ValueError,match='part limit'):image_header(path)
+    else:
+        names=['field'+str(i) for i in range(count)]
+        result=exr.decode(path,names)
+        assert [list(result['channels'][n]) for n in names]==[[i-16.5] for i in range(count)]
+        assert len(image_header(path)['parts'])==count

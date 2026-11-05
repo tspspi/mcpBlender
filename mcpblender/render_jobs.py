@@ -81,7 +81,7 @@ def image_header(path):
         version=struct.unpack('<I',signature[4:])[0]
         if (version&0xff)!=2 or version&~0x1402:raise ValueError('Unsupported deep/tiled EXR profile')
         multipart=bool(version&0x1000);parts=[];channels=[]
-        for part_index in range(32):
+        for part_index in range(33):
             attributes={}
             for _ in range(256):
                 name=cstring(f)
@@ -97,6 +97,7 @@ def image_header(path):
             if not attributes:
                 if multipart and parts:break
                 raise ValueError('Missing EXR part header')
+            if len(parts)>=32:raise ValueError('EXR part limit exceeded')
             if 'dataWindow' not in attributes or attributes['dataWindow'][0]!='box2i' or len(attributes['dataWindow'][1])!=16:raise ValueError('Missing EXR data window')
             if multipart and attributes.get('type',(None,b''))[1]!=b'scanlineimage':raise ValueError('Unsupported EXR part type')
             x0,y0,x1,y1=struct.unpack('<4i',attributes['dataWindow'][1])

@@ -5272,3 +5272,44 @@ after save/reopen. Focused geometry/contracts/server checks passed (22, 34.16s).
 Evidence is retained locally under `tmp/qualification/sided-normals-20261105/`.
 Dense relighting and secondary visibility controls still require requalification
 with this recipe; the broader far-asset optical limitations remain open.
+
+
+## V2 dense secondary-layer controls
+
+The corrected recipe was requalified on the same 88,704-leaf source using a
+fresh 131,072-triangle-budget adaptive front asset. Save/reopen ownership and
+actual geometry/UV/float-map checks pass. The decoded primary-only image is
+exactly identical to the earlier V1 witness-anchored image. Legacy flat assets
+also inspect as valid without modification. The source archive remains an input.
+
+A separate experimental BACK-view layer uses tile size 8 and an 8,192-triangle
+budget. Camera, glossy and volume visibility are disabled on that layer; diffuse,
+transmission and shadow visibility remain enabled. Together the two layers use
+135,246 actual triangles and 48 MiB of decoded float textures. No hidden native
+source geometry is used. This control is not a production secondary-layer tool.
+
+| Lighting/ray control | V2 front bias | Front plus rear bias | Combined image gate with rear |
+| --- | ---: | ---: | --- |
+| Uniform world | +41.04% | +27.73% | Fail |
+| Secondary rays disabled | -7.35% | -7.35% | Pass |
+| Front sun | +40.83% | +27.27% | Fail |
+| Rear sun | +92.72% | +1.26% | Pass |
+
+These are shared-alpha-weighted luminance biases from decoded display PNGs,
+using the existing RGB/alpha gates and an absolute relative-luminance limit of
+0.10 at each comparison scale. Raw Noisy Image EXR biases for front/front-plus-
+rear are +41.72%/+28.47% (world), -7.35%/-7.35% (secondary disabled),
++40.58%/+28.62% (front sun), and +102.32%/+1.53% (rear sun).
+
+The rear layer leaves all decoded pixels exact with secondary rays disabled.
+In each other condition, exactly one of 262,144 alpha pixels differs, with raw
+maximum change 0.0290823 and mean absolute change 1.1094e-7. The same change
+survives PNG output; it is not just display encoding. Camera exclusion alone
+does not establish exact alpha preservation here. Its cause remains unresolved.
+The improved rear-lighting result does not qualify other lighting, silhouette
+invariance, view blending, wind or population performance.
+
+Scripts, snapshots, comparisons, raw statistics and inspected PNG/EXR controls
+are retained locally under `tmp/qualification/sided-normals-20261105/dense/`.
+Next controls must isolate secondary ray roles and the changed alpha pixel
+before introducing a managed secondary-layer workflow.

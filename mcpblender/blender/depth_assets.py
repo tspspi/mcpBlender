@@ -6,7 +6,7 @@ import uuid
 from array import array
 import bpy
 from mathutils import Matrix
-from mcpblender import botany,capture_data,depth_tiles,exr_scanline,normal_moments
+from mcpblender import botany,capture_data,depth_tiles,exr_scanline,normal_moments,depth_shadow
 from . import card_families
 
 COMMANDS={'inspect_botanical_depth_source','create_botanical_depth_asset','inspect_botanical_depth_asset','remove_botanical_depth_asset','inspect_botanical_depth_layers','create_botanical_depth_layers'}
@@ -33,14 +33,17 @@ def prepared(p,*,progress_context=None):
     role=p.get('render_role','ALL_RAYS')
     if role not in RAY_ROLES:raise ValueError('Unknown depth asset render role')
     ray_visibility={key:key in RAY_ROLES[role] for key in RAY_FLAGS}
+    mask_options=depth_shadow.options(p['shadow_mask']) if p.get('shadow_mask') is not None else None
+    if mask_options and (role!='SHADOW_ONLY' or mask_options['receiver_view']==p['view']):raise ValueError('Paired shadow mask requires SHADOW_ONLY and a different receiver view')
     settings=depth_tiles.options(p['settings']);unit=bpy.context.scene.unit_settings.scale_length
     if not math.isfinite(unit) or unit<=0:raise ValueError('Positive target scene units required')
-    args={'directory':p['directory'],'views':[p['view']],'max_pixels':settings['max_pixels'],'max_total_pixels':settings['max_pixels']}
+    args={'directory':p['directory'],'views':[p['view']]+([mask_options['receiver_view']] if mask_options else []),'max_pixels':settings['max_pixels'],'max_total_pixels':settings['max_pixels']*(2 if mask_options else 1)}
     def cancelled():check_cancelled();return False
     root,proof,meta,rows=capture_data.source(args,report_progress,cancelled)
     if not meta.get('material_fields'):raise ValueError('Native material fields required; recapture with material_fields=true')
     view,row=rows[0];size=proof['botanical_capture']['options']['resolution'];texture_bytes=size*size*len(depth_tiles.MAPS)*16
     depth_tiles.output_sampling(size,settings)
+    if mask_options:depth_shadow.frame(view,rows[1][0],meta['scene_unit_scale'],size)
     if texture_bytes>settings['max_texture_bytes']:raise ValueError('Depth asset decoded texture budget exceeded')
     names=['TreeCapture.Combined.A','TreeCapture.Depth.Z',*('TreeCapture.Normal.'+a for a in 'XYZ')]
     moment_mode=settings['geometry_mode']=='MOMENT_FACETS'
@@ -49,16 +52,30 @@ def prepared(p,*,progress_context=None):
         names+=['TreeCapture.MCP_SurfaceWeight.X',*normal_moments.channels()]
     decoded=exr_scanline.decode(root/row['file'],names,expected_sha256=row['sha256'],cancelled=check_cancelled,progress=report_progress)
     geometry=depth_tiles.geometry(decoded,meta,view,settings,cancelled=check_cancelled,progress=report_progress);maps={};map_rows=[]
+    mask_pixels=None;mask_report=None
+    if mask_options:
+        receiver,receiver_row=rows[1]
+        receiver_data=exr_scanline.decode(root/receiver_row['file'],['TreeCapture.Combined.A','TreeCapture.Depth.Z'],expected_sha256=receiver_row['sha256'],cancelled=check_cancelled,progress=report_progress)
+        mask_pixels,mask_report=depth_shadow.build(decoded,receiver_data,view,receiver,meta['scene_unit_scale'],settings,mask_options,cancelled=check_cancelled,progress=report_progress)
+        del receiver_data
+        mask_report['receiver_source']={'view':receiver,'exr_sha256':receiver_row['sha256']}
+        mask_report['decoded_source_pixels']=2*size*size
+        mask_report['mask_sha256']=botany.digest({k:v for k,v in mask_report.items() if k!='mask_sha256'})
     for name,components in depth_tiles.MAPS:
         check_cancelled();report_progress({'phase':'packing directional shader-input data','map':name,'completed':len(maps),'total':len(depth_tiles.MAPS)})
         values=exr_scanline.decode(root/row['file'],depth_tiles.map_channels(name),expected_sha256=row['sha256'],cancelled=check_cancelled,progress=report_progress)
         pixels=depth_tiles.texture_map(values,decoded,meta,view,settings,name,cancelled=check_cancelled);maps[name]=pixels
+        if name=='base_coverage' and mask_pixels is not None:
+            for i,value in enumerate(mask_pixels):
+                if i%4096==0:check_cancelled()
+                pixels[4*i+3]*=value
         map_rows.append({'map':name,'components':list(components),'float32_sha256':depth_tiles.floats_sha(pixels),'decoded_bytes':len(pixels)*4});del values
     placement=Matrix.Scale(meta['scene_unit_scale']/unit,4)@Matrix(meta['source_root_matrix_world'])
     summary={'format':FORMAT,'shader_recipe':MOMENT_SHADER_RECIPE if moment_mode else SHADER_RECIPE,'render_role':role,'ray_visibility':ray_visibility,'view':p['view'],'width':size,'height':size,'geometry':geometry['report'],'maps':map_rows,'decoded_texture_bytes':texture_bytes,
              'target_unit_scale':unit,'root_matrix_world':[list(r) for r in placement],
              'source':{'capture_sha256':meta['capture_sha256'],'frame':meta['frame'],'snapshot_sha256':proof['source_sha256'],'exr_sha256':row['sha256'],'material_fields_sha256':meta['material_fields']['fields_sha256'],'material_fields':meta['material_fields'],'source_root_matrix_world':meta['source_root_matrix_world'],'scene_unit_scale':meta['scene_unit_scale'],'bounds_root_local_m':meta['bounds_root_local_m'],'view':view},
              'optical_equivalence':False,'scope':'Single directional approximate depth layer; median measured-witness depth anchors, optional bounded normal-aligned refinement and explicitly counted edge estimates. Native view-evaluated shader-input maps, normalized raw root-local normals and artistic backlighting, with coverage applied once. Unknown physical thickness and omitted BSDF inputs; no optical/shadow/wind/interpolation/population qualification.'}
+    if mask_report is not None:summary['shadow_mask']=mask_report
     if moment_mode:
         summary['material_transport']={'use_bump_map_correction':True}
         summary['scope']='Single directional projected-area normal-input moment facets with implicit geometric shading normals. Raw normal texture retained as witness; six packed input maps and coverage applied once. No fallback or filtered-pixel/color/depth/PBR/closure/occlusion/angular/shadow/wind equivalence.'
@@ -243,9 +260,10 @@ def layer_plan(p):
         if '\0' in name or len(name.encode('utf-8'))>63:raise ValueError('Generated collection name exceeds native naming budget')
         if name in bpy.data.collections:raise ValueError('Depth layer collection already exists: '+name)
     def cancelled():check_cancelled();return False
-    _,proof,meta,_=capture_data.source({'directory':p['directory'],'views':[row['view'] for row in layers],
+    _,proof,meta,_=capture_data.source({'directory':p['directory'],'views':list(dict.fromkeys(v for row in layers for v in ([row['view']]+([row['shadow_mask']['receiver_view']] if row.get('shadow_mask') else [])))),
         'max_pixels':max(row['settings']['max_pixels'] for row in layers),'max_total_pixels':limits['max_total_pixels']},report_progress,cancelled)
-    size=proof['botanical_capture']['options']['resolution'];pixels=len(layers)*size*size;texture_bytes=pixels*len(depth_tiles.MAPS)*16
+    size=proof['botanical_capture']['options']['resolution'];pixels=sum(2 if row.get('shadow_mask') else 1 for row in layers)*size*size;texture_bytes=len(layers)*size*size*len(depth_tiles.MAPS)*16
+    if pixels>limits['max_total_pixels']:raise ValueError('Depth layers aggregate decoded pixel budget exceeded')
     if texture_bytes>limits['max_total_texture_bytes']:raise ValueError('Depth layers aggregate texture budget exceeded')
     rows=[];triangles=0
     for index,(layer,name) in enumerate(zip(layers,names)):
@@ -255,7 +273,7 @@ def layer_plan(p):
         triangles+=plan['geometry']['triangles']
         if triangles>limits['max_total_triangles']:raise ValueError('Depth layers aggregate triangle budget exceeded')
         rows.append({'collection':name,'view':layer['view'],'render_role':plan['render_role'],'ray_visibility':plan['ray_visibility'],
-                     'settings':plan['geometry']['options'],'source_plan_sha256':plan['plan_sha256'],'shader_recipe':plan['shader_recipe'],'geometry':plan['geometry']})
+                     'settings':plan['geometry']['options'],**({'shadow_mask':plan['shadow_mask']['options']} if 'shadow_mask' in plan else {}),'source_plan_sha256':plan['plan_sha256'],'shader_recipe':plan['shader_recipe'],'geometry':plan['geometry']})
     result={'format':LAYERS_FORMAT,'prefix':p['prefix'],'layers':rows,'limits':limits,
             'source':{'capture_sha256':meta['capture_sha256'],'snapshot_sha256':proof['source_sha256']},
             'totals':{'pixels':pixels,'decoded_texture_bytes':texture_bytes,'triangles':triangles},'optical_equivalence':False}
@@ -271,7 +289,7 @@ def create_layers(p):
     try:
         for index,row in enumerate(plan['layers']):
             check_cancelled()
-            state=create({'directory':p['directory'],'view':row['view'],'render_role':row['render_role'],'settings':row['settings'],
+            state=create({'directory':p['directory'],'view':row['view'],'render_role':row['render_role'],'settings':row['settings'],**({'shadow_mask':row['shadow_mask']} if 'shadow_mask' in row else {}),
                 'collection':row['collection'],'expected_plan':row['source_plan_sha256'],'accept_approximate_optics':True},
                 progress_context={'layer_view':row['view'],'completed_layers':index,'total_layers':len(plan['layers'])},checkpoint_estimate=estimate)
             owners.append(bpy.data.collections[state['collection']][OWNER])

@@ -1102,6 +1102,51 @@ an asset to get a fresh `asset_sha256`. Supply it as `expected_asset` to
 renamed resources and stale guards refuse removal. Creation cancellation/failure
 removes only the newly allocated private resources.
 
+### Receiver-dependent shadow depth masks
+
+A directional `SHADOW_ONLY` asset can optionally select coverage using an
+opposed receiver view from the same immutable capture. For example, capture
+FRONT and BACK together with `material_fields: true`, then pass this to
+`inspect_botanical_depth_source`:
+
+```json
+{
+  "directory": "oak-reference",
+  "view": "BACK",
+  "render_role": "SHADOW_ONLY",
+  "shadow_mask": {"receiver_view": "FRONT", "minimum_span_m": 0.0},
+  "settings": {"geometry_mode": "ADAPTIVE_NORMAL", "output_resolution": 32}
+}
+```
+
+Use the returned plan guard for creation, with the same explicit approximate
+optics acceptance as other depth assets. `shadow_mask` is also available on
+individual entries in a depth-layer batch. The receiver need not be created as
+an asset, but its view must exist in the capture archive. Other render roles and
+same-view receivers refuse. Cameras must be opposed with mirrored horizontal
+coordinates, common vertical coordinates, equal span and aligned centres;
+incompatible grids refuse without resampling.
+
+At each layer pixel, the mask pairs the mirrored receiver pixel and computes
+`(camera baseline - layer depth - receiver depth) * source unit scale`. Retain
+coverage only when both pixels have coverage above `alpha_threshold`, both
+first-hit depths are finite and within clipping, and their span is strictly
+greater than `minimum_span_m` (metres, default zero). Unknown paired depth is
+excluded, with no nearest-depth guess. The report records known, unknown and
+retained counts, original/retained alpha mass, measured span range, pixel width,
+receiver camera/EXR provenance and mask hashes. Positive span does **not** prove
+that the samples hit different surfaces: antialiasing and first-hit depth can
+sample different subpixel rays. This is a receiver-dependent approximation,
+not guaranteed duplicate removal or qualified shadows.
+
+The mask multiplies only the packed coverage lane; geometry, normal and PBR data
+stay unchanged. Six private images remain sufficient, and their masked contents
+are guarded after save/reopen without either source view. Each masked layer
+counts two source grids toward batch `max_total_pixels`; texture totals still
+count only the six packed output maps. Cancellation, checkpoint storage/free-space
+reporting and ownership/removal rules are unchanged. Review all intended lighting
+and views; a mask that improves one lighting condition can degrade another.
+
 ### Planning and creating several depth layers
 
 `inspect_botanical_depth_layers` plans up to ten distinct views from one capture.

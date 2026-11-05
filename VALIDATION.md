@@ -6089,3 +6089,77 @@ control and real-canopy native proofs/EXRs, public-workflow capture archives and
 packed asset, adaptive exploration, moment-admission refusals and check logs.
 Reproducible native control/canopy helpers are committed in tests. Source and
 production service state remain unchanged; the complete workflow goal is active.
+
+## Guarded receiver-dependent depth-shadow selection
+
+Depth source/create and batch layers now accept optional
+`shadow_mask={receiver_view,minimum_span_m}` on `SHADOW_ONLY` layers. The receiver
+must come from the same validated immutable archive. Opposed unit camera frames,
+mirrored U/common V, equal spans, positive axial baseline and tangential alignment
+within 0.0001 source pixels are required; no grid resampling is attempted. The
+bounded numerical pass uses paired covered, finite, clipped first-hit samples,
+retaining strictly positive span above the explicit metre threshold. Unknown
+pairs are excluded and counted. No source identity, duplicate-surface diagnosis
+or physical thickness is inferred. The source capture and geometry are unchanged.
+
+Only the packed base/coverage image's alpha lane is multiplied by the binary
+mask. All other packed lanes and geometry hashes remain unchanged. Six images
+and eleven private IDs remain sufficient. Mask options/data hashes, paired view
+provenance and counts are pinned in the plan. Existing unmasked plans and saved
+asset formats retain their previous behavior. Batch pixel totals charge both
+source grids for each masked layer, including receiver reads repeated across
+layers; packed texture totals count six maps per output asset. Cooperative
+cancellation and existing checkpoint/free-space checks remain active.
+
+The focused numerical/contracts/addon regression passed 68 cases (12.31s, one
+existing anyio deprecation warning). Analytic tests cover all opposed catalog
+frame families, horizontal mirroring, physical unit conversion, exact threshold
+exclusion, missing/nonfinite depth, partial coverage, invalid alpha, incompatible
+frames/windows/budgets, cancellation and unchanged inputs.
+
+A new small managed tree was captured at 128px with FRONT/BACK input fields and
+32 samples, leaving its tree guard unchanged. Native Cycles CPU2 renders use
+256 samples and the matched FRONT camera at 32px; both primary and rear assets
+use ADAPTIVE_NORMAL, explicit max_slope=64 and output_resolution=32. The primary
+uses ALL_RAYS, rear variants SHADOW_ONLY. Twelve independent source/primary/
+unmasked/masked renders produced these raw shared-coverage luminance biases:
+
+| Light | Primary only | Unmasked rear | Rear with minimum span 0m |
+| --- | ---: | ---: | ---: |
+| Uniform world | -5.52% | -5.52% | -5.52% |
+| Front sun | +11.28% | +8.26% | +9.93% |
+| Rear sun | +102.76% | -12.43% | -5.56% |
+
+The masked variant passes the unchanged 0.10 absolute relative-luminance limit
+in these three cases, plus mask/soft-alpha IoUs >=0.8, alpha MAE <=0.05 and
+shared-coverage/global RGB RMSE <=0.05. Mask/soft IoUs are 0.9756/0.9608 and alpha
+MAE 0.00230; overlap RGB RMSE is 0.01194/0.00637/0.000511. Rear source luminance
+is only 0.000196, so its relative error describes a very dark reference. Front
+lighting is close to the 10% limit. These results establish this small fixture,
+matched viewpoint and three lights only; they do not certify other scenes or
+closure/normal/depth/color correlation, angular, wind or population equivalence.
+
+Of 1,830 covered rear pixels, 951 have valid paired centre depth, 879 are unknown,
+and 948 exceed zero span. Alpha mass falls from 938.40625 to 792.5625. Much of the
+selection therefore concerns missing centre-depth samples, not proven duplicate
+surface removal. Exploratory 0.2501m/0.5m minimum spans worsen rear bias to
++55.3%/+74.8%; increasing a threshold is not automatically an improvement. The
+parameter is explicit and never tuned against a reference image by the tool.
+
+Native lifecycle qualification passed (35.27s), including cancellation during
+pairing and after the first packed image, complete rollback, changed-threshold
+stale-plan refusal, save/reopen guard equality, actual packed alpha tamper/removal
+refusal and independent eleven-ID removal. The Python-disabled public workflow
+passed (607.89s), exercising batch mask propagation, nonopposed refusal, aggregate
+receiver pixel accounting, unchanged noncoverage lanes, stale batch guards and
+packed persistence without input archives. Source-tree content is preserved
+across reopen; pointer-bearing tree edit guards are compared within each native
+session. All submitted operations completed without restart. These checks use
+an isolated application; the production service is unchanged.
+
+Evidence: `tmp/qualification/depth-occlusion-20261105/` contains the immutable
+paired archive, exploratory controls, supported native proof/EXRs/packed scene,
+public MCP proof/scene/archive and check logs. Native helpers and focused tests
+are committed; captures and local planning/evidence remain ignored. Wider mature
+canopy, output-density, all-angle, shadow, wind and population qualification, and
+the original broader workflow ledger, remain open.

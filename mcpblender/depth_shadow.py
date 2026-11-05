@@ -8,6 +8,7 @@ import math
 from . import capture_data,depth_tiles,botany
 
 FORMAT='mcpblender-paired-depth-shadow-mask-v1'
+MASK_ROLES=('SHADOW_ONLY','DIFFUSE_SHADOW','SECONDARY')
 
 
 def options(value):
@@ -63,6 +64,6 @@ def build(layer_data,receiver_data,layer,receiver,unit,settings,mask,*,cancelled
             'covered_pixels':covered,'known_pixels':known,'unknown_covered_pixels':covered-known,'retained_pixels':kept,
             'original_alpha_mass':mass,'retained_alpha_mass':retained,'measured_span_range_m':[low,high] if known else None,
             'unknown_policy':'EXCLUDE','comparison':'SPAN_STRICTLY_GREATER_THAN_MINIMUM','mask_float32_sha256':depth_tiles.floats_sha(pixels),
-            'scope':'Receiver-dependent binary depth-span selection for SHADOW_ONLY layers. Multiply layer coverage once; do not alter geometry, normals or PBR inputs. First-hit samples and filtered coverage may describe different subpixel surfaces. Positive span does not prove distinct surface identity; no duplicate-removal, relighting, angular or shadow equivalence guarantee.'}
+            'scope':'Receiver-dependent binary depth-span selection for camera-excluded shadow, diffuse/shadow or secondary layers. Multiply layer coverage once; do not alter geometry, normals or PBR inputs. First-hit samples and filtered coverage may describe different subpixel surfaces. Positive span does not prove distinct surface identity; no duplicate-removal, relighting, angular or shadow equivalence guarantee.'}
     report['mask_sha256']=botany.digest(report)
     return pixels,report

@@ -34,7 +34,7 @@ def prepared(p,*,progress_context=None):
     if role not in RAY_ROLES:raise ValueError('Unknown depth asset render role')
     ray_visibility={key:key in RAY_ROLES[role] for key in RAY_FLAGS}
     mask_options=depth_shadow.options(p['shadow_mask']) if p.get('shadow_mask') is not None else None
-    if mask_options and (role!='SHADOW_ONLY' or mask_options['receiver_view']==p['view']):raise ValueError('Paired shadow mask requires SHADOW_ONLY and a different receiver view')
+    if mask_options and (role not in depth_shadow.MASK_ROLES or mask_options['receiver_view']==p['view']):raise ValueError('Paired shadow mask requires SHADOW_ONLY, DIFFUSE_SHADOW or SECONDARY and a different receiver view')
     settings=depth_tiles.options(p['settings']);unit=bpy.context.scene.unit_settings.scale_length
     if not math.isfinite(unit) or unit<=0:raise ValueError('Positive target scene units required')
     args={'directory':p['directory'],'views':[p['view']]+([mask_options['receiver_view']] if mask_options else []),'max_pixels':settings['max_pixels'],'max_total_pixels':settings['max_pixels']*(2 if mask_options else 1)}

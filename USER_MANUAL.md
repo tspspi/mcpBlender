@@ -1151,8 +1151,8 @@ removes only the newly allocated private resources.
 
 ### Receiver-dependent shadow depth masks
 
-A directional `SHADOW_ONLY` asset can optionally select coverage using an
-opposed receiver view from the same immutable capture. For example, capture
+A directional asset with camera-excluded `SHADOW_ONLY`, `DIFFUSE_SHADOW` or
+`SECONDARY` visibility can optionally select coverage using an opposed receiver view from the same immutable capture. For example, capture
 FRONT and BACK together with `material_fields: true`, then pass this to
 `inspect_botanical_depth_source`:
 
@@ -1169,8 +1169,8 @@ FRONT and BACK together with `material_fields: true`, then pass this to
 Use the returned plan guard for creation, with the same explicit approximate
 optics acceptance as other depth assets. `shadow_mask` is also available on
 individual entries in a depth-layer batch. The receiver need not be created as
-an asset, but its view must exist in the capture archive. Other render roles and
-same-view receivers refuse. Cameras must be opposed with mirrored horizontal
+an asset, but its view must exist in the capture archive. `ALL_RAYS`,
+`CAMERA_ONLY` and same-view receivers refuse. Cameras must be opposed with mirrored horizontal
 coordinates, common vertical coordinates, equal span and aligned centres;
 incompatible grids refuse without resampling.
 
@@ -1193,6 +1193,19 @@ counts two source grids toward batch `max_total_pixels`; texture totals still
 count only the six packed output maps. Cancellation, checkpoint storage/free-space
 reporting and ownership/removal rules are unchanged. Review all intended lighting
 and views; a mask that improves one lighting condition can degrade another.
+
+Choose a mask role explicitly. `SHADOW_ONLY` participates only in shadow rays;
+`DIFFUSE_SHADOW` also participates in diffuse rays; `SECONDARY` includes all
+supported noncamera rays, including glossy, transmission and volume scatter.
+This can change indirect occlusion and secondary shading as well as shadows.
+The selected role and actual flags are pinned in the source/batch/content guards;
+changing a role requires a new plan, and generic ray-flag edits invalidate the
+owned asset until restored. The mask, geometry and six packed maps are identical
+across role choices for the same view/settings. No role is selected automatically
+as a better lighting preset. In the retained dense canopy control, SECONDARY
+reduces world brightness error from about +41% to +26%, but increases rear-sun
+error from about +17% to +28%; both fail the 10% criterion. Use
+`compare_exr_images` on all intended lights and views before accepting a result.
 
 ### Planning and creating several depth layers
 

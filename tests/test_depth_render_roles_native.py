@@ -6,10 +6,12 @@ import pytest
 from test_botanical_native import pytestmark
 
 
-@pytest.mark.skipif(not os.environ.get('MCPBLENDER_DEPTH_NATIVE_SOURCE'),reason='Retained native material-field archive required')
-def test_creation_roles_are_guarded_and_survive_reopen(tmp_path):
+@pytest.mark.parametrize('masked',[False,True])
+def test_creation_roles_are_guarded_and_survive_reopen(tmp_path,masked):
+    source_key='MCPBLENDER_SHADOW_CAPTURE' if masked else 'MCPBLENDER_DEPTH_NATIVE_SOURCE'
+    if not os.environ.get(source_key):pytest.skip('Retained native material-field archive required')
     repo=Path(__file__).resolve().parents[1];script=tmp_path/'roles.py'
-    script.write_text('import sys\nsys.path.insert(0,'+repr(str(repo))+')\nSOURCE='+repr(str(Path(os.environ['MCPBLENDER_DEPTH_NATIVE_SOURCE']).resolve()))+'\nOUTPUT='+repr(str(tmp_path))+'\n'+r'''
+    script.write_text('import sys\nsys.path.insert(0,'+repr(str(repo))+')\nSOURCE='+repr(str(Path(os.environ[source_key]).resolve()))+'\nOUTPUT='+repr(str(tmp_path))+'\nMASKED='+repr(masked)+'\n'+r'''
 import bpy
 from mcpblender.blender import depth_assets as api,bridge
 from mcpblender.depth_asset_contracts import Source,Create
@@ -18,18 +20,19 @@ roles={'ALL_RAYS':('camera','shadow','diffuse','glossy','transmission','volume_s
        'CAMERA_ONLY':('camera',),'SECONDARY':('shadow','diffuse','glossy','transmission','volume_scatter'),
        'SHADOW_ONLY':('shadow',),'DIFFUSE_SHADOW':('diffuse','shadow')}
 flags=tuple('visible_'+key for key in roles['ALL_RAYS']);baseline=None;plans=set()
+if MASKED:roles={k:v for k,v in roles.items() if k in ('SHADOW_ONLY','DIFFUSE_SHADOW','SECONDARY')}
 # Establish the portable baseline: Blender drops unused factory-startup IDs on save.
 bpy.ops.wm.save_as_mainfile(filepath=OUTPUT+'/baseline.blend');bpy.ops.wm.open_mainfile(filepath=OUTPUT+'/baseline.blend')
 original={kind:sorted(v.name for v in getattr(bpy.data,kind)) for kind in ('objects','meshes','materials','images','collections')}
 for role,active in roles.items():
- args=Source(directory=SOURCE,view='FRONT',render_role=role).model_dump();plan=api.prepared(args)[0]
+ args=Source(directory=SOURCE,view='FRONT',render_role=role,shadow_mask={'receiver_view':'BACK'} if MASKED else None).model_dump();plan=api.prepared(args)[0]
  expected={k:k.removeprefix('visible_') in active for k in flags}
  assert plan['render_role']==role and plan['ray_visibility']==expected;plans.add(plan['plan_sha256'])
  payload=(plan['geometry'],plan['maps'])
  if baseline is None:baseline=payload
  else:assert payload==baseline,'Ray role changed captured geometry or maps'
  p=Create(**args,collection='RoleAsset',expected_plan=plan['plan_sha256'],accept_approximate_optics=True).model_dump()
- before=set(bpy.data.user_map());changed=p|{'render_role':'CAMERA_ONLY' if role!='CAMERA_ONLY' else 'SHADOW_ONLY'}
+ before=set(bpy.data.user_map());changed=p|{'render_role':('DIFFUSE_SHADOW' if role!='DIFFUSE_SHADOW' else 'SECONDARY') if MASKED else ('CAMERA_ONLY' if role!='CAMERA_ONLY' else 'SHADOW_ONLY')}
  try:api.create(changed)
  except ValueError as exc:assert 'stale' in str(exc)
  else:raise AssertionError('Role change accepted stale creation plan')

@@ -69,8 +69,9 @@ def test_contracts_require_shadow_role_and_pin_receiver_and_threshold():
     for cls in (Source,Layer):
         args={'view':'BACK','render_role':'SHADOW_ONLY','shadow_mask':{'receiver_view':'FRONT'}}
         if cls==Source:args['directory']='capture'
-        assert cls(**args).shadow_mask.minimum_span_m==0
-        for patch in ({'render_role':'ALL_RAYS'},{'shadow_mask':{'receiver_view':'BACK'}}):
+        for role in depth_shadow.MASK_ROLES:
+            assert cls(**(args|{'render_role':role})).shadow_mask.minimum_span_m==0
+        for patch in ({'render_role':'ALL_RAYS'},{'render_role':'CAMERA_ONLY'},{'shadow_mask':{'receiver_view':'BACK'}}):
             with pytest.raises(ValueError):cls(**(args|patch))
     for value in (True,-1,math.nan,math.inf,1000001):
         with pytest.raises(ValueError):ShadowMask(receiver_view='FRONT',minimum_span_m=value)

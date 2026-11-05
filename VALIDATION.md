@@ -6240,3 +6240,59 @@ proof, public MCP per-scale comparisons and check logs. Independent encoder and
 comparison tests are committed. The original broader workflow ledger is active;
 production service, original capture archives, packages and environment remain
 unchanged.
+
+## Camera-excluded paired-depth mask roles
+
+The paired-depth mask now supports creation-pinned DIFFUSE_SHADOW and SECONDARY
+roles alongside SHADOW_ONLY. ALL_RAYS and CAMERA_ONLY remain refused because the
+selection is receiver-dependent occlusion data. The mask's numerical algorithm,
+geometry and packed input maps are unchanged across roles. Actual ray flags and
+the selected role remain part of source/batch/owned-content guards; changing a
+role needs a fresh plan. Six packed maps, eleven private IDs, bounded decoded
+source/texture/triangle work, cancellation and storage accounting are unchanged.
+Existing saved plans retain their recorded metadata and inspect without rewrite.
+
+The focused numerical/contracts/addon set passed 36 cases in 7.96s (one existing
+anyio warning). Two native masked/unmasked role cases passed in 33.40s, covering
+all five unmasked roles and all three masked roles. They verify identical geometry
+and map hashes across role choices, distinct plans, stale-role refusal without ID
+allocation, actual Cycles flags, camera-flag tamper/removal refusal, restoration,
+save/reopen guard equality and complete private-resource removal.
+
+A Python-disabled MCP workflow passed in 37.46s: create a managed leafy source,
+capture FRONT/BACK fields at 32px, compare three masked role plans, create a mixed
+FRONT DIFFUSE_SHADOW / BACK SECONDARY batch, reject a changed-role stale batch,
+verify pixel/texture totals and ray flags, preserve the source-tree guard, save/
+reopen, erase capture inputs and inspect/remove both eleven-ID assets. Portable
+tree content remains unchanged across reopen. No arbitrary Python tool is exposed.
+
+A private diagnostic first changed ray flags on the preceding dense masked rear
+layer; those edits deliberately invalidated its original SHADOW_ONLY content
+guard. Its unchanged shadow-only control reproduced the preceding frozen render
+within 1e-6 RGB/alpha error under each light. Against the same frozen 88,704-leaf
+Canopy3 references at 128px, CPU2/256 samples, its measured brightness biases were:
+
+| Light | Shadow only | Diffuse/shadow | All secondary |
+| --- | ---: | ---: | ---: |
+| Uniform world | +41.449% | +33.829% | +26.058% |
+| Front sun | +28.491% | +28.715% | +28.850% |
+| Rear sun | +16.889% | +23.130% | +27.517% |
+
+Thus secondary participation reduces this world-light error while worsening rear
+sun. Every case still rejects the unchanged 10% relative-brightness criterion.
+No role is selected automatically as an optical preset. The controls identify a
+transport tradeoff; they do not qualify dense, angular, shadow or wind fidelity.
+The supported native authoring regression passed (309.84s). It recreates both
+new roles from source plans, preserves geometry/map/mask-buffer hashes, saves/
+reopens with identical guards, and produces six renders matching the private
+controls within 1e-6 RGB/alpha error. Each still rejects only the relative-
+brightness criterion at scales 1/2/4 against the original source. Final native
+inspection and eleven-ID removal for each asset also pass. This qualifies the
+guarded role controls and quality-rejection measurements, not optical equivalence.
+
+Evidence is ignored under `tmp/qualification/diffuse-depth-20261105/`: private
+control script/proof/nine EXRs, public MCP capture/scene/guards, supported native
+role scenes/proofs/EXRs, check logs and cleanup record. Native control/authoring
+helpers distinguish unsupported edits from guarded supported creation. The broad
+workflow goal and dense-canopy optical acceptance remain incomplete; production
+service, package environment and immutable source archives are unchanged.

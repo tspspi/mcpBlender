@@ -38,6 +38,8 @@ COMMANDS={
 
 class Data(Model):
     material_inputs: bool = False
+    normal_quadrature: bool = False
+    max_quadrature_pixels: int = Field(default=256,strict=True,ge=1,le=4096)
     directory: str = Field(min_length=1)
     views: list[View]|None = Field(default=None,min_length=1,max_length=10)
     alpha_threshold: FiniteFloat = Field(default=.5,gt=0,lt=1)
@@ -45,7 +47,8 @@ class Data(Model):
     max_total_pixels: int = Field(default=4194304,strict=True,ge=1024,le=41943040)
     @model_validator(mode='after')
     def distinct(self):
+        if self.normal_quadrature and not self.material_inputs:raise ValueError('normal_quadrature requires material_inputs=true')
         if self.views is not None and len(set(self.views))!=len(self.views):raise ValueError('Data views must be distinct')
         return self
 
-COMMANDS['inspect_botanical_capture_data']=(Data,(),'Read decoded native reference EXR depth/position/normal/alpha within bounded pixel/byte budgets, without Blender. Verify immutable source/files and metadata, including copied archives; report hit/coverage, normal length, camera projection and depth-position discrepancies separately for covered and opaque pixels. material_inputs=true additionally separates normal vector length from constant-one surface weight for covered/opaque/partial pixels; report bounds and unavailable observations without changing inputs. No automatic correction, reconstruction or job adoption.')
+COMMANDS['inspect_botanical_capture_data']=(Data,(),'Read decoded native reference EXR depth/position/normal/alpha within bounded pixel/byte budgets, without Blender. Verify immutable source/files and metadata, including copied archives; report hit/coverage, normal length, camera projection and depth-position discrepancies separately for covered and opaque pixels. material_inputs=true additionally separates normal vector length from constant-one surface weight for covered/opaque/partial pixels; report bounds and unavailable observations without changing inputs. Optional normal_quadrature samples up to max_quadrature_pixels from captured input moments and reports positive unit-direction reconstruction, work, residuals and numerical adjustments. No shader changes, optical certification or job adoption.')

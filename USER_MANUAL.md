@@ -848,6 +848,32 @@ captures without the option remain readable. Current depth-asset shaders retain
 their existing six-map representation; capturing moments does not automatically
 change those shaders, add texture maps or qualify optical equivalence.
 
+### Bounded normal-moment reconstruction inspection
+
+For a capture containing input moments, call `inspect_botanical_capture_data`
+with `material_inputs: true`, `normal_quadrature: true` and optional
+`max_quadrature_pixels` (default 256, range 1–4096 per view). The inspector samples
+available covered pixels at a deterministic stride and returns
+`material_inputs.normal_moments.quadrature` with counts, failures, work totals,
+maximum moment residual, numerical adjustment and up to three pixel examples.
+Each successful example contains at most four positive weights and unit world
+vectors. Weights sum to one and reproduce the observed first/second moments
+within the fixed 1e-5 residual tolerance.
+
+The solver factors the moment matrix and rotates its columns into unit-direction
+components. A roundoff-only positive-semidefinite projection and normalization
+may be needed for float32 observations; the maximum adjustment and affected
+pixel count are reported. Source buffers remain unchanged. Invalid inputs,
+exhausted work bounds or excess residuals are reported as sample failures.
+Cancellation is checked during sampling and matrix operations.
+
+This is a bounded sample, not an all-pixel fit. Reconstructed directions do not
+identify the original distribution, guarantee support in a chosen hemisphere or
+preserve color/normal correlation. Moment agreement is also distinct from
+rendered transport: the retained faceted-surface control matches moments and
+front-sun radiance, but a flat shader-normal mixture loses over 40% of uniform-
+world brightness. Current generated materials therefore remain unchanged.
+
 ### Experimental directional depth assets
 
 `inspect_botanical_depth_source` plans a reduced directional mesh from a completed

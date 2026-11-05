@@ -97,7 +97,7 @@ def normal_filtering(geometry,weight,threshold,*,cancelled=lambda:None):
             'interpretation':'Normal-pass vector length divided by the constant-one surface AOV weight, not beauty alpha. Native opaque-surface coverage controls establish common accumulation weights. Below-unit conditional length can reflect directional mixing; it does not identify a unique orientation distribution or BSDF, and is not an albedo/roughness correction. Bounds violations and unavailable observations are counted without clamping.'}
 
 
-def inspect_view(path,expected_sha256,geometry,threshold,contract,*,cancelled=lambda:None,progress=lambda value:None):
+def inspect_view(path,expected_sha256,geometry,threshold,contract,*,cancelled=lambda:None,progress=lambda value:None,quadrature_pixels=0):
     import math
     from . import exr_scanline
     validate(contract);output={};counts={'covered_with_surface_weight':0,'covered_without_surface_weight':0,'invalid_surface_weight':0,'fractional_material_id_pixels':0}
@@ -131,6 +131,6 @@ def inspect_view(path,expected_sha256,geometry,threshold,contract,*,cancelled=la
     extra={}
     if contract.get('normal_moments'):
         from . import normal_moments
-        extra['normal_moments']=normal_moments.inspect_view(path,expected_sha256,geometry,threshold,cancelled=cancelled,progress=progress)
+        extra['normal_moments']=normal_moments.inspect_view(path,expected_sha256,geometry,threshold,cancelled=cancelled,progress=progress,quadrature_pixels=quadrature_pixels)
     return {**extra,'fields_sha256':contract['fields_sha256'],**counts,'raw_surface_weight':weight_stats,'normal_filtering':filtering,'normalized_inputs':output,
             'interpretation':'Straight input statistics divide raw AOVs by their constant-one surface weight, not beauty alpha. Integer averaged material IDs do not prove a single material. No clamping, physical thickness inference or optical-equivalence gate.'}

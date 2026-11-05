@@ -60,7 +60,11 @@ def measure(geometry,weight,values,threshold,*,cancelled=lambda:None):
             'scope':'Coverage-conditioned first and second unit normal-input moments. Validate unit trace/covariance separately from first-moment agreement with native Normal. Renderer closure normals can differ from the shared input, including specular correction; agreement of means does not prove an equivalent distribution. No clamping, fitted distribution, complete BSDF or optical equivalence.'}
 
 
-def inspect_view(path,sha,geometry,threshold,*,cancelled=lambda:None,progress=lambda value:None):
+def inspect_view(path,sha,geometry,threshold,*,cancelled=lambda:None,progress=lambda value:None,quadrature_pixels=0):
     from . import exr_scanline
     names=['TreeCapture.MCP_SurfaceWeight.X',*channels()];data=exr_scanline.decode(path,names,expected_sha256=sha,cancelled=cancelled,progress=progress)['channels']
-    return measure(geometry,data[names[0]],[data[n] for n in names[1:]],threshold,cancelled=cancelled)
+    result=measure(geometry,data[names[0]],[data[n] for n in names[1:]],threshold,cancelled=cancelled)
+    if quadrature_pixels:
+        from . import normal_quadrature
+        result['quadrature']=normal_quadrature.inspect_values(geometry,data[names[0]],[data[n] for n in names[1:]],threshold,quadrature_pixels,cancelled=cancelled,progress=progress)
+    return result

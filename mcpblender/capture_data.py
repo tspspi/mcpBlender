@@ -91,6 +91,7 @@ def inspect(p,progress=lambda value:None,cancelled=lambda:False):
         if cancelled():raise InterruptedError('Capture data inspection cancelled')
     root,proof,metadata,rows=source(p,progress,cancelled);reports=[]
     if p.get('material_inputs') and not metadata.get('material_fields'):raise ValueError('Capture lacks native material fields; recapture with material_fields=true')
+    if p.get('normal_quadrature') and not metadata.get('material_fields',{}).get('normal_moments'):raise ValueError('Normal quadrature requires input moments; recapture with normal_moments=true')
     for view,row in rows:
         checkpoint();progress({'phase':'reading native capture data','view':view['view'],'completed_views':len(reports),'total_views':len(rows)})
         def view_progress(value):progress(value|{'view':view['view'],'completed_views':len(reports),'total_views':len(rows)})
@@ -98,9 +99,9 @@ def inspect(p,progress=lambda value:None,cancelled=lambda:False):
         report=measure(data,metadata,view,p['alpha_threshold'],checkpoint,view_progress)
         if p.get('material_inputs'):
             from . import capture_material_fields
-            report['material_inputs']=capture_material_fields.inspect_view(root/row['file'],row['sha256'],data,p['alpha_threshold'],metadata['material_fields'],cancelled=checkpoint,progress=view_progress)
+            report['material_inputs']=capture_material_fields.inspect_view(root/row['file'],row['sha256'],data,p['alpha_threshold'],metadata['material_fields'],cancelled=checkpoint,progress=view_progress,quadrature_pixels=p.get('max_quadrature_pixels',256) if p.get('normal_quadrature') else 0)
         reports.append(report)
     report={'method':'NATIVE_ORTHOGRAPHIC_CAPTURE_DATA_V1','capture_sha256':metadata['capture_sha256'],'source_sha256':proof['source_sha256'],
-            'files':[{'file':r['file'],'sha256':r['sha256']} for _,r in rows],'options':{k:p.get(k) for k in ('views','alpha_threshold','max_pixels','max_total_pixels','material_inputs')},'views':reports,
+            'files':[{'file':r['file'],'sha256':r['sha256']} for _,r in rows],'options':{k:p.get(k) for k in ('views','alpha_threshold','max_pixels','max_total_pixels','material_inputs')}|({'normal_quadrature':True,'max_quadrature_pixels':p.get('max_quadrature_pixels',256)} if p.get('normal_quadrature') else {}),'views':reports,
             'scope':'Read-only decoded reference-pass statistics, no native scene or file mutation. Copied archives use immutable content validation, not job ownership/adoption. Values are not a completed far mesh, PBR/thickness bake, optical-equivalence or wind qualification.'}
     checkpoint();return report|{'data_sha256':botany.digest(report)}

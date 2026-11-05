@@ -5573,3 +5573,67 @@ checks (0.44s): agreement cannot be established from only the available subset
 when another selected covered pixel has no valid surface weight. This strengthens
 the data-report flag without changing captured buffers; qualified complete-data
 results above are unchanged.
+
+
+## Bounded positive unit-normal moment reconstruction
+
+A dependency-free solver reconstructs up to four positive-weight unit directions
+from first/second input moments. It uses bounded Jacobi rotations of the 4x4
+moment matrix and bounded column rotations on the unit-sphere null cone. Weights,
+directions and all nine reconstructed components are checked before returning.
+Float32 roundoff may require a small positive-semidefinite projection and
+congruence normalization; adjustments are reported and refuse above 1e-5.
+The original observations are never modified. This constructs a moment match,
+not a unique orientation distribution or a complete material.
+
+The existing read-only capture inspector exposes optional deterministic pixel
+sampling through `normal_quadrature` and `max_quadrature_pixels` (1–4096, default
+256). It requires captured input moments and `material_inputs=true`. Results
+include candidate/sample/success/failure counts, fixed numerical tolerance,
+residual/adjustment maxima, clipped-eigenvalue counts, bounded work totals and
+three examples. Input-moment validity and renderer Normal-pass agreement remain
+separate diagnostics. Invalid coverage is excluded without editing it; missing
+input moments require recapture. The new module is included in the add-on archive.
+
+Independent unit-vector mixture oracles exercise 90 distributions with 1, 2, 3,
+4, 8 and 32 source directions, both in double precision and after float32 rounding
+(180 fits). Other checks cover known one/two-direction solutions, determinism,
+non-mutation, invalid matrices, exhausted rotation budgets, cancellation and
+bounded sampling/failure reporting. Focused quadrature/moment/data/server checks
+passed (23 tests, 18.02s). The Python-disabled MCP capture/inspection workflow
+passed (35.02s), including a bounded 16-pixel reconstruction request, source/beauty
+preservation and archive validation.
+
+Read-only dense-canopy analysis at alpha threshold 0.001 samples 256 pixels per
+view from the final input-moment archive:
+
+| View | Candidate pixels | Samples/successes | Maximum component residual | Maximum working-matrix adjustment | Pixels with roundoff eigenvalue clipping |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| FRONT | 108,662 | 256 / 256 | 1.877e-7 | 1.877e-7 | 53 |
+| BACK_LEFT | 58,307 | 256 / 256 | 1.504e-7 | 1.504e-7 | 43 |
+
+Every sampled fit uses at most four directions. These counts do not qualify
+unsampled pixels or their rendered appearance.
+
+A separate native counterexample prevents interpreting moment accuracy as
+material equivalence. The known +/-60-degree diffuse-facet fixture is reconstructed
+using a positive mixture of diffuse closures on a flat plane, with original
+color and unit directions. Both box/default filter fits have residual about
+5.59e-8 and preserve alpha. Front-sun red radiance matches the native reference,
+but uniform-world biases are -43.83%/-43.31%, failing the existing 10% gate.
+This control has constant color and no Principled specular component; extra
+material complexity is unnecessary to demonstrate the failure. Geometry and
+closure transport still need qualification; no generated shader is switched to
+this mixture. The native regression passed (9.36s), including the existing native
+filter controls and the four reconstruction renders.
+
+Evidence is retained locally under `tmp/qualification/normal-quadrature-20261105/`:
+read-only dense proof, MCP proof, native reconstruction controls and check logs.
+Geometric transport, color/normal correlation, full PBR closure behavior,
+angular blending, shadow/wind/population/reference quality and the original
+wider workflow remain open.
+
+The final five targeted quadrature checks passed (0.70s), adding exclusion of
+invalid coverage and explicit tolerance/work-limit metadata. These data-only
+checks leave the native control math, shaders and qualified valid-input sample
+results unchanged.

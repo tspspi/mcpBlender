@@ -65,11 +65,15 @@ def test_native_tree_multiview_reference_capture(assets_live):
             field_proof=await tool(client,'validate_render_job',directory='tree-material-fields')
             assert len(field_proof['botanical_capture']['material_fields']['fields'])==14
             assert len(field_proof['botanical_capture']['material_fields']['normal_moments']['fields'])==9
-            field_data=await wait(client,'inspect_botanical_capture_data',directory='tree-material-fields',material_inputs=True,views=['FRONT'],alpha_threshold=.01)
+            field_data=await wait(client,'inspect_botanical_capture_data',directory='tree-material-fields',material_inputs=True,normal_quadrature=True,max_quadrature_pixels=16,views=['FRONT'],alpha_threshold=.01)
             material=field_data['views'][0]['material_inputs']
             if dest:=os.environ.get('MCPBLENDER_TREE_CAPTURE_EVIDENCE_DIR'):
                 out=Path(dest);out.mkdir(parents=True,exist_ok=True);shutil.copytree(root/'library/tree-material-fields',out/'material-bundle',dirs_exist_ok=True);(out/'material-proof.json').write_text(json.dumps(field_data,indent=2))
             assert material['normal_moments']['input_moments_valid'],material['normal_moments']
+            quadrature=material['normal_moments']['quadrature']
+            assert 0<quadrature['sampled_pixels']<=16 and quadrature['failed_pixels']==0
+            assert quadrature['successful_pixels']==quadrature['sampled_pixels'] and quadrature['max_atoms']<=4
+            assert quadrature['max_component_residual']<=1e-5 and quadrature['max_numerical_adjustment']<=1e-5
             # Smooth real geometry exposes closure corrections absent from the
             # material normal input; retain the distinction instead of clamping.
             assert not material['normal_moments']['normal_pass_first_moment_agrees'] and material['normal_moments']['normal_pass_disagreements']>0

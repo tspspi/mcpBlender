@@ -167,3 +167,41 @@ def test_direction_cap_preflight_precedes_search_and_steep_setting_is_pinned():
     assert result['report']['options']['max_slope']==64
     assert result['report']['direction_cap_method']==normal_support.FORMAT
     assert result['report']['max_component_residual']<1e-5
+
+
+def test_mesh_origin_restores_projection_without_moving_root_pivot():
+    d,m,v=source();m['source_root_matrix_world'][0][3]=-1e8
+    with pytest.raises(ValueError,match='float32'):
+        build(d,m,v)
+    m['bounds_root_local_m']={'min':[1e8-2,-1,-1],'max':[1e8+2,1,1]}
+    original=copy.deepcopy(m);g=build(d,m,v)
+    assert m==original and g['report']['mesh_origin_root_local']==[1e8,0,0]
+    assert min(g['vertices'][::3])==-1 and max(g['vertices'][::3])==1
+    assert g['report']['bounds_mesh_local']['min'][0]==-1
+    assert g['report']['bounds_root_local']['min'][0]==1e8-1
+    assert g['report']['bounds_root_local']['max'][0]==1e8+1
+    assert g['report']['max_component_residual']<=1e-5
+
+
+def test_mesh_origin_is_once_rounded_to_native_float32():
+    m={'bounds_root_local_m':{'min':[0,0,0],'max':[1/3,2/3,4/3]}}
+    origin=moment_depth.mesh_origin(m)
+    assert origin==list(array('f',[1/6,1/3,2/3]))
+    for bounds in (None,{'min':[0,0,0],'max':[1,1,float('nan')]},
+                   {'min':[1,1,1],'max':[0,0,0]}, {'min':[True,0,0],'max':[1,1,1]}):
+        with pytest.raises(ValueError,match='source bounds'):
+            moment_depth.mesh_origin({'bounds_root_local_m':bounds})
+
+
+def test_centred_mesh_composes_with_rotated_scaled_source_root():
+    d,m,v=source([{'weight':1,'direction':(0,0,1)}])
+    m['source_root_matrix_world']=[[0,0,2,4],[0,2,0,-3],[-2,0,0,1],[0,0,0,1]]
+    uncentred=build(d,m,v)
+    m['bounds_root_local_m']={'min':[.5,1,-2.5],'max':[.5,2,-1.5]}
+    centred=build(d,m,v);origin=centred['report']['mesh_origin_root_local']
+    assert origin==[.5,1.5,-2]
+    for i in range(0,len(centred['vertices']),3):
+        old=uncentred['vertices'][i:i+3];new=[a+b for a,b in zip(centred['vertices'][i:i+3],origin)]
+        for row in m['source_root_matrix_world'][:3]:
+            assert sum(a*b for a,b in zip(row[:3],old))+row[3]==pytest.approx(sum(a*b for a,b in zip(row[:3],new))+row[3],abs=1e-7)
+    assert centred['report']['bounds_root_local']==uncentred['report']['bounds_root_local']

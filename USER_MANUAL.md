@@ -950,8 +950,8 @@ Experimental `MOMENT_FACETS` requires a capture made with both `material_fields`
 and `normal_moments`. For each active base tile, it averages input moments using
 captured surface weights, reconstructs up to four weighted directions, and builds
 independent geometric strips with those projected-area weights. Every plane passes
-through the tile's measured/estimated witness pixel at its recorded depth. Final
-root-local float32 triangles must reproduce all nine camera-frame moments within
+through the tile's measured/estimated witness pixel at its recorded depth. The
+final float32 mesh and planned child translation must reproduce all nine camera-frame moments within
 1e-5, preserve projection within 1e-5 pixel and remain inside near/far clipping.
 There is no adaptive splitting or flat fallback. Source bounds are reported;
 unlike adaptive mode, this mode does not clip slopes to the source bounding box.
@@ -969,12 +969,22 @@ passing candidate is used; this is not an exhaustive feasibility solver. Attempt
 rejection reasons and chosen factor seeds are reported. A retained small canopy
 requires 37 attempts for its hardest tile and constructs with an explicit limit
 of 64. Construction uses witness-relative camera coordinates before conversion
-to the final root-local float32 mesh, avoiding premature loss from distant camera
+to the final native mesh, avoiding premature loss from distant camera
 coordinates. A negligible strip that collapses only after final conversion may
 be rebuilt away, with its precision omission counted in the same combined 1e-6
 mass budget and all final moment/projection checks retained. A maximum of three
 such rebuilds per candidate prevents unbounded retries; the reported counter
 includes attempted rebuilds even if that candidate subsequently refuses.
+
+The mesh uses the source bounding-box centre as a once-rounded float32 offset
+in its child object. The asset root retains its original pivot, placement and
+unit conversion. Planning composes this offset with the mesh coordinates for all
+precision checks; creation applies it, and inspection verifies the exact planned
+child basis. `mesh_origin_root_local`, `bounds_mesh_local` and `bounds_root_local`
+distinguish stored coordinates from their source-root placement. Moving the mesh
+child invalidates the guard; supported root movement and visibility controls
+remain available. Existing saved assets retain their original data and placement.
+
 Before candidate search, necessary direction-cap bounds check whether the tile's
 moments could match the configured slope within fit/omission tolerances. A
 `DirectionCapError` includes `pixel_rect` and a `direction_cap` JSON object with
@@ -988,7 +998,8 @@ precision, budgets or candidate search.
 
 The dense capture now advances past its earlier precision failure but still
 refuses a tile whose moments cannot satisfy slope 16. Explicit 32/64 settings
-advance to a later precision refusal. No admission or
+now pass that later precision refusal and reach further slope-cap constraints.
+No admission or
 render-quality guarantee follows from increasing the candidate limit.
 
 Pixel inputs are checked before aggregation so invalid moments cannot cancel

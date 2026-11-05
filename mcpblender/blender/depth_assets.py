@@ -104,6 +104,11 @@ def verify_buffers(obj,owned,meta):
     """Verify actual native float buffers against the immutable numerical plan."""
     from .bridge import check_cancelled,report_progress
     info=meta['plan'];mesh=obj.data
+    if 'mesh_origin_root_local' in info['geometry']:
+        origin=info['geometry']['mesh_origin_root_local']
+        if not isinstance(origin,list) or len(origin)!=3 or any(type(v) not in (int,float) or not math.isfinite(v) or abs(v)>1e20 for v in origin):raise ValueError('Invalid depth asset mesh origin plan')
+        expected=Matrix.Translation(origin)
+        if any(obj.matrix_basis[i][j]!=expected[i][j] for i in range(4) for j in range(4)):raise ValueError('Depth asset mesh placement differs from numerical plan')
     if obj.type!='MESH' or not 4<=len(mesh.vertices)<=262144 or len(mesh.polygons)>65536 or len(mesh.loops)>262144:raise ValueError('Depth asset mesh exceeds bounded profile')
     if 2*len(mesh.polygons)!=info['geometry']['triangles'] or any(len(f.vertices)!=4 for f in mesh.polygons):raise ValueError('Depth asset patch counts changed')
     vertices=array('f',[0.])*(len(mesh.vertices)*3);mesh.vertices.foreach_get('co',vertices)
@@ -196,6 +201,7 @@ def create(p,*,progress_context=None,checkpoint_estimate=None):
         for loop in mesh.loops:values.extend(geometry['uvs'][loop.vertex_index*2:loop.vertex_index*2+2])
         uv.data.foreach_set('uv',values)
         obj=bpy.data.objects.new(prefix+'-'+p['view'],mesh);made.append(obj);obj.parent=root;col.objects.link(obj)
+        if 'mesh_origin_root_local' in info['geometry']:obj.matrix_basis=Matrix.Translation(info['geometry']['mesh_origin_root_local'])
         for key,value in info['ray_visibility'].items():setattr(obj,key,value)
         images={};w=info['width'];h=info['height']
         for key,pixels in maps.items():

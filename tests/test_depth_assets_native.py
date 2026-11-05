@@ -6,11 +6,12 @@ import pytest
 from test_botanical_native import pytestmark
 
 
-@pytest.mark.skipif(not os.environ.get('MCPBLENDER_DEPTH_NATIVE_SOURCE'),reason='Retained native material-field archive required')
-@pytest.mark.parametrize('geometry_mode',['FLAT','ADAPTIVE_NORMAL'])
+@pytest.mark.parametrize('geometry_mode',['FLAT','ADAPTIVE_NORMAL','MOMENT_FACETS'])
 def test_native_depth_rollback_placement_and_foreign_users(tmp_path,geometry_mode):
+    source_key='MCPBLENDER_MOMENT_CANOPY_SOURCE' if geometry_mode=='MOMENT_FACETS' else 'MCPBLENDER_DEPTH_NATIVE_SOURCE'
+    if not os.environ.get(source_key):pytest.skip('Retained native material-field archive required')
     script=tmp_path/'depth-native.py';repo=Path(__file__).resolve().parents[1]
-    script.write_text('import sys\nsys.path.insert(0,'+repr(str(repo))+')\nSOURCE='+repr(str(Path(os.environ['MCPBLENDER_DEPTH_NATIVE_SOURCE']).resolve()))+'\nOUTPUT='+repr(str(tmp_path))+'\nMODE='+repr(geometry_mode)+'\n'+r'''
+    script.write_text('import sys\nsys.path.insert(0,'+repr(str(repo))+')\nSOURCE='+repr(str(Path(os.environ[source_key]).resolve()))+'\nOUTPUT='+repr(str(tmp_path))+'\nMODE='+repr(geometry_mode)+'\n'+r'''
 import bpy,json
 from pathlib import Path
 from mathutils import Matrix,Vector
@@ -18,16 +19,18 @@ from mcpblender.blender import depth_assets as api,bridge
 from mcpblender.depth_asset_contracts import Source,Create
 bridge.check_cancelled=lambda:None;bridge.report_progress=lambda v:None
 scene=bpy.context.scene;scene.unit_settings.scale_length=.1
-args=Source(directory=SOURCE,view='FRONT',settings={'geometry_mode':MODE}).model_dump();plan,geometry,maps=api.prepared(args)
+settings={'geometry_mode':MODE}
+if MODE=='MOMENT_FACETS':settings.update(max_moment_candidates=64,max_slope=64)
+args=Source(directory=SOURCE,view='FRONT',settings=settings).model_dump();plan,geometry,maps=api.prepared(args)
 source=Matrix(plan['source']['source_root_matrix_world']);target=Matrix(plan['root_matrix_world'])
 for point in [(0,0,0),(1,2,3),(-3,4,1)]:
     assert ((source@Vector(point))*plan['source']['scene_unit_scale']-(target@Vector(point))*.1).length<1e-5
 p=Create(**args,collection='DepthNative',expected_plan=plan['plan_sha256'],accept_approximate_optics=True).model_dump()
-before=set(bpy.data.user_map());recipe=api.SHADER_RECIPE;api.SHADER_RECIPE='CHANGED_RECIPE_CONTROL'
+before=set(bpy.data.user_map());recipe_attr='MOMENT_SHADER_RECIPE' if MODE=='MOMENT_FACETS' else 'SHADER_RECIPE';recipe=getattr(api,recipe_attr);setattr(api,recipe_attr,'CHANGED_RECIPE_CONTROL')
 try:api.create(p)
 except ValueError as exc:assert 'stale' in str(exc)
 else:raise AssertionError('Changed shader recipe did not invalidate plan')
-finally:api.SHADER_RECIPE=recipe
+finally:setattr(api,recipe_attr,recipe)
 assert set(bpy.data.user_map())==before
 original_objects={o.name:(o.type,[tuple(v.co) for v in o.data.vertices] if o.type=='MESH' else None) for o in scene.objects}
 def fail(value):
@@ -40,6 +43,17 @@ assert set(bpy.data.user_map())==before,'Rollback leaked native datablocks'
 bridge.report_progress=lambda v:None
 made=api.create(p);assert made['valid'] and made['packed_images']==6
 col,owned,meta,state=api.inspect({'collection':'DepthNative'});root=bpy.data.objects[meta['root']];obj=bpy.data.objects[meta['object']]
+assert root.matrix_basis==Matrix(plan['root_matrix_world'])
+if MODE=='MOMENT_FACETS':
+    origin=plan['geometry']['mesh_origin_root_local'];assert obj.matrix_basis==Matrix.Translation(origin)
+    assert any(v!=0 for v in origin),'Retained source should exercise translated mesh placement'
+    basis=obj.matrix_basis.copy();obj.location.z+=1
+    changed=api.inspect({'collection':'DepthNative'})[-1]
+    assert not changed['valid'] and 'Depth asset mesh placement differs from numerical plan' in changed['issues']
+    try:api.remove({'collection':'DepthNative','expected_asset':changed['asset_sha256']})
+    except ValueError as exc:assert 'content' in str(exc)
+    else:raise AssertionError('Changed child mesh placement accepted for removal')
+    obj.matrix_basis=basis;assert api.inspect({'collection':'DepthNative'})[-1]['asset_sha256']==made['asset_sha256']
 assert col.hide_render and col.hide_viewport
 # Verify all packed signed/vector/scalar/alpha lanes, including mixed data alpha.
 for name,expected in maps.items():

@@ -5957,3 +5957,60 @@ profiles, MCP lifecycle/refusal/progress, initial/final check logs, ordinary/den
 admission, projection proof and the isolated translated-mesh experiment. Existing
 source captures and the production daemon remain untouched. The complete retained
 workflow goal is still active and incomplete.
+
+## Centred mesh storage with a preserved asset root
+
+Moment geometry v5 stores native mesh positions relative to the source bounding-
+box centre. That centre is rounded once to float32 and pinned as
+`mesh_origin_root_local`. Numerical admission composes it through the source
+root's actual axes, then checks the rounded mesh buffers back in the camera
+frame. This fixes the root-coordinate quantization floor without changing the
+1e-5-pixel projection or 1e-5 moment tolerances. Both mesh-local and recomposed
+root-local bounds are reported; hashes still cover actual native mesh buffers.
+There is no clipping to the source box or pivot change.
+
+Native creation sets the mesh child's basis to that translation while retaining
+the original root matrix/unit conversion. Inspection verifies the exact planned
+basis in addition to buffer/content checks. An edited child translation blocks
+removal until restored; root movement and visibility remain supported. Older
+saved assets without this origin field retain their original buffers, basis and
+guards. Resource ownership remains eleven IDs and six packed maps; no material
+or image filtering change occurs.
+
+Independent pure controls recover source positions around 100,000,000 that the
+old root-local float32 storage collapses, without changing root placement or the
+projection bound. Bounds, once-rounded origins, malformed bounds, and composition
+through a rotated/scaled root are checked. The focused geometry/contracts/add-on
+regression passed 90 tests (31.84s); the final 13 moment tests passed (0.35s),
+including the added rotated-root composition control. Existing anyio deprecation
+warning only.
+
+Native placement tests passed for flat, adaptive and moment assets, plus existing
+packed-lane rendering (four tests, 31.38s). The new moment case uses target scene
+scale 0.1, verifies root and child matrices, changed-child guard/removal refusal,
+restoration, rollback, foreign users and native save/reopen. A separate four-test
+native run (30.65s) covers the three canopy rendering profiles and reopening/
+guarding/rollback of a frozen preceding-format moment asset. Python-disabled
+MCP save/reopen/source-file-independent inspection/removal passed at slopes 16
+and 64 (two tests, 370.61s), polling the original operations throughout.
+
+The small canopy now uses 512 triangles, with two bounded negligible-strip
+rebuilds and maximum actual moment residual 3.710e-7 at all three slope profiles.
+Its float32 child offset is approximately (0.033725,-0.258038,7.275171) in source-
+root coordinates. World/front/rear luminance and silhouette measurements remain
+essentially unchanged from the preceding milestone, including the failing rear-
+light/silhouette gates. Numerical precision is not visual qualification.
+
+The dense FRONT capture at slopes 32/64 now passes the former projection refusal
+at [184,36,188,40]. It reaches later necessary direction-cap refusals instead:
+[148,40,152,44] at slope 32 and [180,40,184,44] at 64. The default-16 refusal is
+unchanged. These results validate progress in admission, not a completed dense
+asset, a larger supported slope profile or an impossible full-hemisphere claim.
+The remaining direction/depth/material/coverage and secondary-transport problems
+still need work under the existing quality gates.
+
+Evidence is retained under `tmp/qualification/mesh-origin-20261105/`: ordinary/
+dense admission, native units/placement file, profile renders, frozen-asset proof,
+structured lifecycles and check logs. Source capture files and the production
+service are unchanged. Temporary terminal fixtures are removed after retaining
+and verifying useful evidence; the full workflow goal remains incomplete.

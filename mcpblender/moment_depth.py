@@ -3,7 +3,7 @@ from array import array
 import math
 from . import botany, capture_data, depth_tiles, normal_moments, normal_quadrature, projected_microfacets, normal_support
 
-FORMAT = 'mcpblender-moment-depth-patches-v4'
+FORMAT = 'mcpblender-moment-depth-patches-v5'
 TOLERANCE = 1e-5
 
 
@@ -21,10 +21,23 @@ def rotate(values, axes):
     return mean + [second[0][0], second[0][1], second[0][2], second[1][1], second[1][2], second[2][2]]
 
 
+def mesh_origin(metadata):
+    """Round the source-box centre once, exactly as native child placement will."""
+    if 'bounds_root_local_m' not in metadata:return [0.,0.,0.]
+    bounds=metadata['bounds_root_local_m']
+    if (not isinstance(bounds,dict) or any(not isinstance(bounds.get(k),list) or len(bounds[k])!=3 for k in ('min','max'))
+        or any(type(v) not in (int,float) or not math.isfinite(v) or abs(v)>1e20 for k in ('min','max') for v in bounds[k])
+        or any(a>b for a,b in zip(bounds['min'],bounds['max']))):
+        raise ValueError('Invalid source bounds for moment mesh origin')
+    return list(array('f',[(a+b)/2 for a,b in zip(bounds['min'],bounds['max'])]))
+
+
 def geometry(decoded, metadata, view, p, *, cancelled=lambda: None, progress=lambda v: None):
     if not metadata.get('material_fields', {}).get('normal_moments'):
         raise ValueError('Moment facets require captured input moments; recapture with normal_moments=true')
     w, h, camera, axes, root, root_axes, squares, span, near, far = depth_tiles.frame(decoded, metadata, view, p)
+    origin=mesh_origin(metadata)
+    mesh_root=[root[k]+sum(root_axes[j][k]*origin[j] for j in range(3)) for k in range(3)]
     ch = decoded['channels']
     names = ['TreeCapture.MCP_SurfaceWeight.X', *normal_moments.channels()]
     if any(name not in ch or len(ch[name]) != w*h for name in names):
@@ -105,7 +118,7 @@ def geometry(decoded, metadata, view, p, *, cancelled=lambda: None, progress=lam
                         max_slope=p['max_slope'],anchor=anchor,origin=(*anchor,record['depth_scene_units']),precision_omissions=omissions,triangle_budget=remaining,cancelled=cancelled)
                     try:
                         native_vertices,native_uvs,residual,area_error=native_piece(piece,target,
-                            (camera,axes,root,root_axes,squares,span/w,span,near,far))
+                            (camera,axes,mesh_root,root_axes,squares,span/w,span,near,far))
                         break
                     except CollapsedFacet as exc:
                         # Rebuild only when actual native collapse identifies a
@@ -146,6 +159,7 @@ def geometry(decoded, metadata, view, p, *, cancelled=lambda: None, progress=lam
     report = base['report'] | {'format': FORMAT, 'patches': len(faces), 'triangles': 2*len(faces),
         'moment_tiles': fits, 'depth_anchor': 'WITNESS_PIXEL_CENTRE', 'refinement_work': work,
         'construction_frame':'WITNESS_RELATIVE_CAMERA',
+        'mesh_origin_root_local':origin,'mesh_origin_policy':'SOURCE_BOUNDS_CENTRE_FLOAT32' if 'bounds_root_local_m' in metadata else 'ROOT_ORIGIN_NO_SOURCE_BOUNDS',
         'work_unit': '10 per visited tile pixel plus 64 per direction-cap preflight plus 328 per bounded candidate fit and up to four geometry checks',
         'direction_cap_method':normal_support.FORMAT,'direction_cap_minimum_margin':minimum_support_margin,
         'native_collapse_rebuilds':native_rebuilds,
@@ -156,7 +170,8 @@ def geometry(decoded, metadata, view, p, *, cancelled=lambda: None, progress=lam
         'max_unsupported_mass_omitted': maximum_unsupported, 'max_precision_mass_omitted': maximum_precision,
         'surface_weighted_omitted_mass': omitted_mass_sum,
         'max_projected_area_relative_error': maximum_area_error,
-        'bounds_root_local': {'min': low, 'max': high}, 'vertices_sha256': depth_tiles.floats_sha(vertices),
+        'bounds_mesh_local':{'min':low,'max':high},
+        'bounds_root_local': {'min': [v+o for v,o in zip(low,origin)], 'max': [v+o for v,o in zip(high,origin)]}, 'vertices_sha256': depth_tiles.floats_sha(vertices),
         'uv_sha256': depth_tiles.floats_sha(uvs),
         'normal_policy': 'Implicit geometric normals from captured input moments; raw normal texture retained as witness only.',
         'scope': 'Witness-anchored orthographic projected-area moment facets. Refuse unsupported mass/clipping/precision/budget; no fallback. Input moments are not renderer closure moments. No filtered-pixel, PBR, color/depth correlation, angular, shadow/wind or optical equivalence guarantee.'}

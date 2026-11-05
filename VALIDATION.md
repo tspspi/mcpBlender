@@ -5183,3 +5183,68 @@ normal conventions, per-pixel geometry diagnostic and `relative-mcp-proof.json`.
 Adaptive geometry, missing layered visibility/bounce/shadow information and
 multi-light/multi-view optical qualification remain open. The full workflow goal
 remains incomplete.
+
+
+## Bounded adaptive normal alignment
+
+`ADAPTIVE_NORMAL` is an optional directional depth geometry mode. `FLAT` remains
+the default. Independent tests cover a tilted plane passing through its measured
+depth witness, quadrant refinement, deterministic budget stops, clipped edge
+rectangles, disjoint active-pixel coverage, rotated/scaled/translated root/camera
+frames, slope/camera/source-bounds limits, backward/zero/nonfinite normals,
+initial triangle-budget rejection and work/cancellation limits. The tolerance is
+an equivalent angle derived from coverage-weighted mean cosine; budget stops,
+unsupported directions and clipping can leave it unmet. This is an estimate from
+filtered shading observations, not recovery of native geometric normals.
+
+The nearest-witness implementation was checked against 120 independent
+exhaustive Euclidean searches, including integer/half-pixel centres, bounds,
+radius exclusions and deterministic pixel-ID ties. Rebuilding both retained
+legacy FRONT/BACK_LEFT flat geometries produces exactly the old vertex and UV
+buffer hashes. Search work falls from 336,896/193,536 to 15,200/10,188 candidate
+visits. Previously saved flat assets also pass independent native inspection.
+No flat shader or coordinate default was changed.
+
+The initial combined geometry/contracts/server run passed 22 cases in 19.26s.
+Final witness-anchor analytic/contracts checks passed 15 cases in 12.90s. Native
+unit, transaction, ownership and packed shader-lane checks passed three cases in
+23.06s; the final adaptive witness-placement lifecycle passed in 10.73s. The
+Python-disabled MCP lifecycle passed both geometry modes in 86.72s; its final
+adaptive witness-anchor run passed in 47.61s. These tests cover stale option
+guards, cancellation rollback, unit placement, foreign users, actual buffer
+hashes, save/reopen without the source archive and guarded private cleanup.
+Numeric defaults are canonicalized so planning and creation serialize the same
+physical settings identically.
+
+Dense-canopy qualification uses the same 88,704-leaf source, camera/frame,
+512px images, eight CPU samples and lighting/ray controls as the prior optics
+study. Two independent packed assets stay within 32,768/131,072 triangles, with
+unchanged six-map, 24 MiB decoded texture budgets. Planes pass through recorded
+measured or explicitly estimated witness pixel centres, with slope and clipping
+limits. Their angular fit is an input-data diagnostic, not a render-quality gate.
+The final witness-anchored assets reduce equivalent alignment error from
+43.14 degrees for flat geometry to 27.98/11.78 degrees. Their ordinary-world
+brightness biases are +28.48%/+34.97%; secondary-visibility-disabled biases are
+-14.79%/-7.35%; front-sun biases +47.51%/+41.98%; rear-sun biases +85.55%/+79.12%.
+Only the high-budget secondary-disabled case passes the current combined image
+criteria. Both assets independently reopen with exact geometry/UV/all float-map
+checks passing. The final snapshot retains the two reduced assets and cameras.
+The ordinary-world and directional-light brightness gates remain required; the
+full far workflow is not qualified by these assets.
+
+The earlier rectangle-centre anchoring experiment and secondary-layer controls
+are frozen locally under `tmp/qualification/adaptive-depth-20261105/centre-anchor/`.
+That exploratory rear layer left primary alpha unchanged and reduced rear-lit
+brightness bias from +78.89% to -2.04%, while other lighting still failed. It is
+not a production shadow or bounce representation. A separate plane control found
+that the existing explicit mapped normal stays facing forward on a back face,
+which renders black where a default two-sided normal remains lit. This inherited
+shader limitation is recorded for a separate fix; it does not alter the primary
+front-view geometry qualification. Single-leaf reflect/translucent/mixed controls
+all have unit centre Normal passes, ruling out simple opposite-closure cancellation
+as the explanation for the canopy's non-unit filtered Normal data.
+
+Evidence is local under `tmp/qualification/adaptive-depth-20261105/`. Full native
+optics, normal-distribution filtering, secondary visibility/bounce information,
+compact shadow representation, angular blending, wind/population/reference
+quality and the original wider workflow requirements remain open.

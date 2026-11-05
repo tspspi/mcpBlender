@@ -19,7 +19,7 @@ MAPS=[('base_coverage',('base_color.R','base_color.G','base_color.B','coverage')
       ('surface',('metallic','ior','transmission_weight','alpha')),
       ('witness',('thin_mode','cull_weight','material_id','surface_weight'))]
 DEFAULTS={'tile_pixels':4,'alpha_threshold':.001,'edge_depth_policy':'NEAREST','edge_radius_pixels':16,
-          'max_triangles':32768,'max_pixels':1048576,'max_texture_bytes':256*1024**2,'max_search_work':2000000}
+          'max_triangles':32768,'max_pixels':1048576,'max_texture_bytes':256*1024**2,'max_search_work':2000000,'geometry_mode':'FLAT','normal_tolerance_degrees':15.,'max_slope':16.,'max_refinement_work':8000000}
 
 
 def floats_sha(values):
@@ -30,10 +30,14 @@ def floats_sha(values):
 def options(values):
     p=DEFAULTS|values
     if set(p)!=set(DEFAULTS):raise ValueError('Unknown depth patch option')
-    for key,low,high in [('tile_pixels',1,64),('edge_radius_pixels',0,64),('max_triangles',2,131072),('max_pixels',1024,1048576),('max_texture_bytes',1024,512*1024**2),('max_search_work',1,8000000)]:
+    for key,low,high in [('tile_pixels',1,64),('edge_radius_pixels',0,64),('max_triangles',2,131072),('max_pixels',1024,1048576),('max_texture_bytes',1024,512*1024**2),('max_search_work',1,8000000),('max_refinement_work',1,16000000)]:
         if type(p[key]) is not int or not low<=p[key]<=high:raise ValueError('Invalid depth patch option: '+key)
     if p['tile_pixels'] not in (1,2,4,8,16,32,64) or p['edge_depth_policy'] not in {'NEAREST','OMIT','REFUSE'}:raise ValueError('Invalid depth patch tile/edge policy')
     if type(p['alpha_threshold']) not in (int,float) or not math.isfinite(p['alpha_threshold']) or not 0<p['alpha_threshold']<1:raise ValueError('Invalid depth patch alpha threshold')
+    if p['geometry_mode'] not in {'FLAT','ADAPTIVE_NORMAL'}:raise ValueError('Invalid depth patch geometry mode')
+    for key,low,high in [('normal_tolerance_degrees',.1,90),('max_slope',.01,64)]:
+        if type(p[key]) not in (int,float) or not math.isfinite(p[key]) or not low<=p[key]<=high:raise ValueError('Invalid depth patch option: '+key)
+    for key in ('normal_tolerance_degrees','max_slope'):p[key]=float(p[key])
     return p
 
 
@@ -47,7 +51,37 @@ def frame(decoded,metadata,view,p):
     return w,h,camera,axes,root,root_axes,squares,span,near,far
 
 
+def nearest_depth_pixel(cx,cy,radius,w,h,eligible,charge,cancelled):
+    """Exact bounded Euclidean nearest witness; ties use row-major pixel ID.
+
+    Visit expanding integer squares and stop only when every unseen pixel is
+    strictly farther than the best witness. Each candidate is charged once.
+    """
+    from itertools import chain
+    previous=None;nearest=None
+    for ring in range(math.ceil(radius)+1):
+        cancelled();left=max(0,math.ceil(cx-ring));right=min(w-1,math.floor(cx+ring));top=max(0,math.ceil(cy-ring));bottom=min(h-1,math.floor(cy+ring))
+        if left>right or top>bottom:continue
+        for y in range(top,bottom+1):
+            xs=range(left,right+1) if previous is None or not previous[2]<=y<=previous[3] else chain(range(left,previous[0]),range(previous[1]+1,right+1))
+            for x in xs:
+                charge();d=(x-cx)**2+(y-cy)**2;i=y*w+x
+                if d<=radius*radius and eligible(i) and (nearest is None or (d,i)<nearest):nearest=(d,i)
+        previous=(left,right,top,bottom)
+        unseen=[distance*distance for exists,distance in ((left>0,cx-left+1),(right<w-1,right+1-cx),(top>0,cy-top+1),(bottom<h-1,bottom+1-cy)) if exists]
+        if nearest is not None and nearest[0]<min(unseen,default=math.inf):break
+    return nearest
+
+
 def geometry(decoded,metadata,view,values,*,cancelled=lambda:None,progress=lambda v:None):
+    p=options(values)
+    if p['geometry_mode']=='ADAPTIVE_NORMAL':
+        from . import adaptive_depth
+        return adaptive_depth.geometry(decoded,metadata,view,p,cancelled=cancelled,progress=progress)
+    return _geometry(decoded,metadata,view,p,cancelled=cancelled,progress=progress)
+
+
+def _geometry(decoded,metadata,view,values,*,rectangles=None,slopes=None,cancelled=lambda:None,progress=lambda v:None):
     p=options(values);w,h,camera,axes,root,root_axes,squares,span,near,far=frame(decoded,metadata,view,p)
     ch=decoded['channels'];alpha=ch['TreeCapture.Combined.A'];depth=ch['TreeCapture.Depth.Z']
     if len(alpha)!=w*h or len(depth)!=w*h:raise ValueError('Depth patch channel length mismatch')
@@ -60,37 +94,58 @@ def geometry(decoded,metadata,view,values,*,cancelled=lambda:None,progress=lambd
         opaque_missing+=a>=1-1e-6 and not hit(i)
     if opaque_missing:raise ValueError('Opaque capture pixels lack measured centre depth; edge estimation cannot repair them')
     step=p['tile_pixels']
-    for y in range(0,h,step):
-        cancelled();progress({'phase':'reconstructing directional depth patches','completed':y,'total':h})
-        for x in range(0,w,step):
-            right=min(w,x+step);bottom=min(h,y+step);pixels=[yy*w+xx for yy in range(y,bottom) for xx in range(x,right)]
-            active=[i for i in pixels if alpha[i]>p['alpha_threshold']]
-            if not active:continue
-            hits=[i for i in active if hit(i)];is_estimate=not hits;distance=0.
-            if not hits:
-                if p['edge_depth_policy']=='REFUSE':raise ValueError('Partial-coverage tile lacks centre depth; choose an explicit edge policy')
-                if p['edge_depth_policy']=='OMIT':omitted+=1;continue
-                cx=(x+right-1)/2;cy=(y+bottom-1)/2;radius=p['edge_radius_pixels'];nearest=None
-                for yy in range(max(0,math.ceil(cy-radius)),min(h,math.floor(cy+radius)+1)):
-                    cancelled()
-                    for xx in range(max(0,math.ceil(cx-radius)),min(w,math.floor(cx+radius)+1)):
-                        search_work+=1
-                        if search_work>p['max_search_work']:raise ValueError('Depth patch edge search work budget exceeded')
-                        d=(xx-cx)**2+(yy-cy)**2;i=yy*w+xx
-                        if d<=radius*radius and alpha[i]>p['alpha_threshold'] and hit(i) and (nearest is None or (d,i)<nearest):nearest=(d,i)
-                if nearest is None:raise ValueError('No measured depth witness inside edge radius; increase radius or explicitly omit tiles')
-                distance=math.sqrt(nearest[0]);hits=[nearest[1]];estimated+=1;max_distance=max(max_distance,distance)
-            selected=sorted(hits,key=lambda i:(depth[i],i));witness=selected[len(selected)//2];z=depth[witness];spread=depth[selected[-1]]-depth[selected[0]];max_spread=max(max_spread,spread)
-            if 2*(len(faces)+1)>p['max_triangles']:raise ValueError('Depth patch triangle budget exceeded')
-            base=len(vertices)//3
-            for a,b in ((x,bottom),(right,bottom),(right,y),(x,y)):
-                u=(a/w-.5)*span;v=(.5-b/h)*span
-                world=[camera[k]+axes[0][k]*u+axes[1][k]*v-axes[2][k]*z for k in range(3)]
-                local=[capture_data.dot([world[k]-root[k] for k in range(3)],root_axes[j])/squares[j] for j in range(3)]
-                if any(not math.isfinite(v) or abs(v)>1e20 for v in local):raise ValueError('Depth patch coordinates exceed finite native range')
-                vertices.extend(local);uvs.extend((a/w,1-b/h))
-                for j in range(3):low[j]=min(low[j],local[j]);high[j]=max(high[j],local[j])
-            faces.append((base,base+1,base+2,base+3));records.append({'pixel_rect':[x,y,right,bottom],'depth_scene_units':z,'witness_pixel':[witness%w,witness//w],'estimated':is_estimate,'witness_distance_pixels':distance,'measured_depth_spread_scene_units':spread})
+    rects=rectangles if rectangles is not None else ((x,y,min(w,x+step),min(h,y+step)) for y in range(0,h,step) for x in range(0,w,step))
+    total=len(rectangles) if rectangles is not None else ((w+step-1)//step)*((h+step-1)//step)
+    for index,(x,y,right,bottom) in enumerate(rects):
+        if index%64==0:cancelled();progress({'phase':'reconstructing directional depth patches','completed':index,'total':total})
+        pixels=[yy*w+xx for yy in range(y,bottom) for xx in range(x,right)]
+        active=[i for i in pixels if alpha[i]>p['alpha_threshold']]
+        if not active:continue
+        hits=[i for i in active if hit(i)];is_estimate=not hits;distance=0.
+        if not hits:
+            if p['edge_depth_policy']=='REFUSE':raise ValueError('Partial-coverage tile lacks centre depth; choose an explicit edge policy')
+            if p['edge_depth_policy']=='OMIT':omitted+=1;continue
+            def charge_search():
+                nonlocal search_work
+                search_work+=1
+                if search_work>p['max_search_work']:raise ValueError('Depth patch edge search work budget exceeded')
+            cx=(x+right-1)/2;cy=(y+bottom-1)/2
+            nearest=nearest_depth_pixel(cx,cy,p['edge_radius_pixels'],w,h,lambda i:alpha[i]>p['alpha_threshold'] and hit(i),charge_search,cancelled)
+            if nearest is None:raise ValueError('No measured depth witness inside edge radius; increase radius or explicitly omit tiles')
+            distance=math.sqrt(nearest[0]);hits=[nearest[1]];estimated+=1;max_distance=max(max_distance,distance)
+        selected=sorted(hits,key=lambda i:(depth[i],i));witness=selected[len(selected)//2];z=depth[witness];spread=depth[selected[-1]]-depth[selected[0]];max_spread=max(max_spread,spread)
+        if 2*(len(faces)+1)>p['max_triangles']:raise ValueError('Depth patch triangle budget exceeded')
+        slope=slopes.get((x,y,right,bottom),(0.,0.)) if slopes else (0.,0.)
+        anchor_u=((witness%w+.5)/w-.5)*span;anchor_v=(.5-(witness//w+.5)/h)*span
+        delta=max(abs(slope[0]*((a/w-.5)*span-anchor_u)+slope[1]*((.5-b/h)*span-anchor_v)) for a,b in ((x,bottom),(right,bottom),(right,y),(x,y)))
+        room=max(0.,min(z-near,far-z))*(1-1e-6);clip_limited=delta>room
+        if clip_limited and delta:slope=tuple(v*room/delta for v in slope)
+        base_points=[]
+        for a,b in ((x,bottom),(right,bottom),(right,y),(x,y)):
+            u=(a/w-.5)*span;v=(.5-b/h)*span
+            world=[camera[k]+axes[0][k]*u+axes[1][k]*v-axes[2][k]*z for k in range(3)]
+            local=[capture_data.dot([world[k]-root[k] for k in range(3)],root_axes[j])/squares[j] for j in range(3)]
+            base_points.append((u,v,local,a/w,1-b/h))
+        direction=[-capture_data.dot(axes[2],root_axes[j])/squares[j] for j in range(3)]
+        bounds=metadata.get('bounds_root_local_m') if slopes is not None else None;bound_scale=1.
+        if bounds:
+            if any(len(bounds[key])!=3 or any(not math.isfinite(v) for v in bounds[key]) for key in ('min','max')) or any(bounds['min'][j]>bounds['max'][j] for j in range(3)):raise ValueError('Invalid source bounds for normal-aligned patches')
+            for u,v,local,_,_ in base_points:
+                delta=slope[0]*(u-anchor_u)+slope[1]*(v-anchor_v)
+                for j in range(3):
+                    change=direction[j]*delta
+                    # Never increase an existing flat-patch bounds overshoot.
+                    if change>0:bound_scale=min(bound_scale,(max(local[j],bounds['max'][j])-local[j])/change)
+                    elif change<0:bound_scale=min(bound_scale,(min(local[j],bounds['min'][j])-local[j])/change)
+            if bound_scale<1:slope=tuple(v*max(0.,bound_scale) for v in slope)
+        base=len(vertices)//3
+        for u,v,original,uu,vv in base_points:
+            delta=slope[0]*(u-anchor_u)+slope[1]*(v-anchor_v)
+            local=[original[j]+direction[j]*delta for j in range(3)] if delta else original
+            if any(not math.isfinite(v) or abs(v)>1e20 for v in local):raise ValueError('Depth patch coordinates exceed finite native range')
+            vertices.extend(local);uvs.extend((uu,vv))
+            for j in range(3):low[j]=min(low[j],local[j]);high[j]=max(high[j],local[j])
+        faces.append((base,base+1,base+2,base+3));records.append({'pixel_rect':[x,y,right,bottom],'depth_scene_units':z,'witness_pixel':[witness%w,witness//w],'estimated':is_estimate,'witness_distance_pixels':distance,'measured_depth_spread_scene_units':spread,**({'slope_camera':list(slope),'plane_anchor_pixel':[witness%w+.5,witness//w+.5],'clip_limited':clip_limited,'source_bounds_limited':bound_scale<1} if slopes is not None else {})})
     if not faces:raise ValueError('No active depth patches')
     report={'format':FORMAT,'view':view['view'],'width':w,'height':h,'patches':len(faces),'triangles':2*len(faces),
             'measured_tiles':len(faces)-estimated,'estimated_edge_tiles':estimated,'omitted_tiles':omitted,'edge_search_work':search_work,

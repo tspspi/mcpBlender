@@ -7,9 +7,10 @@ from test_botanical_native import pytestmark
 
 
 @pytest.mark.skipif(not os.environ.get('MCPBLENDER_DEPTH_NATIVE_SOURCE'),reason='Retained native material-field archive required')
-def test_native_depth_rollback_placement_and_foreign_users(tmp_path):
+@pytest.mark.parametrize('geometry_mode',['FLAT','ADAPTIVE_NORMAL'])
+def test_native_depth_rollback_placement_and_foreign_users(tmp_path,geometry_mode):
     script=tmp_path/'depth-native.py';repo=Path(__file__).resolve().parents[1]
-    script.write_text('import sys\nsys.path.insert(0,'+repr(str(repo))+')\nSOURCE='+repr(str(Path(os.environ['MCPBLENDER_DEPTH_NATIVE_SOURCE']).resolve()))+'\nOUTPUT='+repr(str(tmp_path))+'\n'+r'''
+    script.write_text('import sys\nsys.path.insert(0,'+repr(str(repo))+')\nSOURCE='+repr(str(Path(os.environ['MCPBLENDER_DEPTH_NATIVE_SOURCE']).resolve()))+'\nOUTPUT='+repr(str(tmp_path))+'\nMODE='+repr(geometry_mode)+'\n'+r'''
 import bpy,json
 from pathlib import Path
 from mathutils import Matrix,Vector
@@ -17,7 +18,7 @@ from mcpblender.blender import depth_assets as api,bridge
 from mcpblender.depth_asset_contracts import Source,Create
 bridge.check_cancelled=lambda:None;bridge.report_progress=lambda v:None
 scene=bpy.context.scene;scene.unit_settings.scale_length=.1
-args=Source(directory=SOURCE,view='FRONT').model_dump();plan,geometry,maps=api.prepared(args)
+args=Source(directory=SOURCE,view='FRONT',settings={'geometry_mode':MODE}).model_dump();plan,geometry,maps=api.prepared(args)
 source=Matrix(plan['source']['source_root_matrix_world']);target=Matrix(plan['root_matrix_world'])
 for point in [(0,0,0),(1,2,3),(-3,4,1)]:
     assert ((source@Vector(point))*plan['source']['scene_unit_scale']-(target@Vector(point))*.1).length<1e-5

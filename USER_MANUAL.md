@@ -836,6 +836,26 @@ unavailable neighbours, unsupported intrinsic transparency, zero/nonfinite
 covered normals and malformed source data refuse. Capture sizes through 1024px
 are supported here, with a one-megapixel ceiling per directional asset.
 
+`settings.geometry_mode` defaults to `FLAT`. Optional `ADAPTIVE_NORMAL` fits
+estimated planes to the captured normal observations and refines the base grid
+within `max_triangles`. It starts from `tile_pixels` (default 4), then prioritizes
+splits by coverage-weighted alignment improvement per additional patch.
+`normal_tolerance_degrees` defaults to 15: it measures the equivalent angle from
+weighted mean cosine, not the maximum angle of every pixel. The triangle budget
+can stop refinement above that target. Reports include the remaining error,
+unmet-cell counts, budget stops and normalization/refinement work.
+
+Tilted planes pass through the recorded measured or explicitly estimated depth
+witness at its pixel centre. `max_slope` defaults to 16. Slopes are limited by
+camera clipping and source bounds; a projected flat corner's existing bounds
+overshoot is not expanded. Backward or unresolved mean directions retain flat
+geometry and are counted. Captured shader normals and colors are preserved.
+`max_refinement_work` defaults to 8,000,000 sample visits (ceiling 16,000,000).
+An exact expanding nearest-witness search retains Euclidean distance/pixel-ID
+ties and charges each visited candidate once. Fit/work limits and estimates are
+creation guards, not optical certification. Review multiple lighting conditions;
+improved normal alignment alone does not restore missing canopy occlusion.
+
 The six RGBA32 data images retain base color/coverage, raw source-root-local
 normal/roughness, emission color/strength, artistic thin color/weight,
 metallic/IOR/Principled transmission/intrinsic alpha, and thin-mode/culling/

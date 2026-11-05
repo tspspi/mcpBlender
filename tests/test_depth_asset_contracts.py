@@ -8,8 +8,10 @@ from mcpblender.server import build_server,State
 
 
 def test_strict_patch_settings_and_default_approximation_acceptance():
-    for patch in ({'tile_pixels':True},{'tile_pixels':3},{'max_pixels':4194304},{'edge_radius_pixels':65},{'edge_depth_policy':'INVENT'},{'alpha_threshold':0},{'max_triangles':True}):
+    for patch in ({'tile_pixels':True},{'tile_pixels':3},{'max_pixels':4194304},{'edge_radius_pixels':65},{'edge_depth_policy':'INVENT'},{'alpha_threshold':0},{'geometry_mode':'GUESS'},{'normal_tolerance_degrees':True},{'max_slope':False},{'max_refinement_work':True},{'max_triangles':True}):
         with pytest.raises(ValueError):Settings(**patch)
+    from mcpblender import depth_tiles
+    assert depth_tiles.options({'normal_tolerance_degrees':15,'max_slope':16})==depth_tiles.options({'normal_tolerance_degrees':15.0,'max_slope':16.0})
     assert not Create(directory='capture',view='FRONT',collection='Far',expected_plan='a'*64).accept_approximate_optics
 
 

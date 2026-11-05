@@ -968,12 +968,20 @@ clipping, triangle and final root-local float32 checks before selection. The fir
 passing candidate is used; this is not an exhaustive feasibility solver. Attempts,
 rejection reasons and chosen factor seeds are reported. A retained small canopy
 requires 37 attempts for its hardest tile and constructs with an explicit limit
-of 64. The dense capture still encounters precision refusals. No admission or
+of 64. Construction uses witness-relative camera coordinates before conversion
+to the final root-local float32 mesh, avoiding premature loss from distant camera
+coordinates. A negligible strip that collapses only after final conversion may
+be rebuilt away, with its precision omission counted in the same combined 1e-6
+mass budget and all final moment/projection checks retained. A maximum of three
+such rebuilds per candidate prevents unbounded retries; the reported counter
+includes attempted rebuilds even if that candidate subsequently refuses.
+The dense capture now advances past its earlier precision failure but still
+refuses a tile whose moments cannot satisfy the configured slope cap. No admission or
 render-quality guarantee follows from increasing the candidate limit.
 
 Pixel inputs are checked before aggregation so invalid moments cannot cancel
 each other in an average. `max_refinement_work` bounds reconstruction at 10 units
-per visited tile pixel plus 232 per attempted bounded fit and geometry check.
+per visited tile pixel plus 328 per attempted bounded fit and up to four geometry checks.
 The aggregate work ceiling remains active across retries. All existing pixel, texture,
 triangle and nearest-witness search limits apply. Plans pin the new shader recipe
 `CAPTURED_INPUT_PBR_V3_GEOMETRIC_MOMENTS`: Principled and translucent closures use

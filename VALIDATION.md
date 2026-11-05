@@ -5817,3 +5817,67 @@ warning only. Evidence, reproducible search/admission scripts, original and fina
 native measurement proofs/EXRs and the structured packed asset are retained under
 `tmp/qualification/hemisphere-quadrature-20261105/`. Production service and source
 capture files remain unchanged. The full workflow goal remains incomplete.
+
+## Witness-relative moment geometry precision
+
+Moment geometry v3 constructs float32 strips relative to the measured depth
+witness, then adds an explicit camera-frame origin before final root-local
+conversion. The primitive reports a translated-frame v2 descriptor, original
+camera/depth/UV semantics and `position_origin_camera`. Default unshifted
+primitive behavior remains available. This avoids rounding small plane variations
+against the absolute distance to the camera before native mesh conversion.
+Final native projection, area, near/far and 1e-5 moment checks are unchanged.
+Independent tests recover a +/-0.75 plane variation at depth 100,000,000 where
+unshifted construction fails, and verify equivalent UVs/vertices after a large
+camera U/V translation.
+
+A strip can survive that construction but collapse only after native root-local
+float32 conversion. The checker identifies its original source-atom index.
+Only negligible mass may be explicitly omitted and rebuilt: original moments
+remain the target, combined unsupported/precision omission stays <=1e-6, and the
+final geometric residual must still pass. At most four geometry checks (three
+rebuilds) are possible for four atoms. The work charge is now 328 per candidate
+plus 10 per visited tile pixel, including rejected candidates and worst-case
+rebuild work. An independent geometric regression constructs a tiny strip that
+really collapses in the final root coordinates, verifies its source index, and
+checks the bounded rebuild against the original moments. Invalid/duplicate
+indices and significant-mass omission refuse.
+
+The retained small canopy still uses 70 tiles/257 quads/514 triangles and 236
+candidate attempts. It requires one native-collapse rebuild, with maximum
+precision mass omitted 1.640e-7. Maximum final moment residual improves from
+1.633e-6 to 6.058e-7; bounded work is 88,608 units. The Python-disabled public MCP
+lifecycle passed (143.60s), including all prior source/guard/reopen/removal checks.
+Final native controls passed (three tests, 18.66s): real canopy creation and six
+lighting measurements, frozen previous-format moment-asset guard/rollback/reopen,
+and the original diffuse world/sun transport control. The frozen-asset test now
+discovers its sole owned collection instead of assuming one fixture name. The
+focused pure/contracts/packaging regression passed 72 tests (31.50s), with the
+existing anyio deprecation warning only.
+
+Native canopy world/front/rear shared-luminance biases remain approximately
+-0.54%, +1.04% and +97.08%. Silhouette/rear-light gates still fail. Better numerical
+construction is not optical qualification; no image-quality gate was weakened.
+
+The dense FRONT capture passes its earlier failing tile [284,28,288,32] and
+reaches [280,32,284,36], where every current candidate violates supported
+orientation requirements. A separate necessary bound explains why more seeds
+alone cannot solve this tile at the current slope cap. For unit directions n
+with z>=c=1/sqrt(1+16^2), the triangle inequality requires
+
+`mu_z - c >= || (Q_xz,Q_yz,Q_zz) - c*mu ||`.
+
+The retained tile's left-minus-right slack is -3.714e-4. Allowing the existing
+fit residual and worst-case renormalization after omitting 1e-6 mass can change
+that slack by at most 3.409e-5, still insufficient. This rules out the configured
+slope-16 direction representation within those bounds; it does not rule out the
+full hemisphere or another geometry representation. The check is retained as
+local evidence, not yet a new public diagnostic or an automatic cap change.
+A separate steeper geometry profile would need explicit limits, depth/precision
+checks and new image qualification. No slope, omission or residual limit changes
+in this milestone.
+
+Evidence is under `tmp/qualification/moment-precision-20261105/`: admission,
+source-cap bound, structured proof/packed asset, final native guard/transport/
+canopy evidence and check logs. Native source archives and production service
+remain untouched; the overall workflow goal remains active and incomplete.

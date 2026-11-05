@@ -3,8 +3,14 @@ from array import array
 import math
 from . import botany, capture_data, depth_tiles, normal_moments, normal_quadrature, projected_microfacets
 
-FORMAT = 'mcpblender-moment-depth-patches-v2'
+FORMAT = 'mcpblender-moment-depth-patches-v3'
 TOLERANCE = 1e-5
+
+
+class CollapsedFacet(ValueError):
+    def __init__(self, source_index):
+        super().__init__('Root-local float32 facet collapses')
+        self.source_index=source_index
 
 
 def rotate(values, axes):
@@ -28,7 +34,7 @@ def geometry(decoded, metadata, view, p, *, cancelled=lambda: None, progress=lam
     vertices, uvs, faces, records = array('f'), array('f'), [], []
     low, high = [math.inf]*3, [-math.inf]*3
     work = fits = omitted_mass_sum = 0
-    attempts=max_attempts=0;rejected={};seed_histogram={}
+    attempts=max_attempts=native_rebuilds=0;rejected={};seed_histogram={}
     maximum_residual = maximum_adjustment = maximum_omission = maximum_area_error = 0.
     maximum_unsupported = maximum_precision = 0.
     weight = ch[names[0]]
@@ -82,14 +88,26 @@ def geometry(decoded, metadata, view, p, *, cancelled=lambda: None, progress=lam
         if remaining<2:raise ValueError('Depth patch triangle budget exceeded by moment facets')
         refused={}
         for seed in range(p['max_moment_candidates']):
-            cancelled();charge(232)
+            cancelled();charge(328)
             attempts+=1
             try:
                 fitted=normal_quadrature.fit(target,factor_seed=seed,cancelled=cancelled)
-                piece=projected_microfacets.build(rect,fitted['atoms'],depth=record['depth_scene_units'],near=near,far=far,
-                    max_slope=p['max_slope'],anchor=anchor,triangle_budget=remaining,cancelled=cancelled)
-                native_vertices,native_uvs,residual,area_error=native_piece(piece,target,
-                    (camera,axes,root,root_axes,squares,span/w,span,near,far))
+                omissions=[]
+                for _ in range(4):
+                    piece=projected_microfacets.build(rect,fitted['atoms'],depth=record['depth_scene_units'],near=near,far=far,
+                        max_slope=p['max_slope'],anchor=anchor,origin=(*anchor,record['depth_scene_units']),precision_omissions=omissions,triangle_budget=remaining,cancelled=cancelled)
+                    try:
+                        native_vertices,native_uvs,residual,area_error=native_piece(piece,target,
+                            (camera,axes,root,root_axes,squares,span/w,span,near,far))
+                        break
+                    except CollapsedFacet as exc:
+                        # Rebuild only when actual native collapse identifies a
+                        # negligible atom. Original targets/combined omission and
+                        # final residual bounds are still enforced independently.
+                        if piece['omitted_mass']+fitted['atoms'][exc.source_index]['weight']>1e-6:raise
+                        native_rebuilds+=1
+                        omissions.append(exc.source_index)
+                else:raise ValueError('Native facet omission work exhausted')
                 break
             except ValueError as exc:
                 reason=str(exc);refused[reason]=refused.get(reason,0)+1
@@ -119,7 +137,9 @@ def geometry(decoded, metadata, view, p, *, cancelled=lambda: None, progress=lam
             'precision_mass_omitted': piece['precision_mass_omitted'], 'projected_area_relative_error': area_error})
     report = base['report'] | {'format': FORMAT, 'patches': len(faces), 'triangles': 2*len(faces),
         'moment_tiles': fits, 'depth_anchor': 'WITNESS_PIXEL_CENTRE', 'refinement_work': work,
-        'work_unit': '10 per visited tile pixel plus 232 per bounded candidate fit and geometry check',
+        'construction_frame':'WITNESS_RELATIVE_CAMERA',
+        'work_unit': '10 per visited tile pixel plus 328 per bounded candidate fit and up to four geometry checks',
+        'native_collapse_rebuilds':native_rebuilds,
         'candidate_attempts':attempts,'max_candidate_attempts_per_tile':max_attempts,
         'rejected_candidates':rejected,'selected_factor_seed_histogram':seed_histogram,
         'max_component_residual': maximum_residual, 'moment_residual_tolerance': TOLERANCE,
@@ -138,6 +158,7 @@ def geometry(decoded, metadata, view, p, *, cancelled=lambda: None, progress=lam
 def native_piece(piece, target, frame):
     camera, axes, root, root_axes, squares, pixel_span, span, near, far = frame
     rect=piece['rect']
+    origin=piece.get('position_origin_camera',[0.,0.,0.])
     # Capture matrices are serialized native float32 rotations, only approximately
     # orthogonal. A transpose is not their exact inverse at subpixel tolerances.
     def inverse(axes):
@@ -149,12 +170,12 @@ def native_piece(piece, target, frame):
     start = 0
     vertices, uvs = array('f'), array('f')
     for u, v, z in piece['vertices']:
-        world = [camera[k]+axes[0][k]*u+axes[1][k]*v+axes[2][k]*z for k in range(3)]
+        world = [camera[k]+axes[0][k]*(u+origin[0])+axes[1][k]*(v+origin[1])+axes[2][k]*(z+origin[2]) for k in range(3)]
         local = [capture_data.dot([world[k]-root[k] for k in range(3)], row) for row in root_inverse]
         if any(not math.isfinite(v) or abs(v)>1e20 for v in local):
             raise ValueError('Moment facet coordinates exceed native range')
         vertices.extend(local)
-        uvs.extend((u/span+.5, v/span+.5))
+        uvs.extend(((u+origin[0])/span+.5, (v+origin[1])/span+.5))
     # Check the final root-local float32 buffers, including normal directions,
     # camera projection and depth, rather than trusting preconversion vertices.
     positions = []
@@ -163,20 +184,20 @@ def native_piece(piece, target, frame):
         world = [root[k]+sum(root_axes[j][k]*local[j] for j in range(3))-camera[k] for k in range(3)]
         actual = [capture_data.dot(world, row) for row in camera_inverse]
         intended = piece['vertices'][i-start]
-        if max(abs(actual[j]-intended[j]) for j in (0, 1)) > pixel_span*TOLERANCE:
+        if max(abs(actual[j]-origin[j]-intended[j]) for j in (0, 1)) > pixel_span*TOLERANCE:
             raise ValueError('Root-local float32 facet projection error exceeds tolerance')
         if not near < -actual[2] < far:
             raise ValueError('Root-local float32 facet exceeds near/far bounds')
         positions.append(actual)
     measured = []
-    for face in piece['faces']:
+    for face_index,face in enumerate(piece['faces']):
         for a, b, c in ((face[0], face[1], face[2]), (face[0], face[2], face[3])):
             e = [positions[b][j]-positions[a][j] for j in range(3)]
             f = [positions[c][j]-positions[a][j] for j in range(3)]
             cross = (e[1]*f[2]-e[2]*f[1], e[2]*f[0]-e[0]*f[2], e[0]*f[1]-e[1]*f[0])
             length = math.hypot(*cross)
             if not math.isfinite(length) or not length or cross[2] <= 0:
-                raise ValueError('Root-local float32 facet collapses')
+                raise CollapsedFacet(piece['source_atom_indices'][face_index])
             measured.append({'weight': cross[2]/2, 'direction': [v/length for v in cross]})
     area = math.fsum(a['weight'] for a in measured)
     area_error = abs(area/((rect[2]-rect[0])*(rect[3]-rect[1]))-1)

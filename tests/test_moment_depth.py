@@ -117,7 +117,7 @@ def test_supported_alternative_preserves_moments_and_reports_search():
     with pytest.raises(ValueError,match='candidate budget exhausted'):
         build(d,m,v,max_moment_candidates=1)
     with pytest.raises(ValueError,match='work budget'):
-        build(d,m,v,max_moment_candidates=64,max_refinement_work=272)
+        build(d,m,v,max_moment_candidates=64,max_refinement_work=368)
     g=build(d,m,v,max_moment_candidates=64)
     assert g['report']['candidate_attempts']>1
     assert g['report']['rejected_candidates']['Unsupported normal mass exceeds omission bound']>=1
@@ -134,3 +134,20 @@ def test_approximate_rotation_uses_actual_inverse_for_subpixel_readback():
     frame=([0,0,5],[[1,0,0],[eps,1,0],[0,0,1]],[0,0,0],identity,[1,1,1],2/512,2,.1,10)
     vertices,_,residual,area_error=moment_depth.native_piece(piece,[0,0,1,0,0,0,0,0,1],frame)
     assert vertices[0]==-1-eps and residual==area_error==0
+
+
+def test_native_collapse_identifies_only_negligible_strip_for_bounded_rebuild():
+    from mcpblender import projected_microfacets
+    atoms=[{'weight':1-1e-8,'direction':(0,0,1)},{'weight':1e-8,'direction':(.6,0,.8)}]
+    kwargs=dict(depth=5,near=.1,far=10,origin=(1,0,5))
+    piece=projected_microfacets.build((-1,-1,1,1),atoms,**kwargs)
+    identity=[[1,0,0],[0,1,0],[0,0,1]]
+    frame=([0,0,5],identity,[-8,0,0],identity,[1,1,1],1,2,.1,10)
+    target=normal_quadrature.moments(atoms)
+    with pytest.raises(moment_depth.CollapsedFacet) as caught:
+        moment_depth.native_piece(piece,target,frame)
+    assert caught.value.source_index==1
+    rebuilt=projected_microfacets.build((-1,-1,1,1),atoms,precision_omissions=(caught.value.source_index,),**kwargs)
+    vertices,_,residual,_=moment_depth.native_piece(rebuilt,target,frame)
+    assert rebuilt['precision_mass_omitted']==1e-8 and residual<1e-8
+    assert min(vertices[::3])==7 and max(vertices[::3])==9

@@ -118,3 +118,36 @@ def test_only_negligible_collapsed_support_can_be_omitted():
     assert result['max_component_residual']<1e-9 and result['triangle_count']==2
     with pytest.raises(ValueError,match='collapse'):
         build(atoms,omitted_mass_tolerance=0)
+
+
+def test_translated_construction_keeps_small_planes_at_large_camera_distances():
+    atoms=[{'weight':1,'direction':(.6,0,.8)}]
+    with pytest.raises(ValueError,match='residual'):
+        build(atoms,depth=1e8,near=1,far=2e8)
+    translated=build(atoms,depth=1e8,near=1,far=2e8,origin=(0,0,1e8))
+    assert translated['position_origin_camera']==[0,0,-1e8]
+    assert translated['depth_bounds']==[1e8-.75,1e8+.75]
+    assert translated['max_component_residual']<1e-12
+    assert translated['vertices']==[(-1,-1,.75),(1,-1,-.75),(1,1,-.75),(-1,1,.75)]
+    assert translated['uvs']==[(0,0),(1,0),(1,1),(0,1)]
+    shifted=facets.build((1e8-1,1e8-1,1e8+1,1e8+1),atoms,depth=1e8,near=1,far=2e8,origin=(1e8,1e8,1e8))
+    assert shifted['vertices']==translated['vertices'] and shifted['uvs']==translated['uvs']
+
+
+@pytest.mark.parametrize('origin',[(0,0), (0,0,float('inf')), (True,0,0)])
+def test_invalid_translated_origin(origin):
+    with pytest.raises(ValueError,match='origin'):
+        build([{'weight':1,'direction':(0,0,1)}],origin=origin)
+
+
+def test_explicit_precision_omission_keeps_original_target_and_mass_bound():
+    atoms=[{'weight':1-1e-8,'direction':(0,0,1)}, {'weight':1e-8,'direction':(.6,0,.8)}]
+    result=build(atoms,precision_omissions=(1,))
+    assert result['source_atom_indices']==[0] and result['omitted_mass']==1e-8
+    assert result['source_moments'][0]==pytest.approx(6e-9)
+    assert result['precision_mass_omitted']==1e-8 and result['max_component_residual']<1e-8
+    with pytest.raises(ValueError,match='mass exceeds'):
+        build(atoms,precision_omissions=(0,))
+    for indices in ((True,), (2,), (1,1), '1'):
+        with pytest.raises(ValueError,match='indices'):
+            build(atoms,precision_omissions=indices)

@@ -957,17 +957,24 @@ There is no adaptive splitting or flat fallback. Source bounds are reported;
 unlike adaptive mode, this mode does not clip slopes to the source bounding box.
 
 `max_slope` is at most 16 in this mode. Significant backward or grazing mass in
-the reconstructed directions refuses; tiny unsupported mass or float32-collapsed
+a candidate's reconstructed directions refuses; tiny unsupported mass or float32-collapsed
 strips can be omitted only within a combined 1e-6 mass bound and the independent
 moment-error bound. Both omission reasons are reported separately. This does not
-prove a supported decomposition is impossible: the current solver finds a valid
-unit-sphere quadrature without optimizing its hemisphere. Retained ordinary and
-dense canopy captures currently encounter this refusal. Use the other modes for
-those captures while constrained reconstruction is being developed.
+prove a supported decomposition is impossible. The planner tries bounded
+deterministic alternatives in the camera frame: `max_moment_candidates` defaults
+to 32, with a hard ceiling of 64. Orthogonal moment-factor column rotations change
+the quadrature without changing its moments. A candidate must pass hemisphere,
+clipping, triangle and final root-local float32 checks before selection. The first
+passing candidate is used; this is not an exhaustive feasibility solver. Attempts,
+rejection reasons and chosen factor seeds are reported. A retained small canopy
+requires 37 attempts for its hardest tile and constructs with an explicit limit
+of 64. The dense capture still encounters precision refusals. No admission or
+render-quality guarantee follows from increasing the candidate limit.
 
 Pixel inputs are checked before aggregation so invalid moments cannot cancel
 each other in an average. `max_refinement_work` bounds reconstruction at 10 units
-per visited tile pixel plus 220 per bounded tile fit. All existing pixel, texture,
+per visited tile pixel plus 232 per attempted bounded fit and geometry check.
+The aggregate work ceiling remains active across retries. All existing pixel, texture,
 triangle and nearest-witness search limits apply. Plans pin the new shader recipe
 `CAPTURED_INPUT_PBR_V3_GEOMETRIC_MOMENTS`: Principled and translucent closures use
 implicit geometric normals; the raw normal image remains a witness and supplies

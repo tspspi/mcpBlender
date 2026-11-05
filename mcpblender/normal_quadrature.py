@@ -12,10 +12,11 @@ def moments(atoms):
     return result
 
 
-def fit(values,*,tolerance=1e-5,max_rotations=64,cancelled=lambda:None):
+def fit(values,*,tolerance=1e-5,max_rotations=64,factor_seed=0,cancelled=lambda:None):
     if len(values)!=9 or any(type(v) not in (int,float) or not math.isfinite(v) or abs(v)>1.001 for v in values):raise ValueError('Finite bounded normal moments required')
     if type(tolerance) not in (int,float) or not math.isfinite(tolerance) or not 1e-8<=tolerance<=1e-3:raise ValueError('Invalid quadrature tolerance')
     if type(max_rotations) is not int or not 1<=max_rotations<=128:raise ValueError('Invalid quadrature rotation budget')
+    if type(factor_seed) is not int or not 0<=factor_seed<64:raise ValueError('Invalid quadrature factor seed')
     x,y,z,xx,xy,xz,yy,yz,zz=values
     original=[[1.,x,y,z],[x,xx,xy,xz],[y,xy,yy,yz],[z,xz,yz,zz]]
     if abs(xx+yy+zz-1)>tolerance:raise ValueError('Normal second-moment unit trace is outside tolerance')
@@ -43,6 +44,16 @@ def fit(values,*,tolerance=1e-5,max_rotations=64,cancelled=lambda:None):
     target=[[sum(factor[i][k]*factor[j][k] for k in range(4)) for j in range(4)] for i in range(4)]
     adjustment=max(abs(target[i][j]-original[i][j]) for i in range(4) for j in range(4))
     if adjustment>tolerance:raise ValueError('Normal moment numerical adjustment exceeds tolerance')
+    # Orthogonal column rotations preserve factor*factor.T. Alternative bounded
+    # deterministic starting orientations yield different null-cone quadratures
+    # without changing the target moments. Seed zero preserves the original fit.
+    if factor_seed:
+        state=factor_seed
+        for p,q in ((0,1),(0,2),(0,3),(1,2),(1,3),(2,3)):
+            cancelled();state=(1664525*state+1013904223)&0xffffffff
+            angle=state/4294967296*2*math.pi;c=math.cos(angle);s=math.sin(angle)
+            for row in factor:
+                a0,b0=row[p],row[q];row[p]=c*a0+s*b0;row[q]=-s*a0+c*b0
     # Rotate factor columns onto the null cone of diag(1,-1,-1,-1).
     # Trace zero permits a zero diagonal; each null column becomes w*[1,n]
     # with ||n||=1. Subsequent rotations exclude already fixed columns.
@@ -76,7 +87,7 @@ def fit(values,*,tolerance=1e-5,max_rotations=64,cancelled=lambda:None):
     atoms.sort(key=lambda row:(-row['weight'],row['direction']))
     residual=max(abs(u-v) for u,v in zip(moments(atoms),values))
     if residual>tolerance:raise ValueError('Normal quadrature reconstruction residual exceeds tolerance')
-    return {'method':FORMAT,'tolerance':tolerance,'max_eigen_rotations':max_rotations,'atoms':atoms,'max_component_residual':residual,'max_numerical_adjustment':adjustment,
+    return {'method':FORMAT,'tolerance':tolerance,'max_eigen_rotations':max_rotations,'factor_seed':factor_seed,'atoms':atoms,'max_component_residual':residual,'max_numerical_adjustment':adjustment,
             'clipped_eigenvalues':sum(v<0 for v in eigen),'eigen_rotations':rotations,'cone_rotations':cone_rotations,'bisection_steps':bisections,
             'scope':'Positive unit directions matching observed first/second moments within the stated numerical tolerance. No unique distribution, support hemisphere, color correlation, renderer closure or optical-equivalence guarantee.'}
 

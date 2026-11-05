@@ -19,7 +19,7 @@ MAPS=[('base_coverage',('base_color.R','base_color.G','base_color.B','coverage')
       ('surface',('metallic','ior','transmission_weight','alpha')),
       ('witness',('thin_mode','cull_weight','material_id','surface_weight'))]
 DEFAULTS={'tile_pixels':4,'alpha_threshold':.001,'edge_depth_policy':'NEAREST','edge_radius_pixels':16,
-          'max_triangles':32768,'max_pixels':1048576,'max_texture_bytes':256*1024**2,'max_search_work':2000000,'geometry_mode':'FLAT','normal_tolerance_degrees':15.,'max_slope':16.,'max_refinement_work':8000000}
+          'max_triangles':32768,'max_pixels':1048576,'max_texture_bytes':256*1024**2,'max_search_work':2000000,'geometry_mode':'FLAT','normal_tolerance_degrees':15.,'max_slope':16.,'max_refinement_work':8000000,'max_moment_candidates':32}
 
 
 def floats_sha(values):
@@ -30,7 +30,7 @@ def floats_sha(values):
 def options(values):
     p=DEFAULTS|values
     if set(p)!=set(DEFAULTS):raise ValueError('Unknown depth patch option')
-    for key,low,high in [('tile_pixels',1,64),('edge_radius_pixels',0,64),('max_triangles',2,131072),('max_pixels',1024,1048576),('max_texture_bytes',1024,512*1024**2),('max_search_work',1,8000000),('max_refinement_work',1,16000000)]:
+    for key,low,high in [('tile_pixels',1,64),('edge_radius_pixels',0,64),('max_triangles',2,131072),('max_pixels',1024,1048576),('max_texture_bytes',1024,512*1024**2),('max_search_work',1,8000000),('max_refinement_work',1,16000000),('max_moment_candidates',1,64)]:
         if type(p[key]) is not int or not low<=p[key]<=high:raise ValueError('Invalid depth patch option: '+key)
     if p['tile_pixels'] not in (1,2,4,8,16,32,64) or p['edge_depth_policy'] not in {'NEAREST','OMIT','REFUSE'}:raise ValueError('Invalid depth patch tile/edge policy')
     if type(p['alpha_threshold']) not in (int,float) or not math.isfinite(p['alpha_threshold']) or not 0<p['alpha_threshold']<1:raise ValueError('Invalid depth patch alpha threshold')

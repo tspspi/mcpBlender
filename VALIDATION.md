@@ -5752,3 +5752,68 @@ and no migration. The new controlled moment asset has 23 tiles/46 triangles,
 one explicitly estimated edge tile, 8,740 work units and zero measured moment
 residual. Redundant terminal `/tmp` fixtures and empty owned Blender caches were
 removed after evidence readback; the retained native asset/proofs remain local.
+
+## Bounded geometry-admitted moment candidates
+
+The moment solver now accepts a bounded factor orientation seed (0–63). Seed zero
+preserves the original decomposition. Other seeds apply six deterministic Givens
+column rotations before null-cone factorization. These preserve the working
+moment matrix; every resulting quadrature must still pass positive weights, unit
+length and the existing nine-component residual/adjustment checks. There is no
+rotation or flipping of the observed target directions to make them forward.
+Independent mixture oracles cover 25 distributions with 1/2/4/12/32 source points,
+six seeds each, in double precision and after float32 rounding (300 fits).
+
+`MOMENT_FACETS` now fits in the camera frame and tries up to
+`max_moment_candidates` (default 32, hard 64). Each candidate must pass actual
+projected-strip construction, supported mass, near/far, triangle limits and final
+root-local float32 projection/normal/area readback. Failed candidates leave no
+partial output. Reports include attempts, chosen-seed histogram, rejection
+reasons, per-tile seed/attempt counts and the unchanged final error bounds.
+The geometry format advances to v2; existing saved v1 assets keep their stored
+plans and guards. The work cap charges 10 units per visited tile pixel and 232 per
+candidate fit/check, including rejected candidates. Aggregate work exhaustion
+and cancellation propagate; search exhaustion is explicitly not an impossibility
+proof. A near-orthogonal serialized camera/root matrix uses its actual inverse
+for coordinate conversion/readback, with an independent subpixel regression.
+
+Read-only retained 64px canopy FRONT admission now succeeds with an explicit
+64-candidate limit: 70 tiles, 257 quads/514 triangles, 236 attempts total, hardest
+tile 37 attempts, 65,952 work units, maximum actual float32 moment residual
+1.633e-6. Eight tiles still use the existing explicit nearest-depth edge estimate.
+One/32 candidate limits refuse; the latter encounters both unsupported directions
+and depth clipping. No bound is relaxed and no significant normal mass is dropped.
+The original camera-frame support-only experiment admitted all 70 tiles at 32
+candidates, but eight first choices failed depth clipping, demonstrating why full
+geometry admission belongs inside candidate selection.
+
+A Python-disabled MCP lifecycle passed (116.94s) on that unmodified retained
+capture: copied immutable archive read, candidate exhaustion reporting, source
+planning, altered-candidate-limit stale-plan refusal with identical geometry,
+creation, save/reopen, source-file deletion, independent inspection and removal
+of eleven private resources. The native creation/render measurement harness
+passed (5.09s) under world/front-sun/rear-sun lighting, with secondary transport
+enabled. These are execution and measurement checks, not passing image gates:
+
+| Lighting | Shared-coverage linear EXR luminance bias |
+| --- | ---: |
+| Uniform white world | -0.54% |
+| Front sun | +1.04% |
+| Rear sun | +97.08% |
+
+All three have mask IoU 0.7763, soft-alpha IoU 0.7664 and alpha-area bias -0.47%.
+The silhouette fails even the existing 0.8 IoU thresholds, and rear lighting fails
+the existing 10% relative-brightness limit. World/front brightness agreement alone
+is not optical qualification. Color/normal/depth correlation, coverage filtering
+and secondary occlusion remain unresolved. The dense 512px FRONT capture still
+refuses at its first tile under both 32 and 64 candidates due to final projection
+or primitive float32 moment errors, not a demonstrated infeasible hemisphere.
+Its remaining precision path needs investigation without relaxing current gates.
+
+The final focused geometry/contracts/server regression passed 67 tests (25.83s),
+including independent seeded/float32 oracles and a native reopening/transport-
+guard/rollback check of the frozen v1 moment asset. Existing anyio deprecation
+warning only. Evidence, reproducible search/admission scripts, original and final
+native measurement proofs/EXRs and the structured packed asset are retained under
+`tmp/qualification/hemisphere-quadrature-20261105/`. Production service and source
+capture files remain unchanged. The full workflow goal remains incomplete.

@@ -97,6 +97,9 @@ def inspect(p,progress=lambda value:None,cancelled=lambda:False):
         def view_progress(value):progress(value|{'view':view['view'],'completed_views':len(reports),'total_views':len(rows)})
         data=exr_scanline.decode(root/row['file'],['TreeCapture.'+v for v in CHANNELS],expected_sha256=row['sha256'],cancelled=checkpoint,progress=view_progress)
         report=measure(data,metadata,view,p['alpha_threshold'],checkpoint,view_progress)
+        if metadata.get('component_ids'):
+            from . import component_ids
+            report['component_ids']=component_ids.inspect_view(root/row['file'],row['sha256'],data,p['alpha_threshold'],metadata['component_ids'],cancelled=checkpoint,progress=view_progress)
         if p.get('material_inputs'):
             from . import capture_material_fields
             report['material_inputs']=capture_material_fields.inspect_view(root/row['file'],row['sha256'],data,p['alpha_threshold'],metadata['material_fields'],cancelled=checkpoint,progress=view_progress,quadrature_pixels=p.get('max_quadrature_pixels',256) if p.get('normal_quadrature') else 0)

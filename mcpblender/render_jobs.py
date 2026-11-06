@@ -159,6 +159,9 @@ def validate_contents(root,job_id,progress=lambda value:None,cancelled=lambda:Fa
             if capture.get('material_fields'):
                 from . import capture_material_fields
                 capture_material_fields.validate_header(header,capture['material_fields'])
+            if capture.get('component_ids'):
+                from . import component_ids
+                component_ids.validate_header(header,capture['component_ids'],capture['material_fields'])
         actual.add(key);members.append(item)
         progress({'phase':'verified render output','completed_files':len(members),'total_files':len(expected)})
     if actual!=expected or {v['path'] for v in rows if v['path'].startswith('outputs/')}!={i['file'] for i in members}:raise ValueError('Render output inventory mismatch')

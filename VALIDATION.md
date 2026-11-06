@@ -6623,3 +6623,76 @@ Ignored evidence: `tmp/qualification/component-transport-20261106/stable-ids/`
 holds five EXRs, the saved blend, native log and proof. The parent directory holds
 source-selection counts and the dense probe. Secondary-geometry partitioning
 and its optical gates are still separate, incomplete qualification work.
+
+### Guarded first-sample leaf-component capture
+
+Optional `component_ids` adds the separate versioned `MCP_LeafComponent` VALUE
+AOV: structural wood/shoot surfaces are zero; leaf surfaces encode the native
+semantic `leaf_index+1`. It requires material fields, one camera sample, static
+opaque alpha, zero Principled transmission and disabled culling. The worker
+validates a complete unique point-index inventory/digest and derives a reserved
+Instancer attribute only after loading the immutable source snapshot. The
+editing mesh/material graphs and saved snapshot remain unchanged. Identity
+scan work and the extra AOV are included in the existing bounds/storage budgets.
+Both normal extensions plus component IDs refuse under the 32-part EXR cap;
+either normal extension alone remains supported.
+
+Copied-archive validation checks the contract, field binding and float32 header.
+Data inspection automatically reports distinct observed leaves and a bounded
+sixteen-index preview, separate from material IDs, including coverage/weight,
+integer, finite and range failures. IDs are scoped to the captured guarded tree;
+matching counts do not establish identity after regeneration. There is no full
+visibility-census or optical certificate.
+
+23 pure/contract/add-on checks passed (20.77s, existing anyio warning). Native
+controls passed (initial basic case 3.25s, final normal-moment/component profile
+4.78s at exactly 32 EXR parts): two leaf instances return 1/2, structural geometry
+returns zero, beauty is exactly unchanged, source indices/surface links persist,
+and reserved names or duplicate source indices refuse before derived allocation.
+The structured Python-disabled workflow passed both legacy and component cases
+(2 tests, 118.94s). A final component-case rerun passed (59.50s) with an independent
+native snapshot probe proving the reserved point attribute and component AOV
+nodes are absent from the saved source file. It also checked automatic reporting
+without material-input inspection, unchanged live source guards, six-map depth
+creation, save/reopen without input files and eleven-ID removal. The small
+fixture observed 62 structural and 2 leaf pixels per view with exact integer IDs.
+
+Ignored evidence: `tmp/qualification/component-transport-20261106/` contains the
+native/MCP proofs, snapshots, add-on/contract logs, 32-part EXRs and original
+failed diagnostic logs. This milestone exposes provenance-bound component data;
+it does not expose the private partition as a qualified rendering preset.
+
+### Dense component transport partition control
+
+A private first-sample FRONT/BACK capture identified 35,508/35,898 observed
+leaves from the 88,704-leaf source. FRONT had 54,881 leaf and 22,280 structural
+pixels. IDs came from the native Instancer attribute, not material IDs. The
+initial private post-measurement script had a tuple-key typo after archive
+completion; a corrected read-only measurement validated the same archive
+without recapture. A controlled two-instance probe established that the shader's
+Instancer lookup returns leaf indices while Geometry lookup returns zero.
+
+The private rendering control keeps exact native wood/shoot geometry camera
+visible, creates leaf-only full-pixel patches (54,788/54,974 triangles in two
+meshes), and selects the remaining 53,196 native leaves for secondary transport.
+Each patch mesh stays below the existing cap; their combined 109,762 triangles
+also fit a single mesh's triangle budget. Original six maps, source colors,
+lighting and output setup remain unchanged. Explicit source IDs preserve all
+retained transforms, persistent IDs and random IDs after selection. Original
+point data/group/ray flags are restored and native source/owned guards pass.
+
+Relative brightness biases at world/front-sun/rear-sun are:
+
+| Representation | World | Front | Rear |
+| --- | ---: | ---: | ---: |
+| Camera-only leaf patches plus duplicated native leaves | -15.271% | -27.775% | -14.946% |
+| Visible leaves removed; patches camera-only | +25.170% | -7.803% | +8.403% |
+| Visible leaves removed; patches participate in all rays | -1.878% | -5.629% | +17.475% |
+
+All frozen native controls match exactly. Under the original multiscale
+alpha/RGB/10% brightness gates, the all-ray partition passes world/front and
+rejects rear. Camera-only partition rejects world and passes front/rear;
+duplicated geometry rejects all three. No single configuration is fully accepted.
+The twelve EXRs, identity/count checks and comparison proof are retained in the
+ignored `native/` directory. This establishes useful component decomposition
+while leaving rear-side/secondary transport and the full far workflow open.

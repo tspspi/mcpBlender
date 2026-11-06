@@ -14,6 +14,7 @@ class Source(Model):
     material_fields: bool = False
     normal_moments: bool = False
     geometric_normals: bool = False
+    component_ids: bool = False
     samples: int = Field(default=16,strict=True,ge=1,le=1024)
     max_leaves: int = Field(default=100000,strict=True,ge=0,le=250000)
     max_render_triangles: int = Field(default=32000000,strict=True,ge=1,le=100000000)
@@ -22,6 +23,8 @@ class Source(Model):
     def unique(self):
         if self.normal_moments and not self.material_fields:raise ValueError('normal_moments requires material_fields=true')
         if self.geometric_normals and not self.material_fields:raise ValueError('geometric_normals requires material_fields=true')
+        if self.component_ids and (not self.material_fields or self.samples!=1):raise ValueError('component_ids requires material_fields=true and samples=1')
+        if self.component_ids and self.normal_moments and self.geometric_normals:raise ValueError('component_ids with both normal extensions exceeds the 32-part EXR budget')
         if len(set(self.views))!=len(self.views):raise ValueError('Capture views must be distinct')
         return self
 
@@ -34,7 +37,7 @@ class Capture(Source):
 
 COMMANDS={
  'inspect_botanical_view_capture':(Source,(),'Plan native whole-tree reference captures without realizing leaf instances. Bound analytical prototype-box work and expanded render triangles; pin source/materials, static root/pivot, units, cameras and neutral-world lighting. Read-only; no far mesh or PBR reconstruction.'),
- 'capture_botanical_views':(Capture,('allow_snapshots','allow_library_write','allow_start_blender'),'Guardedly snapshot only a static managed botanical tree and render directional PNG plus multilayer EXR reference/data passes in an owned independent worker. Preserve editing scene and instances; worker-only canonical visibility. Uses render-job progress/free space, cancellation, byte/time limits and recovery. Optional material_fields captures native shader-input AOVs with a separate surface weight, preserving backlighting/side evaluation. Optional normal_moments requires material_fields and admits shared unit normal inputs; records first/second moments for diagnostics, not a fitted shader. Optional geometric_normals requires material_fields and retains raw world-space renderer-face-forward geometric normals separately from shading normals, without changing beauty. Data is not a reconstructed game material or far representation.'),
+ 'capture_botanical_views':(Capture,('allow_snapshots','allow_library_write','allow_start_blender'),'Guardedly snapshot only a static managed botanical tree and render directional PNG plus multilayer EXR reference/data passes in an owned independent worker. Preserve editing scene and instances; worker-only canonical visibility. Uses render-job progress/free space, cancellation, byte/time limits and recovery. Optional material_fields captures native shader-input AOVs with a separate surface weight, preserving backlighting/side evaluation. Optional normal_moments requires material_fields and admits shared unit normal inputs; records first/second moments for diagnostics, not a fitted shader. Optional geometric_normals requires material_fields and retains raw world-space renderer-face-forward geometric normals separately from shading normals, without changing beauty. Optional component_ids requires material_fields, samples=1 and static opaque alpha=1/transmission=0/culling=0. Capture native semantic leaf_index+1 through a worker-only Instancer attribute; zero denotes wood/shoot geometry. Cannot combine both normal extensions with component IDs under the EXR part cap. Source meshes/shaders stay unchanged. Data is not a reconstructed game material or far representation.'),
 }
 
 
@@ -53,4 +56,4 @@ class Data(Model):
         if self.views is not None and len(set(self.views))!=len(self.views):raise ValueError('Data views must be distinct')
         return self
 
-COMMANDS['inspect_botanical_capture_data']=(Data,(),'Read decoded native reference EXR depth/position/normal/alpha within bounded pixel/byte budgets, without Blender. Verify immutable source/files and metadata, including copied archives; report hit/coverage, normal length, camera projection and depth-position discrepancies separately for covered and opaque pixels. material_inputs=true additionally separates normal vector length from constant-one surface weight for covered/opaque/partial pixels; report bounds and unavailable observations without changing inputs. If present, material_inputs also reports geometric-normal conditional lengths and angular differences from native shading-normal means, with missing/invalid observations counted. Optional normal_quadrature samples up to max_quadrature_pixels from captured input moments and reports positive unit-direction reconstruction, work, residuals and numerical adjustments. No shader changes, optical certification or job adoption.')
+COMMANDS['inspect_botanical_capture_data']=(Data,(),'Read decoded native reference EXR depth/position/normal/alpha within bounded pixel/byte budgets, without Blender. Verify immutable source/files and metadata, including copied archives; report hit/coverage, normal length, camera projection and depth-position discrepancies separately for covered and opaque pixels. material_inputs=true additionally separates normal vector length from constant-one surface weight for covered/opaque/partial pixels; report bounds and unavailable observations without changing inputs. If present, material_inputs also reports geometric-normal conditional lengths and angular differences from native shading-normal means, with missing/invalid observations counted. Optional normal_quadrature samples up to max_quadrature_pixels from captured input moments and reports positive unit-direction reconstruction, work, residuals and numerical adjustments. Captures containing component_ids automatically report integer/range/weight checks and distinct observed leaf counts with a bounded index preview, separate from material IDs. No shader changes, optical certification or job adoption.')

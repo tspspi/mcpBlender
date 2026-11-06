@@ -55,6 +55,7 @@ def source(p):
     mesh_objects=[members[0]]+([roles['so']] if roles else [])
     prototypes=[roles['lo'+str(i)] for i in range(state['foliage']['recipe']['variants'])] if roles else []
     work=sum(len(o.data.vertices) for o in mesh_objects)+count*8+sum(len(o.data.vertices) for o in prototypes)
+    if p.get('component_ids'):work+=count
     if work>p['max_bounds_work']:raise ValueError('Capture analytical bounds work budget exceeded')
     deps,_,blockers=assemblies.dependencies({col},assemblies.references(),nested_leaf=False)
     if blockers:raise ValueError('Capture dependencies are not self-contained: '+'; '.join(blockers))
@@ -124,7 +125,7 @@ def source(p):
         materials={slot.material for obj in mesh_objects+prototypes for slot in obj.material_slots}
         if None in materials:raise ValueError('Every capture material slot must be populated')
         material_contract=capture_material_fields.describe(materials,normal_moments=p.get('normal_moments',False),geometric_normals=p.get('geometric_normals',False))
-    summary={'format':tree_capture.FORMAT,'options':({k:p[k] for k in OPTIONS}|{k:True for k in ('normal_moments','geometric_normals') if p.get(k)}),'frame':scene.frame_current,'collection':col.name,'root':root.name,
+    summary={'format':tree_capture.FORMAT,'options':({k:p[k] for k in OPTIONS}|{k:True for k in ('normal_moments','geometric_normals','component_ids') if p.get(k)}),'frame':scene.frame_current,'collection':col.name,'root':root.name,
              'source_tree_sha256':state['tree_sha256'],'model_sha256':state['model_sha256'],'resource_sha256':botany.digest(resources),
              'source_root_matrix_world':[list(r) for r in matrix],'scene_unit_scale':unit,'root_pivot_world_m':[x*unit for x in matrix.translation],
              'bounds_root_local_m':{'min':list(low),'max':list(high)},'bounds_method':'canonical wood/shoot vertices and transformed eight-corner leaf prototype boxes; conservative, no realization',
@@ -135,6 +136,11 @@ def source(p):
              'pixel_contract':{'PNG':'16-bit RGBA, Standard view, sRGB display reference','EXR':'32-bit float native multilayer data; Combined scene-linear, Normal/Position world scene coordinates, Depth native camera Z, background/no-hit and pass AA follow Blender'},
              'scope':'Static native full-density reference/data capture. Native leaf instances and materials retained. No far mesh, reconstructed PBR, depth compositing, view blending, wind, shadow proxy or optical-equivalence claim.'}
     if material_contract is not None:summary['material_fields']=material_contract
+    if p.get('component_ids'):
+        from . import capture_components
+        if material_contract is None or p['samples']!=1:raise ValueError('Component IDs require material_fields=true and samples=1')
+        if p.get('normal_moments') and p.get('geometric_normals'):raise ValueError('Component IDs with both normal extensions exceed the 32-part EXR budget')
+        summary['component_ids']=capture_components.describe(roles,material_contract)
     return values,deps,summary|{'capture_sha256':botany.digest(summary)}
 
 
@@ -157,6 +163,9 @@ def capture(p):
         if plan.get('material_fields'):
             from . import capture_material_fields
             capture_material_fields.register(scene,plan['material_fields'])
+        if plan.get('component_ids'):
+            from . import capture_components
+            capture_components.register(scene,plan['component_ids'],plan['material_fields'])
         for key in tree_capture.PASSES:setattr(layer,'use_pass_'+key,True)
         world=bpy.data.worlds.new('MCP Tree Capture World');created.append(world);world.use_nodes=True;scene.world=world
         world.node_tree.nodes['Background'].inputs['Color'].default_value=(1,1,1,1);world.node_tree.nodes['Background'].inputs['Strength'].default_value=p['world_strength']

@@ -45,6 +45,9 @@ def main():
             if capture.get('material_fields'):
                 from mcpblender.blender import capture_material_fields
                 capture_material_fields.install(scene,capture['material_fields'])
+            if capture.get('component_ids'):
+                from mcpblender.blender import capture_components
+                capture_components.install(scene,capture['component_ids'],capture['material_fields'])
             # Source editing visibility is preserved in source.blend; canonical
             # reference owners are enabled only in this isolated process.
             for name in capture['render_visible_objects']:bpy.data.objects[name].hide_render=False

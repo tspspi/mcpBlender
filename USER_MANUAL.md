@@ -936,6 +936,38 @@ creation plan. All triangle, work, clipping, storage and edge-policy limits stil
 apply. Filtered face normals do not necessarily describe the first-hit depth
 surface; this control does not guarantee better rendering.
 
+### Optional leaf-component identities
+
+Set `component_ids: true`, `material_fields: true` and `samples: 1` when planning
+and capturing botanical views. Source materials must have static opaque alpha
+1, zero Principled transmission and disabled backface culling. The default is
+off. The separate `component_ids` capture contract adds one float32 VALUE AOV,
+`TreeCapture.MCP_LeafComponent.X`: zero denotes structural wood/shoot surfaces;
+positive values encode the native semantic `leaf_index + 1`. Background zero
+must be distinguished using coverage and the existing surface weight.
+
+The worker derives a reserved Instancer attribute from the guarded point mesh's
+`leaf_index`, validates its complete unique inventory and digest, and wires the
+AOV only in the independent worker. Editing meshes/shaders and the saved source
+snapshot stay unchanged. Reserved names, stale/duplicate indices and unsupported
+opacity inputs refuse. The attribute is not inferred from material identity,
+instance ordering or averaged material IDs.
+
+`inspect_botanical_capture_data` automatically includes per-view `component_ids`
+statistics for these captures, even with `material_inputs: false`: structural
+and leaf pixel counts, distinct observed leaves, a sixteen-index preview and a
+digest of the observed sorted index set. It counts invalid coverage/weights,
+noninteger, nonfinite and out-of-range values. A leaf index corresponds to its
+offset in `list_botanical_leaves`; keep the capture's source guard and recipe
+binding when looking it up. Equal counts/indices alone do not identify the same
+tree after regeneration. This is not a complete visibility census, a persistent
+instance ID or a qualified secondary-geometry partition.
+
+Component IDs can accompany either `geometric_normals` or `normal_moments`, but
+not both together under the existing 32-part EXR limit. For geometry inputs,
+`geometric_normals: true` with `normal_moments: false` is sufficient. Captures
+without component IDs retain their original contracts and reports.
+
 ### Optional material normal-input moments
 
 Set both `material_fields: true` and `normal_moments: true` when planning and

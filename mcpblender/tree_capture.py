@@ -21,6 +21,13 @@ def validate(metadata,job):
     if fields is not None:
         from . import capture_material_fields
         capture_material_fields.validate(fields)
+    components=metadata.get('component_ids')
+    if bool(components)!=bool(metadata['options'].get('component_ids',False)):raise ValueError('Capture component-ID option/contract mismatch')
+    if components is not None:
+        from . import component_ids
+        if fields is None or metadata['options']['samples']!=1:raise ValueError('Component IDs require material fields and one sample')
+        if fields.get('normal_moments') and fields.get('geometric_normals'):raise ValueError('Component IDs with both normal extensions exceed the 32-part EXR budget')
+        component_ids.validate(components,fields)
     return metadata
 
 

@@ -162,6 +162,8 @@ class State:
         if command in {"inspect_botanical_depth_layers","create_botanical_depth_layers"}:paths.extend(layer["projected_coverage_directory"] for layer in params["layers"] if layer.get("projected_coverage_directory"))
         if command in {"inspect_botanical_projected_coverage","capture_botanical_projected_coverage"}:paths.append(params["reference_directory"])
         if command in {"inspect_botanical_subset_source","create_botanical_subset","inspect_botanical_depth_layers","create_botanical_depth_layers","inspect_botanical_depth_source","create_botanical_depth_asset","inspect_botanical_capture_data","inspect_projected_normal_transfer","inspect_foliage_card_family_source","create_foliage_card_family"}:paths.append(params["directory"])
+        if command in {'inspect_botanical_subset_source','create_botanical_subset'} and params.get('blade_cards'):
+            paths.extend(e['directory'] for e in params['blade_cards']['entries'])
         if command in {"compare_png_images","compare_exr_images"}:paths.extend(params[k] for k in ("reference","candidate"))
         if command in {'inspect_texture_atlas','build_texture_atlas','inspect_vegetation_bake_adoption','adopt_vegetation_bakes'}:
             paths.extend(e['directory'] for e in params['entries'])
@@ -246,6 +248,9 @@ class State:
                 output=self.library_path(params['directory'],directory=True,must_exist=False)
                 if any(output.is_relative_to(Path(e['directory'])) for e in params['entries']):raise ValueError('Atlas output must be outside source bundles')
                 params['directory']=str(self.library_path(params['directory'],write=True,directory=True))
+        if command in {'inspect_botanical_subset_source','create_botanical_subset'} and params.get('blade_cards'):
+            for entry in params['blade_cards']['entries']:entry['directory']=str(self.library_path(entry['directory'],directory=True))
+            if len({e['directory'] for e in params['blade_cards']['entries']})!=len(params['blade_cards']['entries']):raise ValueError('Blade bundle directories must resolve distinctly')
         if command in {"export_lod_chain", "validate_lod_export", "export_asset_package", "validate_asset_package"}:
             params["directory"] = str(self.library_path(params["directory"],write=command in {"export_lod_chain","export_asset_package"},directory=True))
         if command=='list_export_jobs':

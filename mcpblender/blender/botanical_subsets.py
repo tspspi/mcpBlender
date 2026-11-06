@@ -3,7 +3,7 @@ import json
 import uuid
 import bpy
 from mcpblender import botany,capture_data,component_ids,exr_scanline
-from . import botanical_capture as capture,botanical_foliage as foliage,botanical_trees as trees,assemblies,wind_preview,depth_assets,subset_columns,subset_templates
+from . import botanical_capture as capture,botanical_foliage as foliage,botanical_trees as trees,assemblies,wind_preview,depth_assets,subset_columns,subset_templates,subset_blade_cards
 
 META='mcpblender_botanical_subset';OWNER='mcpblender_botanical_subset_owner'
 FORMAT='mcpblender-native-leaf-subset-v1';KEEP='mcp_subset_keep'
@@ -83,6 +83,10 @@ def plan(p):
         for obj in (v for k,v in roles.items() if k.startswith('lo')):
             for slot in obj.material_slots:subset_columns.outputs(slot.material)
         summary['column_complement']=column_plan;summary['scope']=subset_columns.SCOPE
+    if p.get('blade_cards') is not None:
+        if p.get('template_reduction') is not None:raise ValueError('Choose blade_cards or template_reduction')
+        summary['blade_cards']=subset_blade_cards.plan(roles,selected,p['blade_cards'])
+        summary['scope']=summary['blade_cards']['scope']+(' Component-column clipping is also active.' if column else '')
     if p.get('template_reduction') is not None:
         summary['template_reduction']=subset_templates.plan(roles,selected,p['template_reduction'])
         summary['scope']=summary['scope'].replace('unchanged template geometry/poses','unchanged instance poses').replace('template reduction, wind or optical equivalence','wind or optical equivalence')+' Optional private shared-template reduction records sampled error/area policy; no optical or wind certificate.'
@@ -194,7 +198,7 @@ def create(p):
         from mcpblender.storage import require_space
         meshes=[v.data for k,v in roles.items() if k.startswith('lo')]
         if p['include_structure']:meshes += [v.data for v in [*values[2],roles['so']]]
-        estimate=2*planned.get('column_complement',{}).get('decoded_image_bytes',0)+16*1024**2+len(roles['pm'].vertices)*512+sum(len(m.vertices)*128+len(m.loops)*64 for m in meshes)
+        estimate=2*planned.get('blade_cards',{}).get('decoded_texture_bytes',0)+2*planned.get('column_complement',{}).get('decoded_image_bytes',0)+16*1024**2+len(roles['pm'].vertices)*512+sum(len(m.vertices)*128+len(m.loops)*64 for m in meshes)
         policy=_bridge.active['storage'];policy.update(estimated_bytes=estimate,estimate_kind='native_subset_checkpoint_heuristic')
         require_space(policy.get('path',_bridge.path.parent),estimate,reserve_bytes=policy.get('reserve_bytes',256*1024**2),estimate_kind=policy['estimate_kind'])
     before=set(bpy.data.user_map());success=False
@@ -203,10 +207,18 @@ def create(p):
         prefix='MCPSubset-'+uuid.uuid4().hex[:12]
         root=bpy.data.objects.new(prefix+'-Root',None);col.objects.link(root);root.matrix_world=values[1].matrix_world.copy()
         prototypes=bpy.data.collections.new(prefix+'-Sources');col['mcpblender_leaf_sources']=prototypes
-        mapping={}
+        mapping={};private_blade_materials=set()
+        card_components={}
+        if 'blade_cards' in planned:
+            from . import vegetation_bake
+            card_components=vegetation_bake.inspect({'bake_collection':p['blade_cards']['bake_collection']})[-1]['components']
+            card_directories={e['asset']:e['directory'] for e in p['blade_cards']['entries']}
         for i in range(values[-1]['foliage']['recipe']['variants']):
             source=roles['lo'+str(i)]
-            if 'template_reduction' in planned:
+            if 'blade_cards' in planned:
+                mesh=subset_blade_cards.build(source.data,planned['blade_cards']['variants'][i],card_components[f'leaf-{i}'],card_directories[f'leaf-{i}'])
+                private_blade_materials.add(mesh.materials[0])
+            elif 'template_reduction' in planned:
                 mesh,report=subset_templates.build(source.data,p['template_reduction'])
                 expected={k:v for k,v in planned['template_reduction']['variants'][i].items() if k not in {'variant','instances'}}
                 if report!=expected:raise ValueError('Template reduction differs from pinned plan')
@@ -225,7 +237,7 @@ def create(p):
         instance=next(n for n in group.nodes if n.bl_idname=='GeometryNodeInstanceOnPoints')
         for link in list(instance.inputs['Selection'].links):group.links.remove(link)
         instance.inputs['Selection'].default_value=True
-        if 'column_complement' in planned:subset_columns.install(p['directory'],prefix,root,prototypes,population,planned)
+        if 'column_complement' in planned:subset_columns.install(p['directory'],prefix,root,prototypes,population,planned,private_materials=private_blade_materials)
         objects=[population]
         if p['include_structure']:
             for i,source in enumerate([*values[2],roles['so']]):

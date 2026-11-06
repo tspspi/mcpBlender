@@ -1226,6 +1226,54 @@ Qualify the assembled depth/complement pair under the intended lighting, views,
 scales and motion. Reducing shared templates does not itself meet a whole-tree
 far-LOD budget or preserve original first-hit leaf identities at every pixel.
 
+### Native blade-card subsets
+
+As an alternative to `template_reduction`, pass `blade_cards` to the existing
+subset inspect/create commands. Prepare the exact captured tree's shared leaf
+templates with the vegetation bake `blade_cards` mode, then run each returned
+NORMAL/ALPHA bake handoff. Obtain a fresh `inspect_vegetation_bake` guard and use:
+
+```json
+{"bake_collection":"LeafBake","expected_preparation":"<inspection digest>",
+ "entries":[{"asset":"leaf-0","directory":"leaf-0-bake"}],
+ "max_bytes":536870912,"max_texture_bytes":134217728}
+```
+
+Supply one distinct entry for every source leaf variant, even if the chosen
+subset has no instances of a variant. Bundle paths follow the caller's library
+policy. This option supports the three subset selection modes and is mutually
+exclusive with protected collapse. Plans require unchanged source-matching
+preparation, units, mesh and native leaf material witnesses; successful projected
+jobs with the exact source/target, bake fingerprint, UVs, dimensions, projection
+ray range, unrelaxed projection coverage threshold/witness and NORMAL/ALPHA inventory; verified file hashes and explicit zero-
+padding opacity policy. Additional quality-bearing jobs are currently refused.
+`max_bytes` bounds total bundle deliverables. `max_texture_bytes` counts RGBA8
+normal/alpha maps plus RGBA32 float source-UV lookup payloads, not measured GPU
+memory or full mip chains. Plans report expanded original/card leaf triangles.
+
+Creation copies the fitted blade rectangle into the source template frame and
+moves it to the sampled source midplane. It clones the original native leaf
+shader, applies explicit tangent normals to its surface/translucent lobes, adds
+projected opacity and redirects managed procedural UV consumers to a private
+packed source-UV lookup. Native front/back colors, thin optical settings and
+other shader links remain intact. Exact petiole face winding/coordinates and all
+original petiole UVs are checked; source texture-space coordinates are retained.
+Selected semantic IDs, wind/point attributes and instance poses remain unchanged.
+The common template has two blade triangles plus twelve original petiole
+triangles; other supported templates report their actual protected stem count.
+
+Packed maps, lookup, materials and geometry belong to the subset. Preparation
+and bake/capture files can be removed after creation; saved subset inspection and
+cleanup no longer need them. Original shared material dependencies remain guarded.
+COLUMN_COMPLEMENT additionally wraps the private native leaf shader in its
+component-column clip. Cooperative staging failure rolls back allocated IDs;
+edits or foreign references refuse removal. Visibility starts hidden.
+
+This is an approximate static representation. It does not transfer a collapse
+surface-error policy or qualify optical equivalence, all-view sampling, wind,
+far-LOD budgets, population performance or downstream renderer behavior. Verify
+the complete assembly with the same lighting/camera/scale policies before use.
+
 ### Checking a depth/complement pair from several cameras
 
 Use structured tools to check a pair beyond its captured direction:

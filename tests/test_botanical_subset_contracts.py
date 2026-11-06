@@ -40,3 +40,21 @@ def test_optional_template_reduction_has_explicit_bounded_policy():
     assert policy.triangle_budget==32 and policy.max_relative_error==.02
     for patch in ({'triangle_budget':True},{'triangle_budget':15},{'triangle_budget':513},{'max_relative_error':0},{'max_relative_error':float('nan')},{'max_area_relative_error':-1},{'error_samples':4097},{'transfer_normals':False}):
         with pytest.raises(ValueError):Source(directory='capture',template_reduction=patch)
+
+
+def test_blade_card_policy_and_nested_library_paths(tmp_path):
+    cards={'bake_collection':'Bake','expected_preparation':'a'*64,'entries':[{'asset':'leaf-0','directory':'blade'}]}
+    assert Source(directory='capture').blade_cards is None
+    assert Source(directory='capture',blade_cards=cards).blade_cards.entries[0].asset=='leaf-0'
+    with pytest.raises(ValueError,match='Choose blade_cards'):
+        Source(directory='capture',blade_cards=cards,template_reduction={})
+    for patch in ({'max_bytes':True},{'entries':cards['entries']*2},{'max_texture_bytes':0}):
+        with pytest.raises(ValueError):Source(directory='capture',blade_cards=cards|patch)
+    cfg=Config();cfg.stdio.library_root=str(tmp_path/'library');_,state=build_server(cfg)
+    for name in ('capture','blade'):(tmp_path/'library'/name).mkdir(parents=True)
+    params=state.prepare('inspect_botanical_subset_source',Source(directory='capture',blade_cards=cards).model_dump())
+    assert State.input_paths('inspect_botanical_subset_source',params)==[str(tmp_path/'library/capture'),str(tmp_path/'library/blade')]
+    with pytest.raises(ValueError):state.prepare('inspect_botanical_subset_source',Source(directory='capture',blade_cards=cards|{'entries':[{'asset':'leaf-0','directory':'../escape'}]}).model_dump())
+    aliases=cards|{'entries':[{'asset':'leaf-0','directory':'blade'},{'asset':'leaf-1','directory':'blade/.'}]}
+    with pytest.raises(ValueError,match='distinctly'):
+        state.prepare('inspect_botanical_subset_source',Source(directory='capture',blade_cards=aliases).model_dump())

@@ -23,7 +23,7 @@ def plan(meta,view,row,grid):
             'projector':{'camera_root_local':list(matrix.inverted()@camera.translation),'u':view['local_frame']['u'],'v':view['local_frame']['v'],'span_root_local':view['ortho_scale']/scale},'scope':SCOPE}
 
 
-def install(directory,prefix,root,prototypes,population,planned):
+def install(directory,prefix,root,prototypes,population,planned,*,private_materials=()):
     from .bridge import check_cancelled,report_progress
     column=planned['column_complement'];reference=column['reference_exr'];size=column['resolution']
     names=['TreeCapture.Combined.A','TreeCapture.MCP_SurfaceWeight.X',*component_ids.channels()]
@@ -47,7 +47,9 @@ def install(directory,prefix,root,prototypes,population,planned):
         for slot in obj.material_slots:
             source=slot.material
             if source not in materials:
-                check_cancelled();mat=source.copy();mat.name=prefix+'-Column-'+source.name;mat.use_fake_user=False;materials[source]=mat
+                check_cancelled();mat=source if source in private_materials else source.copy()
+                if mat!=source:mat.name=prefix+'-Column-'+source.name
+                mat.use_fake_user=False;materials[source]=mat
                 wrap(mat,root,image,column['projector'])
             slot.material=materials[source]
 

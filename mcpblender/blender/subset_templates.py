@@ -13,11 +13,11 @@ def area(mesh):
     return result
 
 
-def protected_signature(mesh):
-    rows=[]
+def protected_signature(mesh,uv_maps=None):
+    rows=[];layers=list(mesh.uv_layers) if uv_maps is None else [mesh.uv_layers[name] for name in uv_maps]
     for face in mesh.polygons:
         if face.material_index!=1:continue
-        corners=[(tuple(mesh.vertices[mesh.loops[i].vertex_index].co),tuple(tuple(layer.data[i].uv) for layer in mesh.uv_layers)) for i in face.loop_indices]
+        corners=[(tuple(mesh.vertices[mesh.loops[i].vertex_index].co),tuple(tuple(layer.data[i].uv) for layer in layers)) for i in face.loop_indices]
         rows.append((face.use_smooth,min(tuple(corners[i:]+corners[:i]) for i in range(len(corners)))))
     return botany.digest(sorted(rows))
 

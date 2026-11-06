@@ -7391,3 +7391,45 @@ managed procedural tree/LOD preparation and actual NORMAL/ALPHA bake passes
 inspection before this feature ran; the disposed fixture was confirmed terminal
 before the clean rerun. Contracts/add-on and all four initial native lifecycle
 cases also pass. No full-project regression or deployment is claimed.
+
+## Guarded native blade-card subset adoption — 2026-11-06
+
+Existing botanical subset inspect/create commands accept an explicit `blade_cards`
+recipe, mutually exclusive with protected collapse. It requires a valid unchanged
+preparation matching every original template, leaf shader and scene unit scale,
+and a distinct successful projected bake bundle for every source variant. Plans
+verify exact target/high-source inputs, original bake fingerprint, UV/dimensions,
+ray ranges, unrelaxed coverage threshold/witness, optical adapter and zero-padding
+opacity policy, complete deliverable hashes and file/decoded-map budgets. Nested
+bundle paths use normal caller library containment and alias checks. Planning
+allocates no native IDs for this path.
+
+Private meshes contain a fitted two-triangle blade shifted to the sampled source
+midplane plus the exact original petiole. Original petiole face winding/coordinates
+and all original UVs are rechecked, with an additional independent card UV channel.
+Texture space stays pinned to the source. Private packed NORMAL/ALPHA maps drive
+explicit native tangent normals/opacity; a private float lookup restores managed
+procedural UV inputs. Original front/back color and thin/translucent shader state
+remain present. Selected semantic IDs, point attributes and exact instance poses
+use the existing native verifier. COLUMN_COMPLEMENT clips these private materials
+in place, avoiding unused staging materials that would disappear on save.
+
+Python-disabled real workflows cover constant and managed procedural leaves,
+14-triangle output, stale preparation and budget refusal, rejected relaxed
+projection policies and tampered files, original tree/preparation preservation,
+preparation/bake/capture deletion, save/reopen, independent packed-image and exact
+petiole checks, foreign image users and guarded cleanup. A separate disposable
+Blender injects cancellation after geometry/material/map staging and checks exact
+native-ID/name/selection restoration and unchanged source/preparation guards.
+A persistence failure during development traced to old external image paths being
+remapped on save; adopted packed images now clear those paths and retain verified
+packed-byte bindings. No hash policy was relaxed to accept the changed witnesses.
+
+The initial combined regression passed 9 tests in 179.97s, including unchanged
+whole-leaf/protected-collapse workflows, contracts and add-on packaging. The
+coverage-policy refinement passed both new workflows again in 76.79s. This proves
+construction/lifecycle for small fixtures, not dense public optical acceptance,
+continuous view coverage, motion, a whole-tree far budget or population performance.
+The final all-selection run passed 6 tests in 72.90s: both constant/procedural
+workflows additionally create and remove OBSERVED and UNOBSERVED card subsets,
+as well as persisting COLUMN_COMPLEMENT, and contracts reject directory aliases.

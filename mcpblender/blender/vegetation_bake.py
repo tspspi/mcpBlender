@@ -59,6 +59,9 @@ def sampling(obj):
 
 
 def plan(p):
+    if p.get('blade_cards') is not None:
+        from . import leaf_card_preparation
+        return leaf_card_preparation.plan(p)
     from .bridge import check_cancelled
     if bpy.context.mode!='OBJECT':raise ValueError('Object mode required for bake preparation')
     bpy.context.view_layer.update();available,guard=objects(p)
@@ -179,6 +182,9 @@ def inspect(p):
 
 
 def create(p):
+    if p.get('blade_cards') is not None:
+        from . import leaf_card_preparation
+        return leaf_card_preparation.create(p)
     from .bridge import check_cancelled,report_progress
     selected,source=plan(p)
     if source['plan_sha256']!=p['expected_plan']:raise ValueError('Vegetation bake source plan is stale')
@@ -266,6 +272,7 @@ def refresh(p):
     from .bridge import check_cancelled
     bpy.context.view_layer.update();col,owned,meta,state=inspect(p)
     if state['preparation_sha256']!=p['expected_preparation']:raise ValueError('Bake preparation guard is stale')
+    if meta['source']['options'].get('blade_cards') is not None:raise ValueError('Recreate blade-card preparation to change its source; material refresh is unsupported')
     if state['ownership_blockers']:raise ValueError('; '.join(state['ownership_blockers']))
     if meta.get('revision',0)>=1024:raise ValueError('Recreate preparation after 1024 source revisions')
     updated={}

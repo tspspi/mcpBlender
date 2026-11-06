@@ -56,6 +56,7 @@ def plan(p):
     col,owned,meta,state=lods.inspect(p)
     if not state['valid']:raise ValueError('Valid unchanged native LOD profile required')
     pc,po,pm,ps=preparation.inspect(p)
+    if pm['source']['options'].get('blade_cards') is not None:raise ValueError('Blade-card preparation is not unchanged-geometry LOD bake adoption')
     if not ps['valid']:raise ValueError('Valid unchanged owned bake preparation required')
     targets=materials.lod_objects(col,meta);entries={};total=0;encoded=0;source_bytes=0
     for entry in p['entries']:

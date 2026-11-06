@@ -5716,6 +5716,37 @@ into these bundles remain separate work.
 
 ## Owned vegetation bake preparation
 
+
+The optional `blade_cards={}` mode prepares normal-aligned rectangular blade
+bake targets instead of unchanged-geometry copies. It accepts static,
+identity-placed shared `leaf-N` templates with the constant managed thin-leaf
+shader and disconnected blade/petiole vertices. Omit `assets` to select all leaf
+templates; wood/shoot roles, custom or textured leaf graphs, custom normals,
+EXISTING UVs and chart allocation refuse. Optional settings are `padding`
+(default .02, range 0–.25), `standoff_m` (default .0001, positive through .01),
+and sampled fitting `resolution` (default 128, integer 32–256). Texture dimensions,
+margin or pixel padding, corner limits, source units and shader/geometry witnesses
+are bound into the plan guard.
+
+Use the same inspect/prepare commands and guards. Each component contains an
+independent private blade source, a two-triangle target and `bake_parameters`:
+pass those parameters to `bake_textures`, adding a fresh `directory`, `samples`
+and other desired worker limits. The handoff selects NORMAL/ALPHA, the matching
+texture dimensions and a fitted projection ray range. Sources/targets are hidden
+from ordinary renders. All preparation IDs participate in existing content,
+external-reference and removal guards; independent successful bake bundles survive
+preparation/source deletion and save/reopen.
+
+This mode fits the uninstanced template frame, not placed canopy density. Metre
+measurements describe that independent frame under the current scene unit scale;
+they do not include the tree root's instance scaling. The source witness retains
+the native thin shader, but the baker's FRONT_PBR asset is a neutral data output:
+it does not restore native colors, translucency or back-side optics. Applying
+these maps to native reduced leaves is a separate workflow. Existing unchanged-
+geometry LOD material adoption and preparation material refresh refuse this mode.
+Preparation/baking alone provides no far-LOD, optical, animation or wind acceptance.
+
+
 Use `inspect_vegetation_bake_source` with exactly one `collection` (tree) or
 `lod_collection` (native LOD profile). The optional `assets` list selects returned
 roles such as `wood`, `shoots`, `leaf-0`, or `lod-1-wood`; omit it to inspect all.

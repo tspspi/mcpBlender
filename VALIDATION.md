@@ -7319,3 +7319,31 @@ public MCP workflow qualification beyond its five previously tested camera
 positions, nor establish a viewing cone, view blending, wind or population
 behavior. The expanded leaf count remains 2,838,528 triangles, above the intended
 far-representation budget. Further representation work is still required.
+
+## Shared blade-card bake preparation — 2026-11-06
+
+The optional `blade_cards` mode of existing vegetation bake planning/preparation
+creates independent managed blade sources and normal-aligned two-triangle targets.
+It returns explicit NORMAL/ALPHA parameters for the existing isolated baker.
+This is data preparation; it does not adopt the private 14-triangle prototype
+into native canopy subsets or grant a far-LOD/optical certificate.
+
+Native lifecycle tests pass at scene unit scales 1 and .01. They check read-only
+planning without ID/selection changes, source geometry/material witnesses and tree
+guards, role rejection and stale plans, cancellation after a component has really
+been allocated with exact ID rollback, unchanged blade corner normals after
+removing disconnected petiole geometry from private sources, private materials,
+target geometry, geometry-edit detection, external-reference cleanup refusal,
+refresh refusal, source deletion, save/reopen and guarded removal. Added schema
+bounds and mutually exclusive UV/chart policies pass, as does add-on packaging.
+The existing native vegetation bake preparation regression also passes.
+
+A Python-disabled MCP workflow exercises both tree and native LOD-profile sources,
+LOD guard preservation and independent preparation after profile removal. It checks
+that unchanged-geometry material adoption refuses blade-card preparation, performs
+a real 64x128 NORMAL/ALPHA projected bake after original tree deletion/save/reopen,
+verifies nonempty alpha and both occupied/background pixels, unchanged live scene
+and preparation guard, cleanup and independent saved-asset bundle validation.
+The existing procedural leaf/bark preparation-to-bake regression also passes.
+These small static fixtures do not establish dense-canopy appearance, view-domain,
+wind, animation, population, mature-oak or runtime performance acceptance.

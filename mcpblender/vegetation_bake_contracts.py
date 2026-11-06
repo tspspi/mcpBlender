@@ -7,7 +7,14 @@ from .nla_contracts import SafeName
 from .uv_layout_contracts import ChartLayout
 
 
+class BladeCards(Model):
+    padding: FiniteFloat = Field(default=.02,ge=0,le=.25)
+    standoff_m: FiniteFloat = Field(default=.0001,gt=0,le=.01)
+    resolution: int = Field(default=128,strict=True,ge=32,le=256)
+
+
 class Source(Model):
+    blade_cards: BladeCards | None = Field(default=None,description='Optional copy-only normal-aligned rectangular blade-card bake targets for managed constant thin-leaf templates. Select leaf roles only; default selects all leaf templates. Existing isolated NORMAL/ALPHA baking remains explicit. Preserves source and stores native thin-shader provenance; does not adopt cards, preserve optics in the generated FRONT_PBR asset, or certify a far LOD.')
     collection: SafeName | None = None
     lod_collection: SafeName | None = None
     assets: list[Name] | None = Field(default=None,min_length=1,max_length=16)
@@ -29,6 +36,7 @@ class Source(Model):
         if 2*self.tile_padding_pixels>=min(self.texture_width,self.texture_height):raise ValueError('Tile padding must leave a positive texture interior')
         if self.tile_padding_pixels and self.uv_strategy!='NEW':raise ValueError('Tile padding requires NEW UVs; EXISTING preserves authored coordinates')
         if self.chart_layout and self.uv_strategy!='NEW':raise ValueError('Chart allocation requires NEW UVs; EXISTING preserves authored coordinates')
+        if self.blade_cards and (self.uv_strategy!='NEW' or self.chart_layout):raise ValueError('blade_cards requires NEW UVs without chart_layout')
         return self
 
 
@@ -46,8 +54,8 @@ class Remove(Read):
 
 
 COMMANDS={
- 'inspect_vegetation_bake_source':(Source,(),'Plan source-preserving owned vegetation bake copies with independent materials and nonoverlapping BakeUV. NEW layouts optionally reserve tile_padding_pixels and chart_layout area/span/gutter allocations at texture_width/height; EXISTING preserves authored coordinates. Reports implicit sampling pins, missing named UVs, budgets and a plan guard. BAKE_LAYOUT explicitly permits generated missing source UVs, changing copy sampling only.'),
- 'prepare_vegetation_bake':(Create,('allow_scene_edit',),'Prepare guarded independent wood/shoot/shared-template meshes with new or explicitly reused target bake UVs. Preserve original geometry, attributes, UVs and source shader sampling; explicitly opted-in missing UVs use the new layout. Returns existing inspect_texture_bake inputs, not baked images.'),
+ 'inspect_vegetation_bake_source':(Source,(),'Plan source-preserving owned vegetation bake copies with independent materials and nonoverlapping BakeUV. NEW layouts optionally reserve tile_padding_pixels and chart_layout area/span/gutter allocations at texture_width/height; EXISTING preserves authored coordinates. Reports implicit sampling pins, missing named UVs, budgets and a plan guard. Optional blade_cards plans static constant-managed-leaf blade targets with source/geometry/material/unit/options guards and existing NORMAL/ALPHA handoff. BAKE_LAYOUT explicitly permits generated missing source UVs, changing copy sampling only.'),
+ 'prepare_vegetation_bake':(Create,('allow_scene_edit',),'Prepare guarded independent wood/shoot/shared-template meshes with new or explicitly reused target bake UVs. Preserve original geometry, attributes, UVs and source shader sampling; explicitly opted-in missing UVs use the new layout. Returns existing inspect_texture_bake inputs, not baked images. Optional blade_cards stages independent normal-aligned two-triangle blade targets and private managed leaf sources; returns NORMAL/ALPHA bake parameters. Data preparation only; native-card material adoption is separate.'),
  'inspect_vegetation_bake':(Read,(),'Inspect owned vegetation bake preparation content, source witness, per-component bake inputs and guarded cleanup blockers independently of the source.'),
  'refresh_vegetation_bake':(Remove,('allow_scene_edit',),'Guardedly accept supported material/frame edits on owned bake copies as the next bake source. Require frozen mesh, attributes, UVs, placement and private material slots; update bake fingerprints and revision. Does not accept mesh edits or change the original source.'),
  'remove_vegetation_bake':(Remove,('allow_scene_edit',),'Remove only guarded unambiguously owned vegetation bake copies and their private materials. Refuse foreign collection members and external references; baked file bundles are independent.'),

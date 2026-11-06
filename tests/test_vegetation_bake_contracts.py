@@ -26,3 +26,17 @@ def test_readonly_discovery(tmp_path):
             assert {'inspect_vegetation_bake_source','inspect_vegetation_bake'}<=names
             assert not {'prepare_vegetation_bake','remove_vegetation_bake','refresh_vegetation_bake'}&names
     asyncio.run(run())
+
+
+def test_blade_card_policy():
+    assert Source(collection='Tree').blade_cards is None
+    p=Source(collection='Tree',blade_cards={})
+    assert p.blade_cards.resolution==128 and p.blade_cards.padding==.02
+    for policy in ({'resolution':True},{'resolution':31},{'resolution':257},
+                   {'padding':-.01},{'padding':.26},{'standoff_m':0},
+                   {'standoff_m':float('nan')},{'extra':True}):
+        with pytest.raises(ValueError):Source(collection='Tree',blade_cards=policy)
+    with pytest.raises(ValueError,match='NEW'):
+        Source(collection='Tree',blade_cards={},uv_strategy='EXISTING')
+    with pytest.raises(ValueError,match='chart_layout'):
+        Source(collection='Tree',blade_cards={},chart_layout={'allow_stretch':True})

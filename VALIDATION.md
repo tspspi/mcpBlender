@@ -7134,3 +7134,84 @@ still retains roughly 17 million expanded native leaf triangles. Shared-template
 reduction, independent angular/offset views, wind, population, mature-oak/reference
 and the remaining original workflow ledger still need qualification. No threshold,
 material-color or light-energy fitting was used to pass the policies.
+
+
+### Protected shared leaf-template reduction
+
+Subset planning/creation accepts an optional, pinned template-reduction policy.
+The recipe splits disconnected blade and petiole material regions, collapses
+only the blade, rejoins the exact petiole faces/coordinates/all UVs, and transfers
+nearest interpolated source loop normals. It refuses unsupported templates,
+material/UV/attribute-schema loss, a changed protected petiole, an unmet triangle
+budget, excessive sampled local surface error or excessive per-region area loss.
+The original source remains unchanged. Reports bind settings, per-variant meshes,
+protected geometry, measurements and expanded selected-leaf triangle totals.
+
+Private geometry diagnostics found ordinary collapse can retain both material
+indices while losing 51.8–71.0% of petiole area at 64 triangles and below. This
+motivated exact petiole protection rather than treating material-slot retention
+as a geometric certificate. With protection, 32-triangle templates in the dense
+fixture have sampled normalized maximum errors of 1.4725–1.4966%, blade area
+changes within 0.515% and exact petiole geometry/UVs. A 24-triangle protected
+recipe exceeds the chosen 2% sampled-error policy. These are deterministic
+bidirectional vertex/triangle-center samples, not exhaustive Hausdorff,
+projected-silhouette, physical-world-distance or motion bounds.
+
+Five small lifecycle/schema checks pass in 63.10 seconds. Both original-template
+and reduced-template Python-disabled MCP paths create, save, reopen, inspect
+without capture files and remove the owned asset while preserving the source.
+Native readback confirms reduced triangle counts, custom normals and protected
+petiole signatures. Planning and injected staging cancellation preserve the ID
+set, selection and active object; cancellation during private-material wrapping
+also rolls back all new IDs. Private shader/image edits and foreign references
+continue to refuse removal. The actual column shader predicate and projector
+are checked after root translation, rotation and uniform scaling. Reduced meshes
+are evaluated against actual rendered leaf IDs; original-template first-hit
+identity requirements remain unchanged. No pixel-identity claim follows from
+retaining instance IDs and poses.
+
+Four explicit policy/selection checks pass in 7.94 seconds. Add-on archive and
+policy discovery pass two checks in 8.97 seconds, with the existing Starlette
+warning. The initial parameterized fixture reused a scene/save path and failed
+on existing names/files; function-scoped isolated instances correct that test
+setup. No production geometry workaround was made for those fixture failures.
+
+Both whole-leaf selection modes also pass with and without reduction (two
+Python-disabled workflows, 104.50 seconds). OBSERVED and UNOBSERVED remain a
+complete disjoint semantic-ID partition. Per-variant selected-instance counts
+and expanded reduced-triangle budgets match each subset, including a separate
+structure ray role. Independent native saved-data readback verifies original
+instance poses, guarded edit/foreign-user refusals and publication rollback;
+reopened inspection and removal work after deleting capture files.
+
+The dense public structured assembly with 32-triangle shared templates passes
+in 564.19 seconds with arbitrary Python disabled. It retains all 88,704 native
+leaf instances and their poses, reducing expanded leaf triangles from 17,385,984
+to 2,838,528 (83.67%); the measured-depth primary remains 109,764 triangles.
+All six native/candidate render jobs complete under the same three frozen
+lighting configurations. Every native control has exactly zero scene-linear
+RGBA error against the frozen references. Every reduced candidate passes the
+unchanged scales 1/2/4 silhouette/alpha/RGB policies, overlap RGB RMSE limit 0.05
+and absolute relative shared-luminance bias limit 10%.
+
+| Lighting | Shared luminance bias, scale 1 | Overlap RGB RMSE, scale 1 |
+| --- | ---: | ---: |
+| World | -2.003500% | 0.00609567 |
+| Front SUN | -7.851413% | 0.00436404 |
+| Rear SUN | -2.770798% | 0.00115871 |
+
+Scale-one alpha MAE is 0.00470449 in every light. Each public candidate also
+matches its corresponding private protected-template diagnostic exactly in
+scene-linear RGBA. All six retained copied bundles independently pass native
+source/output/header/sampling validation; a hash index was written and checked
+after fixture cleanup. Source-only display is restored, source freshness and
+owned assets pass inspection, and the input source archive SHA256 is unchanged.
+The retained saved assembly and evidence live in the ignored qualification
+workspace; test fixture processes and temporary directories have been removed.
+
+This is one static FRONT assembly with unchanged source leaf density and explicit
+sampled geometry limits. It remains above the intended far-representation budget
+and does not qualify independent angular views, view blending, shadows outside
+the tested setup, wind, populations or the mature-oak reference. No material/color,
+lighting, sample-profile or optical threshold fitting was used. Ownership validity
+continues to be separate from optical qualification.

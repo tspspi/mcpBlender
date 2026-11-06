@@ -1,4 +1,4 @@
-"""Full-density public MCP assembly and unchanged frozen optical policies."""
+"""Public MCP assembly, optional shared-template reduction, frozen optical policies."""
 import asyncio,json,os,shutil,subprocess,hashlib
 from pathlib import Path
 import pytest
@@ -36,13 +36,21 @@ def test_structured_full_density_pair_under_all_three_frozen_lights(assets_live)
             plan=await wait(client,'inspect_botanical_depth_source',**d)
             depth=await wait(client,'create_botanical_depth_asset',**d,collection='QualifiedPrimary',expected_plan=plan['plan_sha256'],accept_approximate_optics=True)
             n={'directory':'reference','views':['FRONT'],'selection':'COLUMN_COMPLEMENT','render_role':'ALL_RAYS'}
+            if budget:=os.environ.get('MCPBLENDER_ASSEMBLY_TEMPLATE_BUDGET'):
+                n['template_reduction']={'triangle_budget':int(budget),'max_relative_error':.02,'max_area_relative_error':.02,'error_samples':4096}
             native_plan=await wait(client,'inspect_botanical_subset_source',**n)
             native=await wait(client,'create_botanical_subset',**n,subset_collection='QualifiedComplement',expected_plan=native_plan['plan_sha256'])
             assert native['selected_leaf_count']==88704 and depth['triangles']==109764
             assert native_plan['capture_sha256']==plan['source']['capture_sha256'] and native_plan['snapshot_sha256']==plan['source']['snapshot_sha256']
             assert native_plan['column_complement']['grid_sha256']==plan['projected_coverage']['grid_sha256']
             assert native_plan['column_complement']['view']==plan['source']['view']
-            proof['assets']={'depth':depth,'complement':native};checkpoint()
+            proof['assets']={'depth':depth,'complement':native};proof['subset_plan']=native_plan
+            if budget:
+                reduction=native_plan['template_reduction']
+                assert reduction['selected_instances']==88704 and reduction['expanded_source_leaf_triangles']==17385984
+                assert reduction['expanded_reduced_leaf_triangles']<=88704*int(budget)
+                proof['scope']='Structured public MCP shared-template reduction under all three frozen lights and unchanged policies. One static FRONT view; no angular, wind, population, mature-reference or far-performance acceptance.'
+            checkpoint()
             # Match the isolated reference: factory geometry and lights must not
             # contaminate the native scene. Managed source object flags stay put.
             scene=(await client.call_tool('get_scene_info')).data

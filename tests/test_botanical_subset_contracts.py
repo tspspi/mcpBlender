@@ -32,3 +32,11 @@ def test_subset_policy_and_paths(tmp_path):
             assert 'create_botanical_subset' not in tools and 'remove_botanical_subset' not in tools
             assert tools['inspect_botanical_subset_source'].input_schema['properties']['wait']['default'] is False
     asyncio.run(run())
+
+
+def test_optional_template_reduction_has_explicit_bounded_policy():
+    assert Source(directory='capture').template_reduction is None
+    policy=Source(directory='capture',template_reduction={}).template_reduction
+    assert policy.triangle_budget==32 and policy.max_relative_error==.02
+    for patch in ({'triangle_budget':True},{'triangle_budget':15},{'triangle_budget':513},{'max_relative_error':0},{'max_relative_error':float('nan')},{'max_area_relative_error':-1},{'error_samples':4097},{'transfer_normals':False}):
+        with pytest.raises(ValueError):Source(directory='capture',template_reduction=patch)

@@ -24,7 +24,7 @@ root.matrix_world=original_root
 # Cancellation while wrapping a new private shader rolls back every new ID.
 from mcpblender.botanical_subset_contracts import Source
 from mcpblender.blender import subset_columns,bridge,botanical_trees
-args_plan=Source(directory=args[2],selection='COLUMN_COMPLEMENT').model_dump()
+args_plan=Source(directory=args[2],selection='COLUMN_COMPLEMENT',template_reduction=plan.get('template_reduction',{}).get('settings')).model_dump()
 fresh=subsets.plan(args_plan)[-1];before=set(bpy.data.user_map());source_guard=botanical_trees.inspect({'collection':fresh['source_collection']})['tree_sha256'];wrap=subset_columns.wrap
 def cancel_wrap(*a,**k):
     wrap(*a,**k);raise bridge.OperationCancelled('native private-material staging cancellation')
@@ -35,6 +35,31 @@ try:
     else:raise AssertionError('Staging cancellation was lost')
 finally:subset_columns.wrap=wrap
 assert set(bpy.data.user_map())==before and botanical_trees.inspect({'collection':fresh['source_collection']})['tree_sha256']==source_guard
+# Reduced templates survive save/reopen with protected petioles and normals.
+if 'template_reduction' in plan:
+    from mcpblender.blender import subset_templates,lods
+    prototypes=col['mcpblender_leaf_sources']
+    reports=plan['template_reduction']['variants']
+    for obj,report in zip(sorted(prototypes.objects,key=lambda o:o.name),reports):
+        actual=lods.summary(obj.data)
+        assert actual['triangles']==report['triangles']<=plan['template_reduction']['settings']['triangle_budget']
+        assert obj.data.has_custom_normals
+        assert subset_templates.protected_signature(obj.data)==report['petiole_geometry_uv_sha256']
+    # Planning is temporary: no IDs, selection, active object or source edits.
+    selected=set(bpy.context.selected_objects);active=bpy.context.view_layer.objects.active
+    assert subsets.plan(args_plan)[-1]['plan_sha256']==fresh['plan_sha256']
+    assert set(bpy.data.user_map())==before and set(bpy.context.selected_objects)==selected and bpy.context.view_layer.objects.active==active
+    original_check=bridge.check_cancelled;calls=[0]
+    def cancel_reduction():
+        calls[0]+=1
+        if calls[0]==2:raise bridge.OperationCancelled('native template staging cancellation')
+    bridge.check_cancelled=cancel_reduction
+    try:
+        try:subset_templates.build(prototypes.objects[0].data,plan['template_reduction']['settings']|{'triangle_budget':24,'max_relative_error':1.})
+        except bridge.OperationCancelled:pass
+        else:raise AssertionError('Template staging cancellation was lost')
+    finally:bridge.check_cancelled=original_check
+    assert set(bpy.data.user_map())==before and set(bpy.context.selected_objects)==selected and bpy.context.view_layer.objects.active==active
 # Private shader changes and foreign users refuse guarded removal.
 mat=materials[0];transparent=next(n for n in mat.node_tree.nodes if n.type=='BSDF_TRANSPARENT');value=tuple(transparent.inputs['Color'].default_value);transparent.inputs['Color'].default_value=(.2,.3,.4,1)
 changed=subsets.inspect(p)[-1];assert not changed['valid']
@@ -76,13 +101,15 @@ for name,placement in [('original',original_root),('moved',Matrix.Translation((7
     s.render.image_settings.media_type='MULTI_LAYER_IMAGE';s.render.image_settings.file_format='OPEN_EXR_MULTILAYER';s.render.image_settings.color_depth='32';s.render.image_settings.color_mode='RGBA';s.render.image_settings.exr_codec='ZIP';file=out/(name+'.exr');bpy.data.images['Render Result'].save_render(str(file),scene=s)
     debug=exr_scanline.decode(file,['ColumnProbe.OwnID.X','ColumnProbe.RefID.X'])['channels'];(out/(name+'-debug.json')).write_text(json.dumps([{'pixel':i,'sourceID':reference[component_ids.channels()[0]][i],**{k:v[i] for k,v in debug.items()}} for i,e in enumerate(expected) if e],indent=2))
     own=debug['ColumnProbe.OwnID.X'];sampled=debug['ColumnProbe.RefID.X'];source_ids=reference[component_ids.channels()[0]]
-    assert sum(v>0 for v in own)>=.9*sum(expected),'Moved view lost native leaf observations'
-    if name=='original':assert own==source_ids,'Saved native first-hit identity differs from reference'
+    if 'template_reduction' in plan:assert any(v>0 for v in own),'Reduced view has no native leaf observations'
+    else:
+        assert sum(v>0 for v in own)>=.9*sum(expected),'Moved view lost native leaf observations'
+        if name=='original':assert own==source_ids,'Saved native first-hit identity differs from reference'
     # Moving all native geometry/camera can change edge hits through float32
     # rounding. Check the projector and predicate independently at the actual
     # new first-hit IDs, and report changes rather than claiming exact pixels.
     assert max(abs(sampled[i]-source_ids[i]) for i,v in enumerate(own) if v>0)<1e-6,'Root-relative projector selected a different reference cell'
-    wanted=expected if name=='original' else [int(v>0 and v==source_ids[i]) for i,v in enumerate(own)]
+    wanted=expected if name=='original' and 'template_reduction' not in plan else [int(v>0 and v==source_ids[i]) for i,v in enumerate(own)]
     data=exr_scanline.decode(file,['ColumnProbe.ColumnMatch.X'])['channels']['ColumnProbe.ColumnMatch.X'];errors=[abs(a-b) for a,b in zip(data,wanted)];assert max(errors)<1e-6,(name,max(errors),sum(data),sum(wanted));rows.append({'placement':name,'matched_leaf_pixels':sum(data),'max_error':max(errors),'source_first_hit_changes':sum(a!=b for a,b in zip(own,source_ids))})
 # Reopen the unchanged saved fixture: image tampering must fail independently
 # of the temporary AOV nodes and moved placement used by the render probe.

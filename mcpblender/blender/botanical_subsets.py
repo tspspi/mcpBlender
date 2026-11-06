@@ -3,7 +3,7 @@ import json
 import uuid
 import bpy
 from mcpblender import botany,capture_data,component_ids,exr_scanline
-from . import botanical_capture as capture,botanical_foliage as foliage,botanical_trees as trees,assemblies,wind_preview,depth_assets,subset_columns
+from . import botanical_capture as capture,botanical_foliage as foliage,botanical_trees as trees,assemblies,wind_preview,depth_assets,subset_columns,subset_templates
 
 META='mcpblender_botanical_subset';OWNER='mcpblender_botanical_subset_owner'
 FORMAT='mcpblender-native-leaf-subset-v1';KEEP='mcp_subset_keep'
@@ -83,6 +83,9 @@ def plan(p):
         for obj in (v for k,v in roles.items() if k.startswith('lo')):
             for slot in obj.material_slots:subset_columns.outputs(slot.material)
         summary['column_complement']=column_plan;summary['scope']=subset_columns.SCOPE
+    if p.get('template_reduction') is not None:
+        summary['template_reduction']=subset_templates.plan(roles,selected,p['template_reduction'])
+        summary['scope']=summary['scope'].replace('unchanged template geometry/poses','unchanged instance poses').replace('template reduction, wind or optical equivalence','wind or optical equivalence')+' Optional private shared-template reduction records sampled error/area policy; no optical or wind certificate.'
     if structure_role is not None:
         summary['settings']['structure_render_role']=structure_role
         summary['structure_ray_visibility']={k:k in depth_assets.RAY_ROLES[structure_role] for k in depth_assets.RAY_FLAGS}
@@ -202,7 +205,13 @@ def create(p):
         prototypes=bpy.data.collections.new(prefix+'-Sources');col['mcpblender_leaf_sources']=prototypes
         mapping={}
         for i in range(values[-1]['foliage']['recipe']['variants']):
-            source=roles['lo'+str(i)];mesh=source.data.copy();obj=source.copy();obj.name=prefix+'-Leaf'+str(i);obj.data=mesh;prototypes.objects.link(obj);mapping[source.name]=obj.name
+            source=roles['lo'+str(i)]
+            if 'template_reduction' in planned:
+                mesh,report=subset_templates.build(source.data,p['template_reduction'])
+                expected={k:v for k,v in planned['template_reduction']['variants'][i].items() if k not in {'variant','instances'}}
+                if report!=expected:raise ValueError('Template reduction differs from pinned plan')
+            else:mesh=source.data.copy()
+            obj=source.copy();obj.name=prefix+'-Leaf'+str(i);obj.data=mesh;prototypes.objects.link(obj);mapping[source.name]=obj.name
         population=roles['po'].copy();population.name=prefix+'-Leaves';population.data=roles['pm'].copy();population.parent=root;col.objects.link(population)
         group=roles['gn'].copy();population.modifiers[0].node_group=group
         for node in group.nodes:

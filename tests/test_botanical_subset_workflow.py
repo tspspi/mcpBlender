@@ -3,12 +3,18 @@ import asyncio,json,os,shutil,subprocess
 from pathlib import Path
 import pytest
 from fastmcp.exceptions import ToolError
-from test_asset_editing import assets_live,client_for,pytestmark
+from test_asset_editing import assets_live as _assets_live,client_for,pytestmark
 from test_botanical_capture_workflow import drain_captures
 from test_depth_candidates import wait
 
 
-def test_native_subset_capture_selection_persistence_and_source_preservation(assets_live):
+@pytest.fixture
+def assets_live():
+    yield from _assets_live.__wrapped__()
+
+
+@pytest.mark.parametrize('reduction',[None,{'triangle_budget':32}])
+def test_native_subset_capture_selection_persistence_and_source_preservation(assets_live,reduction):
     root,path=assets_live
     async def run():
         async with client_for(path) as client:
@@ -24,11 +30,16 @@ def test_native_subset_capture_selection_persistence_and_source_preservation(ass
             capture=await wait(client,'inspect_botanical_view_capture',**args)
             await wait(client,'capture_botanical_views',**args,directory='subset-input',expected_capture=capture['capture_sha256'])
             source={'directory':'subset-input','views':['FRONT'],'include_structure':False}
+            if reduction is not None:source['template_reduction']=reduction
             states=[];plans=[]
             for mode,name in [('OBSERVED','ObservedLeaves'),('UNOBSERVED','OtherLeaves')]:
                 opts=source|{'selection':mode}
                 plan=await wait(client,'inspect_botanical_subset_source',**opts)
                 assert plan['observed_leaf_count']>0 and plan['selected_leaf_count']>0
+                if reduction is not None:
+                    reduced=plan['template_reduction'];assert reduced['selected_instances']==plan['selected_leaf_count']
+                    assert sum(r['instances'] for r in reduced['variants'])==plan['selected_leaf_count']
+                    assert reduced['expanded_reduced_leaf_triangles']<=32*plan['selected_leaf_count']
                 with pytest.raises(ToolError,match='stale'):
                     await wait(client,'create_botanical_subset',**opts,subset_collection=name,expected_plan='0'*64)
                 state=await wait(client,'create_botanical_subset',**opts,subset_collection=name,expected_plan=plan['plan_sha256'])
@@ -58,10 +69,10 @@ def test_native_subset_capture_selection_persistence_and_source_preservation(ass
             assert reopened_plan['source_content_sha256']==plans[0]['source_content_sha256']
             assert reopened_plan['selected_indices_sha256']==plans[0]['selected_indices_sha256']
             if dest:=os.environ.get('MCPBLENDER_SUBSET_EVIDENCE'):
-                out=Path(dest);out.mkdir(parents=True,exist_ok=True);shutil.copytree(root/'library/subset-input',out/'capture',dirs_exist_ok=True);shutil.copy2(root/'library/native-subsets.blend',out/'native-subsets.blend')
+                out=Path(dest)/('reduced' if reduction else 'original');out.mkdir(parents=True,exist_ok=True);shutil.copytree(root/'library/subset-input',out/'capture',dirs_exist_ok=True);shutil.copy2(root/'library/native-subsets.blend',out/'native-subsets.blend')
             probe=subprocess.run(['blender','--background','--factory-startup','--disable-autoexec','--threads','2','--python-exit-code','1',
                 '--python',str(Path(__file__).with_name('native_botanical_subset.py')),'--',str(Path(__file__).resolve().parents[1]),str(root/'library/native-subsets.blend'),str(root/'library/subset-input')],capture_output=True,text=True,timeout=45)
-            if dest:(Path(dest)/'refusal-probe.log').write_text(probe.stdout+probe.stderr)
+            if dest:(Path(dest)/('reduced' if reduction else 'original')/'refusal-probe.log').write_text(probe.stdout+probe.stderr)
             assert probe.returncode==0,probe.stdout+probe.stderr
             shutil.rmtree(root/'library/subset-input')
             removed=[]
@@ -76,4 +87,4 @@ def test_native_subset_capture_selection_persistence_and_source_preservation(ass
             assert portable(after)==portable(before)
             return {'plans':plans,'union':union,'structure':structure,'states':states,'removed':removed}
     proof=asyncio.run(run())
-    if dest:=os.environ.get('MCPBLENDER_SUBSET_EVIDENCE'):(Path(dest)/'proof.json').write_text(json.dumps(proof,indent=2))
+    if dest:=os.environ.get('MCPBLENDER_SUBSET_EVIDENCE'):(Path(dest)/('reduced' if reduction else 'original')/'proof.json').write_text(json.dumps(proof,indent=2))

@@ -1192,6 +1192,40 @@ hidden and source visibility is unchanged. Pair it with the measured leaf-depth
 alpha only after checking identical capture, source snapshot, view and ID-grid
 provenance; showing it alongside an unchanged source duplicates geometry.
 
+### Optional shared leaf-template reduction
+
+`inspect_botanical_subset_source` and `create_botanical_subset` accept an optional
+`template_reduction` object for all three selection modes. Omit it to retain
+original templates. A typical policy is:
+
+```json
+{"triangle_budget":32,"max_relative_error":0.02,
+ "max_area_relative_error":0.02,"error_samples":4096}
+```
+
+The recipe copies each static two-material blade/petiole template, collapses only
+the blade, retains exact petiole face winding, coordinates and UVs, and transfers
+nearest interpolated source loop normals. It preserves material slots, used
+material regions and named attribute/UV schema. All selected instance IDs,
+attributes and poses remain unchanged; structure is copied without reduction.
+Unsupported templates or failed budgets/error limits refuse creation. Temporary
+planning meshes are removed, and cooperative creation failure rolls back newly
+owned resources. The resulting private meshes use the existing saved ownership,
+source-freshness and guarded-removal workflow.
+
+The plan pins settings and per-variant geometry hashes, protected petiole hashes,
+triangle counts, sampled surface error, material-region area changes and expanded
+leaf triangle totals. Creation repeats the recipe and requires the same report.
+Surface error is measured bidirectionally at deterministic local vertices and
+triangle centers, relative to the original template diagonal. It is not an
+exhaustive silhouette or world-space bound. Area limits apply separately to
+blade and petiole; retained material indices alone do not establish this.
+
+Transferred normals and geometry limits do not establish optical equivalence.
+Qualify the assembled depth/complement pair under the intended lighting, views,
+scales and motion. Reducing shared templates does not itself meet a whole-tree
+far-LOD budget or preserve original first-hit leaf identities at every pixel.
+
 ### Projected leaf coverage data
 
 Use `inspect_botanical_projected_coverage` with `reference_directory`, `view`

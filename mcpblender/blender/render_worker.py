@@ -66,7 +66,7 @@ def main():
             projected_coverage.validate(coverage,job)
             install(scene,coverage)
         if job['engine']=='BLENDER_EEVEE_NEXT':scene.eevee.taa_render_samples=job['samples']
-        outputs=[];last=[0.]
+        outputs=[];sampling_profiles={};last=[0.]
         def stats(*values):
             if time.monotonic()-last[0]>.5:
                 status(native_stats=' '.join(str(v) for v in values)[-1024:]);last[0]=time.monotonic()
@@ -76,6 +76,12 @@ def main():
             for fi,frame in enumerate(range(job['frame_start'],job['frame_end']+1,job['frame_step'])):
                 status(phase='rendering camera/frame',camera=camera,frame=frame,native_call_interruptible=False,worker_cancel_supported=True)
                 scene.frame_set(frame)
+                from mcpblender.blender import render_sampling
+                sampling=render_sampling.snapshot(scene) if hasattr(scene,'cycles') else None
+                if sampling is not None:sampling_profiles[sampling['sampling_sha256']]=sampling
+                if contract:=job.get('sampling_contract'):
+                    from mcpblender import render_sampling as sampling_schema
+                    if sampling!=sampling_schema.expected(contract,job):raise ValueError('Effective render sampling differs from guarded source/job')
                 if 'FINISHED' not in bpy.ops.render.render(write_still=False):raise ValueError('Native render failed')
                 for fmt in job['formats']:
                     scene.render.image_settings.media_type='MULTI_LAYER_IMAGE' if fmt=='OPEN_EXR_MULTILAYER' else 'IMAGE'
@@ -83,9 +89,9 @@ def main():
                     scene.render.image_settings.exr_codec='ZIP'
                     name=f"outputs/c{ci:02}_f{fi:04}.{'png' if fmt=='PNG' else 'exr'}";path=root/name
                     bpy.data.images['Render Result'].save_render(str(path),scene=scene)
-                    outputs.append({'camera':camera,'camera_index':ci,'frame':frame,'frame_index':fi,'format':fmt,'file':name,'bytes':path.stat().st_size,'sha256':files.file_hash(path),'header':files.image_header(path)})
+                    outputs.append({'camera':camera,'camera_index':ci,'frame':frame,'frame_index':fi,'format':fmt,'file':name,'bytes':path.stat().st_size,'sha256':files.file_hash(path),'header':files.image_header(path),**({'sampling_sha256':sampling['sampling_sha256']} if sampling is not None else {})})
                 status(completed=current['completed']+1)
-        files.write_json(root/'manifest.json',{'version':1,'job_id':job['job_id'],'source_sha256':job['source_sha256'],'blender_version':bpy.app.version_string,'outputs':outputs,**{k:job[k] for k in ('botanical_capture','projected_coverage') if k in job}})
+        files.write_json(root/'manifest.json',{'version':1,'job_id':job['job_id'],'source_sha256':job['source_sha256'],'blender_version':bpy.app.version_string,'outputs':outputs,'sampling_profiles':sampling_profiles,**{k:job[k] for k in ('botanical_capture','projected_coverage') if k in job}})
         files.validate(root,job['owner'])
         if sum(v['bytes'] for v in files.inventory(root))>job['max_bytes']:raise ValueError('Completed render exceeds byte budget')
         status(state='succeeded',phase='complete')

@@ -18,6 +18,15 @@ def launch(p,*,scene=None,snapshot_writer=None,resource_ids=None,scene_name=None
     from .bridge import _bridge,check_cancelled,report_progress
     scene=scene or compositing.guard(p)
     scene_name=scene_name or scene.name
+    if p.get('expected_sampling') is not None:
+        from . import render_sampling
+        profile=render_sampling.snapshot(scene)
+        if profile['sampling_sha256']!=p['expected_sampling']:raise ValueError('Render sampling guard is stale')
+        if profile['animated_fields'] or scene.render.engine!='CYCLES' or p['engine']!='CYCLES':raise ValueError('Guarded sampling batches require static Cycles settings')
+        p=p|{'sampling_contract':{'format':'GUARDED_CYCLES_SAMPLING_V1','source':profile}}
+        from mcpblender import render_sampling as sampling_schema
+        sampling_schema.expected(p['sampling_contract'],p)
+
     resources=set(bpy.data.user_map()) if resource_ids is None else resource_ids
     for name in p['cameras']:
         obj=scene.objects.get(name)

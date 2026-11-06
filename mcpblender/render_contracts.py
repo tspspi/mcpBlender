@@ -7,6 +7,7 @@ from .mesh_contracts import Digest
 class Batch(Model):
     directory: str = Field(min_length=1)
     expected_settings: Digest
+    expected_sampling: Digest|None = Field(default=None,description='Optional inspect_render_sampling guard for static Cycles settings. Pins the source sampling profile, validates effective sample windows after job master-sample overrides, and binds worker witnesses. Compositor/color settings still require expected_settings.')
     cameras: list[SafeName] = Field(min_length=1,max_length=16)
     frame_start: int = Field(strict=True,ge=-1048574,le=1048574)
     frame_end: int = Field(strict=True,ge=-1048574,le=1048574)
@@ -33,7 +34,7 @@ class Cleanup(Guard):
     dry_run: bool = True
     include_interrupted: bool = False
 COMMANDS={
- 'render_camera_batch':(Batch,('allow_snapshots','allow_library_write','allow_start_blender'),'Snapshot the current project and render named cameras/frame samples in an independent owned Blender worker. Original operation stays running in the broker while editing continues. PNG and/or multilayer EXR, per-render progress/free space, cancellation, timeout and byte limits; no automatic replay after death.'),
+ 'render_camera_batch':(Batch,('allow_snapshots','allow_library_write','allow_start_blender'),'Snapshot the current project and render named cameras/frame samples in an independent owned Blender worker. Original operation stays running in the broker while editing continues. PNG and/or multilayer EXR, per-render progress/free space, cancellation, timeout and byte limits; no automatic replay after death. Optional expected_sampling binds static Cycles settings and per-output worker sampling witnesses, including CPU/thread/master-sample overrides. Sampling witnesses are settings provenance, not actual ray counts or optical certification.'),
  'inspect_render_job':(Directory,(),'Inspect an owned isolated render job, file-writer lock, progress, inventory and cleanup guard without Blender.'),
  'validate_render_job':(Directory,(),'Independently verify a completed render bundle: source/file hashes, camera/frame/format associations and PNG/EXR dimensions/channel headers. Does not certify image quality or decode every pixel.'),
  'recover_render_job':(Guard,('allow_library_write',),'Reconcile a departed isolated render worker without replay. Requires a fresh guard and no writer; valid finished files may be adopted, partial jobs become interrupted.'),

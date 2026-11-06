@@ -153,6 +153,12 @@ def validate_contents(root,job_id,progress=lambda value:None,cancelled=lambda:Fa
         if capture is not None or saved.get('projected_coverage')!=coverage:raise ValueError('Projected coverage manifest binding mismatch')
     elif 'projected_coverage' in saved:raise ValueError('Unexpected projected coverage metadata')
     coverage_reports=[]
+    profiles=saved.get('sampling_profiles',{})
+    if not isinstance(profiles,dict):raise ValueError('Invalid render sampling profile registry')
+    from . import render_sampling
+    for key,value in profiles.items():
+        if render_sampling.validate(value)['sampling_sha256']!=key:raise ValueError('Render sampling registry binding mismatch')
+    used_profiles=set()
     expected={(ci,fi,fmt) for ci,_ in enumerate(job['cameras']) for fi,_ in enumerate(range(job['frame_start'],job['frame_end']+1,job['frame_step'])) for fmt in job['formats']}
     actual=set();members=[]
     for item in saved['outputs']:
@@ -173,10 +179,19 @@ def validate_contents(root,job_id,progress=lambda value:None,cancelled=lambda:Fa
             def checkpoint():
                 if cancelled():raise InterruptedError('Projected coverage validation cancelled')
             coverage_reports.append(projected_coverage.measure(path,item['sha256'],coverage['resolution'],progress,checkpoint))
+        sampling_key=item.get('sampling_sha256')
+        sampling=profiles.get(sampling_key)
+        if sampling_key is not None:
+            if sampling is None:raise ValueError('Render output refers to an unknown sampling profile')
+            used_profiles.add(sampling_key)
+        if profiles and sampling is None:raise ValueError('Render output lacks sampling witness')
+        if job.get('sampling_contract') is not None:
+            if sampling!=render_sampling.expected(job['sampling_contract'],job):raise ValueError('Render sampling source/job/output binding mismatch')
         actual.add(key);members.append(item)
         progress({'phase':'verified render output','completed_files':len(members),'total_files':len(expected)})
+    if used_profiles!=set(profiles):raise ValueError('Render sampling profile inventory mismatch')
     if actual!=expected or {v['path'] for v in rows if v['path'].startswith('outputs/')}!={i['file'] for i in members}:raise ValueError('Render output inventory mismatch')
-    return {'valid':True,'directory':str(root),'job_id':job_id,'outputs':members,'frames':[str(root/v['file']) for v in members if v['format']=='PNG'],'path':str(root/'manifest.json'),'source_sha256':saved['source_sha256'],**({'botanical_capture':capture} if capture is not None else {}),**({'projected_coverage':coverage,'coverage_reports':coverage_reports} if coverage is not None else {})}
+    return {'valid':True,'directory':str(root),'job_id':job_id,'outputs':members,'frames':[str(root/v['file']) for v in members if v['format']=='PNG'],'path':str(root/'manifest.json'),'source_sha256':saved['source_sha256'],**({'botanical_capture':capture} if capture is not None else {}),**({'projected_coverage':coverage,'coverage_reports':coverage_reports} if coverage is not None else {}),**({'sampling_profiles':profiles} if 'sampling_profiles' in saved else {})}
 
 def request_cancel(root,owner):
     r=record(root,owner)

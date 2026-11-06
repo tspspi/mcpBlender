@@ -7041,3 +7041,39 @@ and a guarded restore recovers the original flags and source-fresh subset state.
 
 Retained fixture copies were byte-compared before temporary cleanup. These are
 visibility/ownership/transaction checks, not combined optical or angular gates.
+
+
+### Explicit Cycles sampling controls and worker witnesses
+
+Guarded sampling inspection/configuration exposes master samples, public sampler
+choices, seeds, adaptive/denoise, layer policy, filtering, sample subsets/time
+limits and bounce caps. Native enum/range preflight and a fresh guard precede
+writes. Targeted animation refuses; partial-update cancellation restores the
+original sampling witness. Layer overrides are recorded and nominal window
+ceilings follow USE/BOUNDED/IGNORE, including subset truncation. Device/thread
+context is reported; independent workers apply their CPU/thread/master overrides.
+
+Optional camera-batch expected_sampling binds static source settings to the job
+and effective pre-render witnesses. Empty enabled windows after job overrides
+refuse before allocation. Profiles are deduplicated in the manifest; per-output
+references, digests and request/source/output bindings are validated. Legacy
+bundles without profiles remain readable. View-layer Cycles groups cannot create
+their own RNA path in Blender 5.0.1; the implementation uses the view-layer prefix
+plus the Cycles property suffix. The initial failed run caught this native API
+constraint; corrected runs pass the coverage workflow as well.
+
+Twelve focused checks pass in 88.91 seconds, including Python-disabled MCP
+configuration, saved native settings readback, partial-write rollback, keyed-seed
+refusal, a guarded two-frame mixed PNG/EXR render, unchanged editing settings,
+invalid window/stale guard refusal, render-job file checks, and the existing live
+editing/cancellation/broker-restart camera-batch workflows. A static 32-square
+scene rendered at 8 worker samples has exact scene-linear RGBA agreement across
+two frames under fixed seed/AUTOMATIC/no adaptive/denoise; the source retains its
+64 master samples while the effective worker records CPU/two threads/eight samples.
+A tampered profile with a freshly computed digest and updated references still
+refuses the guarded job binding. An earlier overlapping 9-check run also covers
+existing projected-coverage capture with new sampling witnesses (53.42 seconds).
+Six schema/policy/discovery/add-on checks pass in 5.80 seconds, with the existing
+Starlette deprecation warning. These are focused checks, not a full regression,
+actual-ray-count measurement, cross-hardware reproducibility claim or the still
+outstanding combined canopy world/front/rear qualification.

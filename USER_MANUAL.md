@@ -1041,6 +1041,56 @@ shared shader resources and archive. Creation rolls back newly owned IDs on
 cooperative failure or cancellation; long operations report progress and available
 storage before checkpoint allocation.
 
+### Explicit Cycles sampling and render witnesses
+
+Use `inspect_render_sampling` to read the current Cycles master samples, sampler,
+seed and animated-seed flag, adaptive/denoising settings, layer sample policy,
+pixel filter, sample subset, time limit and bounce limits. It returns native
+choices, layer sample/denoise overrides, keyed/driven paths, execution context
+and `sampling_sha256`. `sample_windows` reports nominal ceilings for enabled
+layers under USE, BOUNDED or IGNORE layer-sample policy. Adaptive sampling and
+time limits can stop earlier; these are not measured ray counts.
+
+Pass that guard as `expected_sampling` to `configure_render_sampling`, with a
+`settings` patch. For fixed comparisons, explicitly choose AUTOMATIC, seed zero,
+`use_animated_seed: false`, `use_adaptive_sampling: false`,
+`use_denoising: false`, BLACKMAN_HARRIS at width 1.5, and
+`use_sample_subset: false`. Use `use_layer_samples: IGNORE` when the job's master
+sample count should apply without layer overrides. The recorded canopy profile
+uses master samples 256, maximum/diffuse/glossy/transmission/volume bounces
+12/4/4/12/0, transparent maximum 8, and time limit zero. Independent job threads
+remain explicit (two for the qualification profile).
+
+The configure tool validates native enums/ranges and nonempty enabled subset
+windows before mutation. Targeted keyed/driven fields refuse; cooperative
+cancellation or failure restores all patched fields. Returned RNA values are
+authoritative. This changes stored Cycles settings even if another engine is
+active. Device and thread settings are reported here; independent camera jobs
+select CPU and their requested thread count. The tool does not edit hardware
+preferences or provide a complete integrator surface.
+
+A subset only takes effect with `use_sample_subset: true`. Offset is zero-based;
+length is clamped to the remaining master samples. To exclude a selecting centre
+sample while retaining N effective samples, use master N+1, offset one and length
+N. Master counts and layer policy matter: a batch override that leaves an enabled
+layer with an empty window refuses before creating its output directory.
+
+`render_camera_batch` still requires the compositor/color `expected_settings`
+guard from `inspect_render_pipeline`. Supply optional `expected_sampling` from
+`inspect_render_sampling` as well to pin static Cycles sampling settings. Both the
+current scene and requested engine must be CYCLES; keyed/driven sampling or layer
+sampling paths refuse this guarded mode. The worker's CPU, thread and master
+sample overrides are included in the expected effective profile. The editing
+scene's settings remain unchanged. Unguarded legacy calls remain supported.
+
+New render manifests keep deduplicated `sampling_profiles`, keyed by profile
+hash; each output's `sampling_sha256` refers to its pre-render settings witness.
+Validation checks registry digests/references and, for guarded jobs, the original
+request/source/effective-output binding. Rehashing a changed output profile does
+not make it match the guarded request. Old bundles without these witnesses remain
+readable. These records cover the exposed sampling subset, not all integrator
+properties, geometry, lighting, shaders, hardware availability or bit-exact output.
+
 ### Switching botanical representations without Python
 
 `inspect_botanical_display` takes `targets`, a list of up to 16 distinct

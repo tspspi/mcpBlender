@@ -20,6 +20,7 @@ def test_workflow_inventory_does_not_claim_unregistered_commands():
     assert "capture_botanical_projected_coverage" in support["botanical_reference_capture"]["structured_commands"]
     assert "create_botanical_subset" in support["botanical_native_subsets"]["structured_commands"]
     assert "configure_botanical_display" in support["botanical_display"]["structured_commands"]
+    assert "configure_render_sampling" in support["render_sampling"]["structured_commands"]
     assert support["shader_nodes"]["support"] == "structured_partial"
     assert support["geometry_nodes"]["support"] == "structured_partial"
     assert support["physics"]["support"] == "structured_partial"

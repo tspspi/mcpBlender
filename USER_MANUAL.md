@@ -1226,6 +1226,30 @@ Qualify the assembled depth/complement pair under the intended lighting, views,
 scales and motion. Reducing shared templates does not itself meet a whole-tree
 far-LOD budget or preserve original first-hit leaf identities at every pixel.
 
+### Checking a depth/complement pair from several cameras
+
+Use structured tools to check a pair beyond its captured direction:
+
+1. Confirm matching capture, source snapshot, view, ID grid and placement for the
+   depth primary and native complement. Keep their roots fixed during this check.
+2. Create named inspection cameras with `configure_camera`. Explicit location
+   and target or Euler rotation control the viewpoint; `active: false` preserves
+   the active camera. Keep clipping and framing suitable for the whole source.
+3. For each lighting setup, use guarded `configure_botanical_display` changes to
+   render the original source alone and then the primary/complement pair alone.
+   Pass the same camera list to both `render_camera_batch` calls. Keep lights
+   fixed in world space while moving cameras, and pin the same render/sampling
+   settings for both jobs.
+4. Use each job's camera/output associations to compare matching images with
+   `compare_exr_images`. Check every camera and lighting case at the intended
+   image scales, including alpha, RGB and relative brightness. Restore source
+   display and inspect owned assets after the comparison.
+
+A passed set of discrete camera positions establishes observations for that
+asset and setup. It does not establish a continuous viewing cone, perspective
+coverage, view blending, motion support or a far-LOD budget. The focused
+qualification and its limits are recorded in VALIDATION.md.
+
 ### Projected leaf coverage data
 
 Use `inspect_botanical_projected_coverage` with `reference_directory`, `view`

@@ -7215,3 +7215,64 @@ and does not qualify independent angular views, view blending, shadows outside
 the tested setup, wind, populations or the mature-oak reference. No material/color,
 lighting, sample-profile or optical threshold fitting was used. Ownership validity
 continues to be separate from optical qualification.
+
+
+### Discrete off-axis depth/native qualification
+
+A private read-only native sweep of the retained reduced assembly covers the
+anchor and four 5-degree orbits: positive/negative yaw about source up and
+positive/negative pitch about source right. The orbit center comes from the
+captured source bounds. Camera clipping encloses the source box at every pose.
+World, front SUN and rear SUN stay fixed in world space while only the camera
+moves. Geometry, materials, leaf count, sampler and quality policies are unchanged.
+
+All 30 native/candidate renders and 15 pose/light comparisons complete. The six
+fresh anchor renders reproduce their retained public counterparts exactly in
+scene-linear RGBA. All discrete offset cases pass the original scales 1/2/4
+alpha/RGB policies, 0.05 overlap RGB RMSE and 10% absolute relative shared
+luminance bias. Across the four nonzero offsets, scale-one brightness bias ranges
+from -3.508578% to -0.985709%, alpha MAE from 0.00435411 to 0.00448197, and overlap
+RGB RMSE is at most 0.00596149. These ranges describe this fixture, not acceptance
+thresholds chosen from the observations.
+
+Independent readback recomputes every comparison from the 30 hash-checked EXRs,
+checks the sampler and layer settings against the prior guarded job profiles,
+validates the six anchor bundles, and verifies declared camera angles and source
+box clipping. Runtime finally checks preserve the original source guard, primary
+content guard and subset validity; the input archive SHA256 remains unchanged.
+The independent file verifier checks those runtime witnesses but does not itself
+observe the departed live process. Ignored evidence is retained under
+`tmp/qualification/angular-reduced-20261106/`.
+
+These are five discrete orthographic positions at one source density, one frame
+and three fixed lighting configurations. They do not establish a continuous
+viewing cone, perspective behavior, view blending, wind, population performance,
+far-budget compliance or the mature-oak reference.
+
+The public MCP version also passes: one opt-in workflow in 1148.59 seconds,
+with `MCPBLENDER_ASSEMBLY_ANGULAR=1` and shared-template budget 32. It constructs
+both assets, configures all five cameras, switches display, sets fixed lighting,
+renders and compares through structured tools with arbitrary Python disabled.
+The read-only factory-scene helper supplies numeric camera recipes; it does not
+open or edit the source model. Actual configured camera matrices match those
+recipes exactly, with separate checks for 5-degree separation and preserved
+orbit radius. Six guarded camera batches contain 30 correctly associated outputs;
+all 15 named pose/light comparisons and all three image scales are required.
+
+All public comparisons pass unchanged policies. The three frozen native anchor
+controls have exactly zero RGBA error. Independent post-cleanup readback validates
+all six copied bundles, recomputes all 15 comparisons, and checks all 30 outputs
+against the private sweep: every image has exactly zero scene-linear RGBA error.
+Source-only display is restored, owned assets remain valid/source-fresh, and the
+original source archive SHA256 is unchanged. All test processes and temporary
+fixture directories have been removed. A saved assembly, reports, six bundles,
+private-control comparisons and a hash index are retained locally under the
+ignored `tmp/qualification/structured-angular-assembly-20261106/` directory.
+
+To repeat the public check, use the existing assembly test's retained source,
+reference, coverage and frozen-control inputs, set
+`MCPBLENDER_ASSEMBLY_TEMPLATE_BUDGET=32` and `MCPBLENDER_ASSEMBLY_ANGULAR=1`, and run
+`tests/test_structured_canopy_assembly.py` with Blender integration tests enabled.
+The test changes no asset optical-certification flag. Wider angles, independently
+shifted grids, perspective, view blending and the full far/wind/population/
+mature-reference requirements remain open.

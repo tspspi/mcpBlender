@@ -1,5 +1,47 @@
 # Local validation: 0.2.0
 
+## Complete native point subsets at full density — 2026-11-06
+
+A subsequent observed-leaf control exposed a reproducible creation refusal in the
+earlier full-point selection path: the copied mesh contained 35,514 selected IDs,
+but Geometry Nodes evaluated only 35,368 instances. Every reported instance had
+the expected prototype and exact pose; the strict verifier correctly rejected the
+146 missing IDs. Explicit mesh/dependency updates, an integer selector and deleting
+unselected geometry inside the graph did not resolve this fixture. This evidence
+does not establish a general Blender defect or a root cause.
+
+New snapshots compact the copied point mesh to selected rows before instancing,
+retaining original semantic IDs and all copied point attributes. The node uses
+constant selection on that compact geometry. Plans pin COMPACT_SOURCE_IDS_V1;
+inspection verifies point count, original index/ID equality, uniqueness, range,
+selected-ID digest and membership. Existing full-point snapshots remain readable.
+The native selected-ID, prototype and exact-world-pose verifier is unchanged.
+
+Two Python-disabled MCP workflows and contracts passed **4 tests in 461.15s**.
+The full-density regression creates the 35,514 observed and 53,190 complementary
+instances, saves/reopens, deletes capture inputs, inspects/removes both assets and
+preserves the original source. A separate saved-project Blender probe checks the
+actual evaluated instance sets and exact world matrices against all 88,704 source
+instances, not only stored point attributes. The small workflow also checks empty
+point selections, native saved poses, modifier/shared-material/foreign-user refusal
+and publication cancellation with exact native-ID inventory restoration. This fixes
+construction completeness; it does not establish optical equivalence. A retained
+negative control using the previous implementation reproduces 35,368/35,514
+instances, confirms rejection and verifies exact restoration of the native-ID
+inventory and original source guard after rollback.
+
+An isolated follow-up uses the corrected observed subset and a private shader
+mask derived from captured component IDs, positions and true-normal planes. Its
+camera diagnostic matches all 54,882 captured leaf witnesses with zero ID/plane
+lookup failures. That result is insufficient for optical acceptance: retaining
+unmatched native portions yields brightness errors of −27.30% under world light,
+−28.75% under front sun and −25.91% under rear sun, failing all existing 10% gates.
+All three frozen native controls match; original source/owned guards are restored
+and private resources removed. This plane-based mask remains experimental and is
+not exposed as a workflow option. It does not prove which retained portions are
+hidden from the camera; nonplanar fragments inside one captured pixel remain an
+open diagnostic.
+
 ## Full-density typed native/depth assembly — 2026-11-06
 
 The opt-in Python-disabled MCP workflow passed **1 test in 392.30s** using the

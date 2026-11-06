@@ -7,6 +7,7 @@ from . import botanical_capture as capture,botanical_foliage as foliage,botanica
 
 META='mcpblender_botanical_subset';OWNER='mcpblender_botanical_subset_owner'
 FORMAT='mcpblender-native-leaf-subset-v1';KEEP='mcp_subset_keep'
+POINT_STORAGE='COMPACT_SOURCE_IDS_V1'
 TABLES={'Collection':'collections','Object':'objects','Mesh':'meshes','GeometryNodeTree':'node_groups'}
 COMMANDS={'inspect_botanical_subset_source','create_botanical_subset','inspect_botanical_subset','remove_botanical_subset'}
 
@@ -70,13 +71,43 @@ def plan(p):
              'source_root_matrix_world':meta['source_root_matrix_world'],'source_components_sha256':contract['components_sha256'],
              'settings':{k:p[k] for k in ('views','selection','include_structure','render_role','alpha_threshold','max_total_pixels')},
              'source_leaf_count':len(indices),'observed_leaf_count':len(observed),'observed_indices_sha256':botany.digest(sorted(observed)),
-             'selected_leaf_count':len(selected),'selected_indices_sha256':botany.digest(selected),'selected_index_preview':selected[:16],
+             'point_storage':POINT_STORAGE,'selected_leaf_count':len(selected),'selected_indices_sha256':botany.digest(selected),'selected_index_preview':selected[:16],
              'views':reports,'ray_visibility':flags,'materials':sorted(m.name for m in mats),'material_dependencies_sha256':materials_state(mats),
              'scope':'Static native first-hit leaf subset with semantic IDs and unchanged template geometry/poses. Observations are view/sample dependent, not full visibility. Shared guarded materials; new instancer object-dependent random values may differ. Source geometry/visibility unchanged; no automatic complementary visibility, template reduction, wind or optical equivalence.'}
     if structure_role is not None:
         summary['settings']['structure_render_role']=structure_role
         summary['structure_ray_visibility']={k:k in depth_assets.RAY_ROLES[structure_role] for k in depth_assets.RAY_FLAGS}
     return values,roles,selected,summary|{'plan_sha256':botany.digest(summary)}
+
+
+def compact_points(mesh,chosen):
+    """Keep selected source rows and all their semantic/wind attributes."""
+    import bmesh
+    from .bridge import check_cancelled,report_progress
+    check_cancelled();report_progress({'phase':'compacting native subset points','source_points':len(mesh.vertices),'selected_points':len(chosen)})
+    indices=[v.value for v in mesh.attributes['leaf_index'].data]
+    bm=bmesh.new()
+    try:
+        bm.from_mesh(mesh);bm.verts.ensure_lookup_table();remove=[]
+        for i,vertex in enumerate(bm.verts):
+            if i%8192==0:check_cancelled()
+            if indices[vertex.index] not in chosen:remove.append(vertex)
+        bmesh.ops.delete(bm,geom=remove,context='VERTS');bm.to_mesh(mesh)
+    finally:bm.free()
+    mesh.update();check_cancelled()
+
+
+def verify_compact_points(mesh,plan):
+    if plan.get('point_storage')!=POINT_STORAGE:raise ValueError('Unsupported subset point storage recipe')
+    count=plan['selected_leaf_count'];source_count=plan['source_leaf_count']
+    if type(count) is not int or type(source_count) is not int or not 0<=count<=source_count<=250000 or len(mesh.vertices)!=count:raise ValueError('Subset compact point count changed')
+    def values(name,kind):
+        attr=mesh.attributes.get(name)
+        if attr is None or attr.domain!='POINT' or attr.data_type!=kind or len(attr.data)!=count:raise ValueError('Subset compact attribute changed: '+name)
+        return [v.value for v in attr.data]
+    indices=values('leaf_index','INT')
+    if values('id','INT')!=indices or len(set(indices))!=count or any(not 0<=v<source_count for v in indices) or botany.digest(sorted(indices))!=plan['selected_indices_sha256']:raise ValueError('Subset compact semantic IDs changed')
+    if not all(values(KEEP,'BOOLEAN')):raise ValueError('Subset compact point membership changed')
 
 
 def content(owned,root):
@@ -123,6 +154,7 @@ def inspect(p):
     try:
         if root.parent or root.type!='EMPTY' or col not in bpy.context.scene.collection.children.values() or bpy.context.scene.unit_settings.scale_length!=planned['source_unit_scale']:raise ValueError('Subset placement/units changed')
         capture_data.pose([list(r) for r in root.matrix_basis])
+        if 'point_storage' in planned:verify_compact_points(population.data,planned)
         current=content(owned,root)
         if current!=meta['content_sha256']:issues.append('Subset native content changed')
         mats=[bpy.data.materials.get(name) for name in planned['materials']]
@@ -167,8 +199,11 @@ def create(p):
         if population.data.attributes.get('id'):population.data.attributes.remove(population.data.attributes['id'])
         trees.attribute(population.data,'id','INT',indices)
         chosen=set(selected);trees.attribute(population.data,KEEP,'BOOLEAN',[v in chosen for v in indices])
-        field=group.nodes.new('GeometryNodeInputNamedAttribute');field.data_type='BOOLEAN';field.inputs['Name'].default_value=KEEP
-        instance=next(n for n in group.nodes if n.bl_idname=='GeometryNodeInstanceOnPoints');group.links.new(field.outputs['Attribute'],instance.inputs['Selection'])
+        compact_points(population.data,chosen)
+        verify_compact_points(population.data,planned)
+        instance=next(n for n in group.nodes if n.bl_idname=='GeometryNodeInstanceOnPoints')
+        for link in list(instance.inputs['Selection'].links):group.links.remove(link)
+        instance.inputs['Selection'].default_value=True
         objects=[population]
         if p['include_structure']:
             for i,source in enumerate([*values[2],roles['so']]):

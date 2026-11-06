@@ -1008,8 +1008,11 @@ without that guard require the original live source session or recapture.
 Pass the same inputs, a new `subset_collection` and the returned `plan_sha256`
 as `expected_plan` to `create_botanical_subset`. The hidden snapshot has private
 point data, a selection graph and shared private copies of the leaf templates.
-It keeps the full point inventory and selects instances without dense renumbering:
-`id` equals semantic `leaf_index`. Creation checks the exact selected native persistent
+It compacts the copied point mesh to the selected source rows, retaining their
+attributes without semantic renumbering: `id` equals original `leaf_index`. The
+versioned point-storage recipe and selected-ID digest are pinned in the plan;
+inspection verifies the saved compact inventory. Existing snapshots using the
+earlier full-point mask remain readable. Creation checks the exact selected native persistent
 IDs, prototype mapping and world transforms against the source, with cancellation
 and progress during two scene scans bounded to four million instances each. It leaves
 source geometry and visibility unchanged. `include_structure: true` (default)

@@ -1041,6 +1041,26 @@ shared shader resources and archive. Creation rolls back newly owned IDs on
 cooperative failure or cancellation; long operations report progress and available
 storage before checkpoint allocation.
 
+### Qualified static depth/native assembly
+
+A full-density FRONT-view fixture now exercises the complete structured path:
+create leaf-only adaptive geometric-normal depth patches using measured projected
+coverage, create an ALL_RAYS component-column complement, bind identical capture/
+source-snapshot/view/ID-grid provenance, then switch collection display through
+MCP. Explicit camera clips/pose, white world or SUN lighting, film transparency,
+sampler settings and guarded independent renders avoid Python scene edits.
+The test-only numeric pose helper reproduces the historical reference recipe;
+it does not construct or modify the source model.
+
+For the retained 88,704-leaf source, the primary has 109,764 triangles. At the
+matched 128-square view and 256 CPU samples, the assembled pair passes the
+existing alpha/RGB/brightness policies at scales 1, 2 and 4 under world,
+front-SUN and rear-SUN lighting. All native controls match their frozen references
+exactly. This qualifies that static view/configuration; the native complement
+still retains the original templates and roughly 17 million expanded triangles.
+It does not establish far-performance, view blending, arbitrary placement/angles,
+wind, population, mature-tree reference or general optical equivalence.
+
 ### Exact camera clipping and SUN size
 
 `configure_camera` accepts optional `clip_start` and `clip_end` in scene units.

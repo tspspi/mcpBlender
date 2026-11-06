@@ -7089,3 +7089,48 @@ non-SUN angles, Python-disabled configuration/readback, an invalid partial clip
 update preserving the camera pose, refusal before creating a new invalid camera,
 and independent saved Blender readback of clipping/projection/scale and zero-angle
 SUN energy. This qualifies the controls, not a rendered shadow or optical gate.
+
+
+### Full-density structured depth/native optical assembly
+
+The complete public MCP workflow passes in 573.15 seconds with arbitrary Python
+execution disabled. It creates a measured-coverage leaf depth primary (109,764
+triangles, geometric-normal planes, tile one, maximum slope 64) and native
+component-column complement (all 88,704 source leaves), verifies matching capture/
+snapshot/view/grid provenance, hides factory Cube/Light, and configures camera,
+SUN, world, film, sampling and display through structured tools. A read-only test
+helper derives numeric historical pose inputs; the configured camera matrix
+matches the historical evaluated matrix exactly. No source model is modified.
+
+Six guarded independent render bundles cover native/candidate pairs under world
+white strength 0.5 and zero-background front/rear SUN energy 2, angle zero.
+Frames are 128-square, 256 samples, CPU/two threads, AUTOMATIC seed zero, no
+adaptive sampling or denoising, BLACKMAN_HARRIS width 1.5 and the recorded bounce
+caps. Each copied bundle independently validates source/output hashes, headers
+and sampling request/source/output bindings. The original source archive's SHA256
+is unchanged. Source-only display is restored and owned assets remain valid.
+
+All three frozen native controls have exactly zero scene-linear RGBA error.
+Candidate policies remain unchanged: scales 1/2/4, default silhouette/soft-alpha/
+alpha-MAE/premultiplied-RGB gates, overlap RGB RMSE at most 0.05 and absolute
+relative shared luminance bias at most 10%. Every light/scale passes.
+
+| Lighting | Shared luminance bias, scale 1 | Overlap RGB RMSE, scale 1 |
+| --- | ---: | ---: |
+| World | -0.588815% | 0.00562419 |
+| Front SUN | -5.612799% | 0.00362527 |
+| Rear SUN | +0.250454% | 0.00108041 |
+
+Alpha MAE is 0.00414990 at scale 1, 0.00246825 at scale 2 and 0.00152316 at scale
+4 in all three cases. Aggregate assertions require all six named jobs and all
+three named lighting comparisons, rather than accepting an empty or partial set.
+Two add-on/discovery checks pass in 5.94 seconds (existing Starlette warning).
+
+Ignored retained evidence is under `tmp/qualification/structured-assembly-20261106/`:
+proof, six independently verified bundles, assembled saved project and a hash
+index. Temporary fixture cleanup completed. This establishes one static FRONT
+assembly at original source density, not a production far LOD: the complement
+still retains roughly 17 million expanded native leaf triangles. Shared-template
+reduction, independent angular/offset views, wind, population, mature-oak/reference
+and the remaining original workflow ledger still need qualification. No threshold,
+material-color or light-energy fitting was used to pass the policies.

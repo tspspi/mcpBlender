@@ -1274,6 +1274,13 @@ surface-error policy or qualify optical equivalence, all-view sampling, wind,
 far-LOD budgets, population performance or downstream renderer behavior. Verify
 the complete assembly with the same lighting/camera/scale policies before use.
 
+The full-density public workflow has passed the original three-light,
+scale-1/2/4 optical comparisons for one static FRONT assembly with all 88,704
+leaves. Its 14-triangle templates total 1,241,856 expanded leaf triangles,
+plus the depth primary and structural geometry. This is a bounded qualification;
+other views, wind/motion, populations and a complete far budget remain separate.
+See VALIDATION.md for the source, sampling, control and independent readback scope.
+
 ### Checking a depth/complement pair from several cameras
 
 Use structured tools to check a pair beyond its captured direction:

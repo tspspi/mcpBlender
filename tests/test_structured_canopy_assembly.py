@@ -1,4 +1,4 @@
-"""Public MCP assembly, optional shared-template reduction, frozen optical policies."""
+"""Public MCP assembly, optional shared-template reduction/cards, frozen optical policies."""
 import asyncio,json,os,shutil,subprocess,hashlib,math
 from pathlib import Path
 import pytest
@@ -14,6 +14,8 @@ pytestmark=pytestmark+[pytest.mark.skipif(not all((source,reference,coverage,fro
 def test_structured_full_density_pair_under_all_three_frozen_lights(assets_live):
     root,path=assets_live;library=root/'library';library.mkdir(exist_ok=True)
     angular=os.environ.get('MCPBLENDER_ASSEMBLY_ANGULAR')=='1'
+    blade_cards=os.environ.get('MCPBLENDER_ASSEMBLY_BLADE_CARDS')=='1'
+    assert not (blade_cards and os.environ.get('MCPBLENDER_ASSEMBLY_TEMPLATE_BUDGET')),'Choose blade cards or protected collapse'
     shutil.copy2(source,library/'source.blend');shutil.copytree(reference,library/'reference');shutil.copytree(coverage,library/'coverage');shutil.copytree(frozen,library/'frozen')
     source_hash=hashlib.sha256(Path(source).read_bytes()).hexdigest()
     out=Path(os.environ['MCPBLENDER_ASSEMBLY_EVIDENCE']) if os.environ.get('MCPBLENDER_ASSEMBLY_EVIDENCE') else None
@@ -33,12 +35,28 @@ def test_structured_full_density_pair_under_all_three_frozen_lights(assets_live)
             assert 'execute_code' not in {t.name for t in await client.list_tools()}
             await client.call_tool('open_blend',{'path':'source.blend'})
             initial=await wait(client,'inspect_botanical_tree',collection='Canopy3');assert initial['valid']
+            preparation=None;blade_entries=[]
+            if blade_cards:
+                args={'collection':'Canopy3','blade_cards':{},'texture_width':256,'texture_height':512,'margin':.02}
+                planned=await wait(client,'inspect_vegetation_bake_source',**args)
+                preparation=await wait(client,'prepare_vegetation_bake',**args,bake_collection='QualifiedBladePreparation',expected_plan=planned['plan_sha256'])
+                assert preparation['valid'] and set(preparation['components'])=={'leaf-0','leaf-1','leaf-2'}
+                proof['blade_preparation']=preparation;proof['blade_bakes']={};checkpoint()
+                for role,row in preparation['components'].items():
+                    directory='blades/'+role
+                    result=await wait(client,'bake_textures',**(row['bake_parameters']|{'directory':directory,'samples':4,'margin':8,'threads':2}))
+                    assert result['live_scene_unchanged']
+                    assert (await wait(client,'inspect_vegetation_bake',bake_collection='QualifiedBladePreparation'))['preparation_sha256']==preparation['preparation_sha256']
+                    proof['blade_bakes'][role]=result;blade_entries.append({'asset':role,'directory':directory})
+                    if out:shutil.copytree(library/directory,out/'blades'/role)
+                    checkpoint()
             d={'directory':'reference','view':'FRONT','component_filter':'LEAVES','projected_coverage_directory':'coverage','settings':{'geometry_mode':'ADAPTIVE_NORMAL','plane_normal_source':'GEOMETRIC_AOV','tile_pixels':1,'max_slope':64.,'max_triangles':131072}}
             plan=await wait(client,'inspect_botanical_depth_source',**d)
             depth=await wait(client,'create_botanical_depth_asset',**d,collection='QualifiedPrimary',expected_plan=plan['plan_sha256'],accept_approximate_optics=True)
             n={'directory':'reference','views':['FRONT'],'selection':'COLUMN_COMPLEMENT','render_role':'ALL_RAYS'}
             if budget:=os.environ.get('MCPBLENDER_ASSEMBLY_TEMPLATE_BUDGET'):
                 n['template_reduction']={'triangle_budget':int(budget),'max_relative_error':.02,'max_area_relative_error':.02,'error_samples':4096}
+            if blade_cards:n['blade_cards']={'bake_collection':'QualifiedBladePreparation','expected_preparation':preparation['preparation_sha256'],'entries':blade_entries}
             native_plan=await wait(client,'inspect_botanical_subset_source',**n)
             native=await wait(client,'create_botanical_subset',**n,subset_collection='QualifiedComplement',expected_plan=native_plan['plan_sha256'])
             assert native['selected_leaf_count']==88704 and depth['triangles']==109764
@@ -51,6 +69,16 @@ def test_structured_full_density_pair_under_all_three_frozen_lights(assets_live)
                 assert reduction['selected_instances']==88704 and reduction['expanded_source_leaf_triangles']==17385984
                 assert reduction['expanded_reduced_leaf_triangles']<=88704*int(budget)
                 proof['scope']='Structured public MCP shared-template reduction under all three frozen lights and unchanged policies. One static FRONT view; no angular, wind, population, mature-reference or far-performance acceptance.'
+            if blade_cards:
+                cards=native_plan['blade_cards']
+                assert cards['expanded_source_leaf_triangles']==17385984 and cards['expanded_card_leaf_triangles']==1241856
+                assert [r['triangles'] for r in cards['variants']]==[14,14,14]
+                assert sum(r['instances'] for r in cards['variants'])==88704
+                await wait(client,'remove_vegetation_bake',bake_collection='QualifiedBladePreparation',expected_preparation=preparation['preparation_sha256'])
+                shutil.rmtree(library/'blades')
+                assert (await wait(client,'inspect_botanical_subset',subset_collection='QualifiedComplement'))['valid']
+                proof['blade_preparation_removed']=True;proof['blade_input_files_removed']=True
+                proof['scope']='Structured public MCP native blade-card preparation/baking/adoption under all three frozen lights and unchanged policies. All 88704 IDs/poses retained. One static FRONT view; no angular, wind, population, mature-reference or far-budget acceptance.'
             checkpoint()
             # Match the isolated reference: factory geometry and lights must not
             # contaminate the native scene. Managed source object flags stay put.
@@ -76,7 +104,7 @@ def test_structured_full_density_pair_under_all_three_frozen_lights(assets_live)
                     actual=await wait(client,'configure_camera',name=name,location=recipe['location'],rotation_euler=recipe['rotation_euler'],projection='ORTHO',ortho_scale=view['ortho_scale'],clip_start=view['clip_start'],clip_end=view['clip_end'],active=False)
                     assert actual['matrix_world']==recipe['matrix_world']
                     camera_cases.append((label,name))
-                proof['scope']='Structured public MCP qualification at the anchor and four discrete +/-5 degree yaw/pitch offsets. Fixed world-space lights, unchanged source density and optical gates; not a continuous angular cone, view blend, wind, population, mature reference or far-performance certificate.'
+                proof['scope']='Structured public MCP qualification at the anchor and four discrete +/-5 degree yaw/pitch offsets. Fixed world-space lights, unchanged source density and optical gates (representation pinned in subset_plan); not a continuous angular cone, view blend, wind, population, mature reference or far-performance certificate.'
             proof['camera_cases']=camera_cases;checkpoint()
             await wait(client,'configure_light',name='QualifiedSun',type='SUN',energy=2.,angle=0.,rotation_euler=pose['sun_front'])
             await wait(client,'configure_render',engine='CYCLES')

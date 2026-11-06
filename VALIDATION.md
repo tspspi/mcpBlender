@@ -7433,3 +7433,45 @@ continuous view coverage, motion, a whole-tree far budget or population performa
 The final all-selection run passed 6 tests in 72.90s: both constant/procedural
 workflows additionally create and remove OBSERVED and UNOBSERVED card subsets,
 as well as persisting COLUMN_COMPLEMENT, and contracts reject directory aliases.
+
+## Full-density public native-card optical assembly — 2026-11-06
+
+The opt-in `MCPBLENDER_ASSEMBLY_BLADE_CARDS=1` path in
+`test_structured_canopy_assembly.py` passed **1 test in 712.17s**. With Python
+execution disabled, it prepares all three managed procedural leaf variants,
+performs actual 256x512 NORMAL/ALPHA projected bakes at four samples/two threads,
+creates the source-bound native card COLUMN_COMPLEMENT and the same measured
+109,764-triangle depth primary, then removes the preparation and live bake inputs.
+Every source leaf remains: 88,704 IDs/poses and 1,241,856 expanded card/petiole
+triangles, down from 17,385,984 original expanded leaf triangles. Structural
+geometry and the primary are additional; this remains above the far budget.
+
+All three frozen world/front-SUN/rear-SUN comparisons pass the unchanged
+scale-1/2/4 alpha/RGB policies, .05 overlap RGB RMSE and .10 absolute relative
+luminance-bias limits. Scale-1 overlap luminance biases are approximately
+**-1.0348%, -6.6146%, +0.4156%**, respectively. Fresh native controls pass against
+the exact frozen reference files. The fixed source/effective Cycles profile uses
+256 samples, CPU/two threads, seed zero, no adaptive sampling or denoising and the
+same filter/bounce settings. Camera, clipping and lighting were not fitted to the
+new images. The workflow restores source-only display and verifies source and
+owned asset validity; the original source archive remains unchanged.
+
+Independent retained-file verification checks all six successful render bundles,
+hashes, source/effective sampling settings/layers, dimensions/frame/camera/format,
+recomputes all three image comparisons, and compares fresh native images against
+the previous public native controls. An independent saved-project Blender process
+checks all 88,704 runtime instance identities/prototype mappings/world matrices
+against the original source, all three 14-triangle templates and exact protected
+petiole/original-UV signatures, pinned texture space, private packed data hashes,
+normal/UV shader links, primary/subset validity and removed preparation. The saved
+camera matrix matches exactly; camera scalar inputs match their native float32
+representations exactly. The verifier initially compared a double-precision
+recipe span directly to Blender's float32 storage; correcting that type comparison
+changed no scene data, render settings, image policy or error tolerance.
+
+A fixed linear-to-sRGB preview over a dark background was visually reviewed for
+all three native/card pairs. Display conversion is separate from the original
+scene-linear EXR measurements. This qualifies one dense fixture, one static
+FRONT camera and three lights. It does not establish continuous angular coverage,
+view blending, animation/wind, populations, a mature-oak acceptance fixture,
+downstream renderer behavior or a whole-tree far-LOD budget.

@@ -5720,8 +5720,9 @@ into these bundles remain separate work.
 The optional `blade_cards={}` mode prepares normal-aligned rectangular blade
 bake targets instead of unchanged-geometry copies. It accepts static,
 identity-placed shared `leaf-N` templates with the constant managed thin-leaf
-shader and disconnected blade/petiole vertices. Omit `assets` to select all leaf
-templates; wood/shoot roles, custom or textured leaf graphs, custom normals,
+shader or unchanged managed OAK_LEAF procedural detail, and disconnected
+blade/petiole vertices. Omit `assets` to select all leaf
+templates; wood/shoot roles, custom or image-textured leaf graphs, custom normals,
 EXISTING UVs and chart allocation refuse. Optional settings are `padding`
 (default .02, range 0–.25), `standoff_m` (default .0001, positive through .01),
 and sampled fitting `resolution` (default 128, integer 32–256). Texture dimensions,
@@ -5741,7 +5742,18 @@ This mode fits the uninstanced template frame, not placed canopy density. Metre
 measurements describe that independent frame under the current scene unit scale;
 they do not include the tree root's instance scaling. The source witness retains
 the native thin shader, but the baker's FRONT_PBR asset is a neutral data output:
-it does not restore native colors, translucency or back-side optics. Applying
+it does not restore native colors, translucency or back-side optics. Managed procedural components also return `source_uv_lookup`: a private packed
+float EXR data image, source/target UV names, pixel/packed/coverage hashes and
+projection/padding semantics. The field interpolates original source-loop UVs at
+first geometric ray hits from the backing rectangle; uncovered texels receive
+nearest four-neighbour padding for later linear sampling. It uses the declared
+texture dimensions and actual inset target UV rectangle. The image is retained
+by an unused data node in the private target material, participating in existing
+ownership/content guards and save/reopen. It is not automatically applied to the
+neutral baked PBR asset. Native adaptation must explicitly bind it to the original
+procedural UV consumers, retain native two-sided/thin optics, and requalify the
+result. Finite-resolution interpolation is approximate, especially at boundaries,
+overlapping surfaces and discontinuities. Applying
 these maps to native reduced leaves is a separate workflow. Existing unchanged-
 geometry LOD material adoption and preparation material refresh refuse this mode.
 Preparation/baking alone provides no far-LOD, optical, animation or wind acceptance.

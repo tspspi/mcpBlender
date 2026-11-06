@@ -7347,3 +7347,47 @@ and preparation guard, cleanup and independent saved-asset bundle validation.
 The existing procedural leaf/bark preparation-to-bake regression also passes.
 These small static fixtures do not establish dense-canopy appearance, view-domain,
 wind, animation, population, mature-oak or runtime performance acceptance.
+
+## Procedural blade source-UV correspondence — 2026-11-06
+
+Blade-card preparation now also admits unchanged managed OAK_LEAF detail. It
+checks the managed graph witness, original native side-color source/geometric
+normal inputs, exact remaining native core links and the source UV channel.
+Unknown graph extensions and changed managed detail refuse. Private high meshes
+retain their original UVs for existing NORMAL/ALPHA baking. A separate owned float
+source-UV lookup samples first geometric hits from the fitted backing rectangle,
+interpolates source-loop UVs and records coverage/pixel/packed hashes. Padding uses
+four-neighbour nearest propagation and is not counted as measured coverage. The
+unused lookup data node keeps the packed image alive without changing the neutral
+target's rendered output; native material adoption remains separate.
+
+An independent private dense-canopy study first exposed source sampling loss in
+the earlier 14-triangle prototype: a rectangular LeafUV map differed from the
+original curved source UVs at triangle centres by up to about .2653. Aggregate
+optical gates alone had not revealed this loss. A 256x512 float source-UV lookup
+reduced the maximum sampled error below 0.000002 across all 184 blade-triangle
+centres in each of three variants, verified again from the reopened packed file.
+These are finite samples, not a bound over all pixels or continuous surfaces.
+
+With this correction, all three original frozen lights pass the unchanged
+scale-1/2/4 optical policies. Scale-1 overlap luminance biases are approximately
+-1.0870% (world), -6.6142% (front SUN) and +0.4653% (rear SUN). All three reduced
+32-triangle controls pass against their retained references. All six EXR hashes
+and complete comparisons were independently recomputed. Source, native subset,
+primary asset and input archives remain unchanged. This remains a PRIVATE static
+single-view diagnostic: no public 14-triangle adoption, far-budget, continuous
+view-domain, motion, population or mature-oak acceptance follows from it.
+
+Focused native lifecycle coverage includes constant/procedural sources at unit
+scales 1 and .01, exact rollback when cancelled during source-UV projection or
+after one complete component, ownership and source guards, save/reopen and guarded
+removal. The two strengthened procedural cases also independently compare the
+actual 64x128 image's bilinear samples to source-loop UVs at triangle centres:
+maximum error must be below .05 and summed error below one tenth of the affine
+rectangle baseline. Both pass (2 tests, 20.49s); this coarse-fixture limit is not
+the dense private lookup's tighter sampled measurement above. The Python-disabled
+managed procedural tree/LOD preparation and actual NORMAL/ALPHA bake passes
+(1 test, 62.93s). An earlier attempt timed out on read-only botanical surface
+inspection before this feature ran; the disposed fixture was confirmed terminal
+before the clean rerun. Contracts/add-on and all four initial native lifecycle
+cases also pass. No full-project regression or deployment is claimed.

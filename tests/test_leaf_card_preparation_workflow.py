@@ -18,6 +18,12 @@ def test_blade_card_bake_without_code(assets_live):
             cfg={'shoots_per_bud':2,'attachment_nodes':5,'variants':1}
             pop=await wait(client,'plan_botanical_foliage',collection='Source',foliage=cfg)
             tree=await wait(client,'configure_botanical_foliage',collection='Source',foliage=cfg,expected_tree=tree['tree_sha256'],expected_foliage=pop['foliage_sha256'])
+            materials=await tool(client,'inspect_vegetation_materials',collection='Source')
+            for material in materials['contract']['materials']:
+                if material['model']!='MANAGED_THIN_FOLIAGE':continue
+                info=await tool(client,'inspect_botanical_surface',material=material['name'])
+                await wait(client,'configure_botanical_surface',material=material['name'],settings={'profile':'OAK_LEAF'},expected_material=info['material_sha256'])
+            tree=await tool(client,'inspect_botanical_tree',collection='Source')
             args={'collection':'Source','blade_cards':{},'texture_width':64,'texture_height':128,'tile_padding_pixels':2}
             plan=await tool(client,'inspect_vegetation_bake_source',**args)
             assert plan['recipe']=='NATIVE_THIN_BLADE_CARD_PREPARATION_V1'
@@ -27,6 +33,7 @@ def test_blade_card_bake_without_code(assets_live):
             assert state['valid'] and set(state['components'])=={'leaf-0'}
             assert (await tool(client,'inspect_botanical_tree',collection='Source'))['tree_sha256']==tree['tree_sha256']
             row=state['components']['leaf-0']
+            assert row['source_uv_lookup']['recipe']=='BLADE_FIRST_HIT_SOURCE_UV_V1'
             # LOD profiles expose the same shared roles, and remain independent.
             lod_args={'collection':'Source','levels':[{'leaf_budget':110,'radial_sides':8,'min_branch_radius_m':0}]}
             lod_plan=await wait(client,'inspect_botanical_lod_source',**lod_args)

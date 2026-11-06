@@ -4,7 +4,7 @@ import bpy,bmesh
 from mathutils import Vector,Matrix
 from mcpblender import botany,card_fit
 from mcpblender.uv_math import inset_tile
-from . import vegetation_bake as preparation,vegetation_materials,textures,lods,assemblies
+from . import vegetation_bake as preparation,vegetation_materials,textures,lods,assemblies,botanical_surfaces,blade_uv_lookup
 from .assets import require_static
 
 RECIPE='NATIVE_THIN_BLADE_CARD_PREPARATION_V1'
@@ -12,15 +12,31 @@ RECIPE='NATIVE_THIN_BLADE_CARD_PREPARATION_V1'
 
 def material(mat):
     textures.material_signature(mat,thin_foliage_mode='FRONT_PBR')
-    nodes=mat.node_tree.nodes
-    if {n.name:n.bl_idname for n in nodes}!=textures.THIN_NODES:raise ValueError('Blade cards require the constant managed thin-leaf graph')
+    nodes=mat.node_tree.nodes;detail=None
+    raw=mat.get(botanical_surfaces.META)
+    if raw:
+        detail=json.loads(raw);state=botanical_surfaces.inspect({'material':mat.name})
+        if not state['detail_valid'] or detail['settings']['profile']!='OAK_LEAF':raise ValueError('Blade cards require unchanged managed OAK_LEAF detail')
+    managed=set(detail['nodes']) if detail else set()
+    if {n.name:n.bl_idname for n in nodes if n.name not in managed}!=textures.THIN_NODES:raise ValueError('Blade cards require the managed thin-leaf graph with optional managed OAK_LEAF detail')
     expected=[('Leaf Sides',0,'Surface Side','Backfacing'),('Leaf Surface','Base Color','Leaf Sides',0),
               ('Optical Mix',1,'Leaf Surface',0),('Optical Mix',2,'Thin Backlighting',0),
               ('Backface Enabled',0,'Surface Side','Backfacing'),('Backface Cull',0,'Backface Enabled',0),
               ('Backface Cull',1,'Optical Mix',0),('Backface Cull',2,'Culled Backface',0),('Output','Surface','Backface Cull',0)]
+    if detail:
+        expected=[e for e in expected if e[:2]!=('Leaf Surface','Base Color')]
+        originals={v['role']:v for v in detail['originals']}
+        if set(originals)!={'COLOR','NORMAL','BACK_NORMAL'}:raise ValueError('Unsupported managed leaf original inputs')
+        color=originals['COLOR'];front=nodes['Leaf Surface'];back=nodes['Thin Backlighting']
+        if color['node']!=front.name or color['socket']!=front.inputs['Base Color'].identifier or color['state']['links']!=[{'node':'Leaf Sides','socket':nodes['Leaf Sides'].outputs[0].identifier}]:raise ValueError('Managed leaf color must originate in native leaf sides')
+        for role,node in (('NORMAL',front),('BACK_NORMAL',back)):
+            item=originals[role]
+            if item['node']!=node.name or item['socket']!=node.inputs['Normal'].identifier or item['state']['links']:raise ValueError('Managed leaf source normals must be geometric')
     wanted={(nodes[t].inputs[s].as_pointer(),nodes[f].outputs[o].as_pointer()) for t,s,f,o in expected}
-    if {(l.to_socket.as_pointer(),l.from_socket.as_pointer()) for l in mat.node_tree.links}!=wanted:raise ValueError('Blade cards cannot preserve custom thin-leaf input sampling')
+    actual={(l.to_socket.as_pointer(),l.from_socket.as_pointer()) for l in mat.node_tree.links if l.to_node.name not in managed and l.from_node.name not in managed}
+    if actual!=wanted:raise ValueError('Blade cards cannot preserve custom thin-leaf input sampling')
     if nodes['Leaf Surface'].inputs['Alpha'].default_value!=1:raise ValueError('Blade cards require opaque source blade geometry')
+    return detail['settings']['uv_map'] if detail else None
 
 
 def plan(p):
@@ -38,7 +54,9 @@ def plan(p):
         if len(mesh.materials)!=2 or summary['used_material_indices']!=[0,1]:raise ValueError('Blade cards require blade/petiole material regions')
         regions=[{v for face in mesh.polygons if face.material_index==i for v in face.vertices} for i in (0,1)]
         if regions[0]&regions[1]:raise ValueError('Blade/petiole vertices must be disconnected to preserve blade normals')
-        material(mesh.materials[0]);mesh.calc_loop_triangles();triangles=[t for t in mesh.loop_triangles if t.material_index==0]
+        source_uv=material(mesh.materials[0])
+        if source_uv and source_uv not in mesh.uv_layers:raise ValueError('Managed blade source UV missing')
+        mesh.calc_loop_triangles();triangles=[t for t in mesh.loop_triangles if t.material_index==0]
         normal=sum((t.normal*t.area for t in triangles),Vector())
         if normal.length<1e-10:raise ValueError('Blade has no stable mean geometric normal')
         normal.normalize();rotation=normal.rotation_difference(Vector((0,0,1))).to_matrix().to_4x4()
@@ -47,15 +65,15 @@ def plan(p):
         uv=[v for pair in fit['uv'] for v in pair]
         if p['tile_padding_pixels']:uv=inset_tile(uv,p['texture_width'],p['texture_height'],p['tile_padding_pixels'],True)
         else:uv=[p['margin']+(1-2*p['margin'])*v for v in uv]
-        rows[role]={'source_object':obj.name,'mesh':textures.mesh_signature(obj,mesh),'source_mesh_sha256':summary['mesh_sha256'],
+        rows[role]={'source_object':obj.name,'source_uv_lookup':source_uv,'mesh':textures.mesh_signature(obj,mesh),'source_mesh_sha256':summary['mesh_sha256'],
                     'source_leaf_material_sha256':botany.digest(assemblies.record(mesh.materials[0])),
                     'alignment_matrix':[list(r) for r in rotation],'mean_normal_local':list(normal),'card':fit,'target_uv':uv,
                     'midplane_offset_m':fit['source_depth_m']/2+p['blade_cards']['standoff_m']}
     options={k:p[k] for k in ('blade_cards','uv_map','margin','uv_strategy','tile_padding_pixels','texture_width','texture_height','max_corners')}
     result={'format':preparation.FORMAT,'recipe':RECIPE,'source_guard':guard,'scene_unit_scale':unit,'assets':rows,'available_assets':[k for k in available if k.startswith('leaf-')],
-            'source_materials':vegetation_materials.contract(selected),'options':options,'corners':corners,'private_images_copied':0,'estimated_copy_bytes':corners*256,
+            'source_materials':vegetation_materials.contract(selected),'options':options,'corners':corners,'private_images_copied':0,'estimated_copy_bytes':corners*256+sum(bool(r['source_uv_lookup']) for r in rows.values())*p['texture_width']*p['texture_height']*48,
             'source_sampling_changes':[],'can_prepare':True,'unsupported_reasons':[],
-            'scope':'Independent constant-managed-thin blade source copies in template-native coordinates (not placed-instance density) and two-triangle normal-aligned rectangular bake targets. Source geometry/visibility/materials preserved. Existing NORMAL/ALPHA baker is explicit. NORMAL/ALPHA bundles are data inputs with a neutral PBR output; they do not adopt native color/thin/back-side optics; no card adoption, exact source UV/shape equivalence, wind or far-budget certificate.'}
+            'scope':'Independent managed-thin blade source copies in template-native coordinates (not placed-instance density) and two-triangle normal-aligned rectangular bake targets. Source geometry/visibility/materials preserved. Existing NORMAL/ALPHA baker is explicit. Managed OAK_LEAF sources also retain a packed float source-UV lookup for later native adaptation. NORMAL/ALPHA bundles are data inputs with a neutral PBR output; they do not adopt native color/thin/back-side optics; no card adoption, exact source UV/shape equivalence, wind or far-budget certificate.'}
     return selected,result|{'plan_sha256':botany.digest(result)}
 
 
@@ -87,7 +105,11 @@ def create(p):
             if not info['complete']:raise ValueError('Blade-card target is not bakeable: '+'; '.join(info['unsupported_reasons']))
             ray=fit['bake_ray_length_m']/unit
             if ray>1000:raise ValueError('Blade-card projection cage exceeds native range')
-            components[role]={'name':target.name,'source_object':obj.name,'prepared_source_object':high.name,'inspect_texture_bake':inputs,'initial_bake_sha256':info['bake_sha256'],'material_adapters':info['material_adapters'],
+            lookup=None
+            if row['source_uv_lookup']:
+                image,lookup=blade_uv_lookup.create(high,target,row['source_uv_lookup'],p['uv_map'],p['texture_width'],p['texture_height'],ray,own)
+                node=mat.node_tree.nodes.new('ShaderNodeTexImage');node.name='Source UV Data';node.image=image;node.interpolation='Linear';node.extension='EXTEND'
+            components[role]={'source_uv_lookup':lookup,'name':target.name,'source_object':obj.name,'prepared_source_object':high.name,'inspect_texture_bake':inputs,'initial_bake_sha256':info['bake_sha256'],'material_adapters':info['material_adapters'],
                 'prepared_mesh':textures.mesh_signature(target,target_mesh),'prepared_attributes':[a for a in assemblies.attribute_records(target_mesh) if not a['name'].startswith('.')],
                 'bake_parameters':inputs|{'expected_bake':info['bake_sha256'],'maps':['NORMAL','ALPHA'],'width':p['texture_width'],'height':p['texture_height'],'cage_extrusion':ray,'max_ray_distance':ray*2,'min_projection_coverage':max(0.,min(.99,fit['projection']['geometry_coverage_fraction']*.8))},
                 'card_recipe':row,'source_template_sha256':row['source_mesh_sha256']}

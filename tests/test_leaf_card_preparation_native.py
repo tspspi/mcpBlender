@@ -6,13 +6,14 @@ from test_botanical_native import pytestmark
 
 
 @pytest.mark.parametrize('unit',[1,.01])
-def test_blade_card_preparation_lifecycle(tmp_path,unit):
+@pytest.mark.parametrize('detail',[False,True])
+def test_blade_card_preparation_lifecycle(tmp_path,unit,detail):
     repo=Path(__file__).resolve().parents[1];script=tmp_path/'cards.py'
-    script.write_text('import sys\nsys.path.insert(0,'+repr(str(repo))+')\nOUTPUT='+repr(str(tmp_path))+'\nUNIT='+repr(unit)+'\n'+r'''
+    script.write_text('import sys\nsys.path.insert(0,'+repr(str(repo))+')\nOUTPUT='+repr(str(tmp_path))+'\nUNIT='+repr(unit)+'\nDETAIL='+repr(detail)+'\n'+r'''
 import bpy
 from mathutils import Matrix,Vector
 from mcpblender import botany,foliage
-from mcpblender.blender import botanical_trees as trees,botanical_foliage as leaves,vegetation_bake as prep,bridge,textures,leaf_card_preparation as cards
+from mcpblender.blender import botanical_trees as trees,botanical_foliage as leaves,vegetation_bake as prep,bridge,textures,leaf_card_preparation as cards,botanical_surfaces as surfaces
 from mcpblender.vegetation_bake_contracts import Source
 bridge.check_cancelled=lambda:None;bridge.report_progress=lambda v:None
 bpy.context.scene.unit_settings.scale_length=UNIT
@@ -20,6 +21,12 @@ recipe=botany.recipe({'height':5,'crown_width':5,'attractors':32,'iterations':3,
 plan=trees.plan({'recipe':recipe});tree=trees.create({'collection':'Oak','recipe':recipe,'expected_model':plan['model_sha256'],'location':[0,0,0],'radial_sides':8,'bark_tile_length':1})
 cfg=foliage.recipe({'shoots_per_bud':2,'attachment_nodes':5,'variants':2});plan=leaves.dispatch('plan_botanical_foliage',{'collection':'Oak','foliage':cfg})
 tree=leaves.dispatch('configure_botanical_foliage',{'collection':'Oak','foliage':cfg,'expected_tree':tree['tree_sha256'],'expected_foliage':plan['foliage_sha256']})
+if DETAIL:
+    from mcpblender.botanical_surface_contracts import Configure
+    for key,obj in prep.objects({'collection':'Oak'})[0].items():
+        if not key.startswith('leaf-'):continue
+        mat=obj.data.materials[0];surfaces.configure(Configure(material=mat.name,expected_material=surfaces.inspect({'material':mat.name})['material_sha256'],settings={'profile':'OAK_LEAF'}).model_dump())
+    tree=trees.inspect({'collection':'Oak'})
 args=Source(collection='Oak',blade_cards={},texture_width=64,texture_height=128,tile_padding_pixels=2).model_dump()
 source=prep.objects(args)[0];before={key:textures.mesh_signature(o,o.data) for key,o in source.items()}
 ids=set(bpy.data.user_map());selected=list(bpy.context.selected_objects);active=bpy.context.view_layer.objects.active
@@ -53,6 +60,15 @@ except bridge.OperationCancelled:pass
 else:raise AssertionError('Cancellation not reached')
 bridge.report_progress=lambda v:None
 assert ids==set(bpy.data.user_map()) and selected==list(bpy.context.selected_objects) and active==bpy.context.view_layer.objects.active
+if DETAIL:
+    def cancel_uv(v):
+        if v.get('phase')=='projecting blade source UV correspondence' and v['completed_rows']==8:raise bridge.OperationCancelled('cancel source UV')
+    bridge.report_progress=cancel_uv
+    try:prep.create(args|{'bake_collection':'CancelledUV','expected_plan':plan['plan_sha256']})
+    except bridge.OperationCancelled:pass
+    else:raise AssertionError('UV cancellation not reached')
+    bridge.report_progress=lambda v:None
+    assert ids==set(bpy.data.user_map())
 state=prep.create(args|{'bake_collection':'Cards','expected_plan':plan['plan_sha256']})
 assert state['valid'],state
 assert tree['tree_sha256']==trees.inspect({'collection':'Oak'})['tree_sha256']
@@ -69,6 +85,29 @@ for role,row in state['components'].items():
     assert target.hide_render and high.hide_render
     assert textures.inspect(row['inspect_texture_bake'])['bake_sha256']==row['initial_bake_sha256']
     assert row['bake_parameters']['maps']==['NORMAL','ALPHA']
+    if DETAIL:
+        import hashlib
+        lookup=row['source_uv_lookup'];image=bpy.data.images[lookup['image']]
+        assert image.size[:]==(64,128) and image.packed_file and image.colorspace_settings.name=='Non-Color'
+        assert hashlib.sha256(image.packed_file.data).hexdigest()==lookup['packed_sha256']
+        assert 0<lookup['covered_pixels']<64*128
+        # Independently compare actual float lookup sampling to original loop UVs.
+        import math
+        from array import array
+        pixels=array('f',[0.])*(64*128*4);image.pixels.foreach_get(pixels)
+        corners=[target.matrix_world@target.data.vertices[j].co for j in target.data.polygons[0].vertices]
+        origin=corners[0];u=corners[1]-origin;v=corners[3]-origin;uv=target.data.uv_layers['BakeUV'];lo=uv.data[0].uv;span=uv.data[2].uv-lo;errors=[];affine=[]
+        high.data.calc_loop_triangles()
+        for tri in high.data.loop_triangles:
+            position=sum((high.matrix_world@high.data.vertices[j].co for j in tri.vertices),Vector())/3-origin
+            s=position.dot(u)/u.length_squared;t=position.dot(v)/v.length_squared
+            x=(lo.x+s*span.x)*64-.5;y=(lo.y+t*span.y)*128-.5;ix=math.floor(x);iy=math.floor(y);fx=x-ix;fy=y-iy;actual=Vector((0.,0.))
+            for dx,dy,weight in ((0,0,(1-fx)*(1-fy)),(1,0,fx*(1-fy)),(0,1,(1-fx)*fy),(1,1,fx*fy)):
+                index=4*(max(0,min(127,iy+dy))*64+max(0,min(63,ix+dx)));actual+=Vector(pixels[index:index+2])*weight
+            expected=sum((high.data.uv_layers['LeafUV'].data[j].uv for j in tri.loops),Vector((0.,0.)))/3
+            errors.append((expected-actual).length);affine.append((expected-Vector((s,t))).length)
+        assert max(errors)<.05 and sum(errors)<sum(affine)/10,(max(errors),sum(errors)/len(errors))
+    else:assert row['source_uv_lookup'] is None
     rotation=Matrix(row['card_recipe']['alignment_matrix'])
     expected=[rotation@v.co for v in source[role].data.vertices if any(v.index in f.vertices for f in source[role].data.polygons if f.material_index==0)]
     actual=[high.matrix_world@v.co for v in high.data.vertices]

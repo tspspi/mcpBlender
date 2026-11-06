@@ -1041,6 +1041,20 @@ shared shader resources and archive. Creation rolls back newly owned IDs on
 cooperative failure or cancellation; long operations report progress and available
 storage before checkpoint allocation.
 
+### Exact camera clipping and SUN size
+
+`configure_camera` accepts optional `clip_start` and `clip_end` in scene units.
+Clips must fit native ranges and the near plane must precede the far plane;
+validation combines supplied fields with the existing camera (or native defaults)
+before allocation or pose edits. The returned `camera_settings` reports native
+projection, lens, orthographic scale and clipping values.
+
+`configure_light` accepts optional `angle` for `type: SUN`: angular diameter in
+radians, including zero for the directional source used in fixed comparisons.
+Other light types refuse this field. Returned `light_settings` reports native
+type, energy, color and SUN angle or AREA size. These additions do not create
+an ownership guard for the older camera/light setters or certify lighting quality.
+
 ### Explicit Cycles sampling and render witnesses
 
 Use `inspect_render_sampling` to read the current Cycles master samples, sampler,

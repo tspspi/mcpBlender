@@ -330,6 +330,12 @@ def dispatch(command, p):
         obj = bpy.data.objects.get(p["name"])
         if obj and obj.type != kind:
             raise ValueError(f"Existing object is not a {kind}")
+        if kind=='CAMERA':
+            props=bpy.types.Camera.bl_rna.properties
+            clips={key:p.get(key) if p.get(key) is not None else getattr(obj.data,key) if obj else props[key].default for key in ('clip_start','clip_end')}
+            if clips['clip_start']>=clips['clip_end']:raise ValueError('Camera clip_start must be less than clip_end')
+            for key,value in clips.items():
+                if not props[key].hard_min<=value<=props[key].hard_max:raise ValueError('Camera clipping setting exceeds native range: '+key)
         if obj is None:
             data = bpy.data.lights.new(p["name"], p.get("type", "AREA")) if kind == "LIGHT" else bpy.data.cameras.new(p["name"])
             obj = bpy.data.objects.new(p["name"], data)
@@ -345,6 +351,7 @@ def dispatch(command, p):
         if kind == "LIGHT":
             obj.data.type, obj.data.energy = p.get("type", obj.data.type), p.get("energy", obj.data.energy)
             obj.data.color = p.get("color", list(obj.data.color))
+            if p.get("angle") is not None:obj.data.angle=p["angle"]
             if obj.data.type == "AREA":
                 obj.data.size = p.get("size", obj.data.size)
         else:
@@ -353,10 +360,18 @@ def dispatch(command, p):
                 obj.data.type = p["projection"]
             if p.get("ortho_scale") is not None:
                 obj.data.ortho_scale = p["ortho_scale"]
+            for key in ("clip_start","clip_end"):
+                if p.get(key) is not None:setattr(obj.data,key,p[key])
             if p.get("active", True):
                 scene.camera = obj
         bpy.context.view_layer.update()
-        return object_info(obj, True)
+        result=object_info(obj,True)
+        if kind=='CAMERA':result['camera_settings']={key:getattr(obj.data,key) for key in ('type','lens','ortho_scale','clip_start','clip_end')}
+        else:
+            result['light_settings']={'type':obj.data.type,'energy':obj.data.energy,'color':list(obj.data.color)}
+            if obj.data.type=='SUN':result['light_settings']['angle']=obj.data.angle
+            if obj.data.type=='AREA':result['light_settings']['size']=obj.data.size
+        return result
     if command == "set_keyframes":
         obj, path = bpy.data.objects[p["name"]], p["data_path"]
         if path not in ("location", "rotation_euler", "scale"):

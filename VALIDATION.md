@@ -7077,3 +7077,15 @@ Six schema/policy/discovery/add-on checks pass in 5.80 seconds, with the existin
 Starlette deprecation warning. These are focused checks, not a full regression,
 actual-ray-count measurement, cross-hardware reproducibility claim or the still
 outstanding combined canopy world/front/rear qualification.
+
+
+### Camera clips and SUN angular diameter
+
+The structured camera setter supports explicit near/far clipping, with native
+range and combined-pair preflight before allocation or pose edits. The SUN setter
+supports angular diameter in radians, including zero. Native settings are returned.
+Two focused checks pass in 16.19 seconds: schema rejection of inverted clips and
+non-SUN angles, Python-disabled configuration/readback, an invalid partial clip
+update preserving the camera pose, refusal before creating a new invalid camera,
+and independent saved Blender readback of clipping/projection/scale and zero-angle
+SUN energy. This qualifies the controls, not a rendered shadow or optical gate.

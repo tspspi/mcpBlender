@@ -58,6 +58,12 @@ class Light(Model):
     rotation_euler: Vec3 | None = None
     target: Vec3 | None = None
     size: FiniteFloat = Field(default=5, gt=0)
+    angle: FiniteFloat | None = Field(default=None,ge=0,le=3.141592653589793,description='SUN angular diameter in radians. Requires type=SUN; zero gives a directional source.')
+
+    @model_validator(mode='after')
+    def sun_angle(self):
+        if self.angle is not None and self.type!='SUN':raise ValueError('angle requires a SUN light')
+        return self
 
 
 class Camera(Model):
@@ -68,7 +74,14 @@ class Camera(Model):
     lens: FiniteFloat = Field(default=50, gt=0)
     projection: Literal["PERSP", "ORTHO"] | None = None
     ortho_scale: FiniteFloat | None = Field(default=None, gt=0)
+    clip_start: FiniteFloat | None = Field(default=None,gt=0,description='Near clipping distance in scene units; must be less than clip_end.')
+    clip_end: FiniteFloat | None = Field(default=None,gt=0,description='Far clipping distance in scene units; must exceed clip_start.')
     active: bool = True
+
+    @model_validator(mode='after')
+    def clipping(self):
+        if self.clip_start is not None and self.clip_end is not None and self.clip_start>=self.clip_end:raise ValueError('Camera clip_start must be less than clip_end')
+        return self
 
 
 class Keyframe(Model):

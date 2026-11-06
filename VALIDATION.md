@@ -1,5 +1,47 @@
 # Local validation: 0.2.0
 
+## Full-density typed native/depth assembly — 2026-11-06
+
+The opt-in Python-disabled MCP workflow passed **1 test in 392.30s** using the
+retained 88,704-leaf canopy. It makes a fresh public FRONT/BACK 512-pixel,
+one-sample capture with geometric normals and component IDs, then creates a
+LEAVES depth primary and an UNOBSERVED native complement with secondary-only
+leaves and ALL_RAYS copied structure. No manual point/graph edits are needed.
+
+The FRONT capture selects 54,882 leaf pixels and 35,514 distinct source leaves.
+One-pixel geometric-normal patches produce **109,764 triangles**, within the
+unchanged 131,072 cap, and six float maps occupy **25,165,824 decoded bytes**.
+The complement retains **53,190 native leaves** with selected persistent IDs,
+prototype mapping and world poses checked against the complete native source.
+These public-capture observations differ slightly from the earlier private BOX
+sampling experiment; neither counts nor masks are substituted between archives.
+
+Both hidden assets pass save/reopen inspection after capture-file deletion.
+Retained project/archive copies were byte-hash checked before fixture cleanup.
+Removing eleven depth and eighteen subset private datablocks preserves the source
+content and its live guard. Operations report storage availability throughout,
+with checkpoint estimates before native allocation. This qualifies full-density
+creation, persistence and cleanup only. Angular, shadow, wind, population and
+reduced-template performance remain separate gates.
+
+A subsequent isolated render control evaluated native, ALL_RAYS primary and
+CAMERA_ONLY primary alternatives at 128 pixels, 256 samples, world/front-sun/
+rear-sun lighting and comparison scales 1/2/4. It uses the shipping guarded depth
+implementation to author the alternative and restores source/asset guards after
+rendering. With the existing RGB RMSE .05 and relative-brightness .10 gates,
+ALL_RAYS passes world/front but fails rear lighting at **+17.47%** brightness;
+CAMERA_ONLY fails world at **+25.18%**, while front/rear are −7.81%/+8.39%.
+No alternative passes all three lights. These failures remain requirements.
+
+Renderer-state audit identified TABULATED_SOBOL in the editing scene versus
+AUTOMATIC in the older capture scene. A repeat with AUTOMATIC matches all three
+frozen native controls exactly in RGB and alpha. The initial Sobol run is retained
+as a separate observation, not substituted for the matched controls. Source model,
+root placement, framing and bounds agree, and no object-random input occurs in
+the audited top-level source materials. The native complement still retains full
+leaf templates; creating a first-hit partition alone does not establish optical
+or runtime-performance equivalence.
+
 ## Separate native leaf and structural ray roles — 2026-11-06
 
 Subset planning accepts optional `structure_render_role` when copying structure.

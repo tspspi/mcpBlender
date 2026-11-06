@@ -30,6 +30,7 @@ class OperationCancelled(Exception):
 
 def report_progress(progress):
     if _bridge and _bridge.active:
+        _bridge.last_progress = dict(progress)
         if _bridge.active["command"] == "run_action":
             from .actions import decorate_progress
             progress = decorate_progress(progress)
@@ -54,10 +55,17 @@ def report_progress(progress):
                 ensure_broker(_bridge.path)
                 _bridge.register()
         _bridge.cancel_requested = reply["cancel_requested"]
+        _bridge.last_cancel_poll = time.monotonic()
 
 
 def check_cancelled():
-    report_progress({"phase": "checking cancellation"})
+    # Decoders/geometry loops can check thousands of times per second. Poll the
+    # durable broker at most ten times per second, keeping useful phase details.
+    # Explicit progress reports still publish immediately and also refresh this
+    # cancellation observation. A known cancellation is never throttled.
+    if _bridge is None:return
+    if not _bridge.cancel_requested and time.monotonic()-getattr(_bridge,'last_cancel_poll',float('-inf'))>=.1:
+        report_progress(getattr(_bridge,'last_progress',None) or {"phase":"checking cancellation"})
     if _bridge.cancel_requested:
         raise OperationCancelled("Operation cancelled at a cooperative boundary; partial edits may remain")
 
@@ -416,6 +424,8 @@ class BridgeServer:
                 self.active = self.control("claim", status=status, claim_id=self.claim_id)["operation"]
                 self.claim_id = None
                 self.cancel_requested = False
+                self.last_cancel_poll = float('-inf')
+                self.last_progress = None
                 if self.active:
                     try:
                         render_commands = {"render_still", "render_animation", "render_video", "render_animation_preview"}

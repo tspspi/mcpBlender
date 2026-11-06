@@ -38,6 +38,11 @@ def shader_state(tree):
     return result
 
 
+def portable_tree(state):
+    """Validated source report without session/pointer-dependent edit guards."""
+    return botany.digest({k:v for k,v in state.items() if k not in {'tree_sha256','recovery','operation_id'}})
+
+
 def source(p):
     from .bridge import check_cancelled,report_progress
     if bpy.context.mode!='OBJECT':raise ValueError('Object mode required for botanical captures')
@@ -141,6 +146,7 @@ def source(p):
         if material_contract is None or p['samples']!=1:raise ValueError('Component IDs require material_fields=true and samples=1')
         if p.get('normal_moments') and p.get('geometric_normals'):raise ValueError('Component IDs with both normal extensions exceed the 32-part EXR budget')
         summary['component_ids']=capture_components.describe(roles,material_contract)
+        summary['source_content_sha256']=portable_tree(state)
     return values,deps,summary|{'capture_sha256':botany.digest(summary)}
 
 

@@ -28,6 +28,9 @@ def validate(metadata,job):
         if fields is None or metadata['options']['samples']!=1:raise ValueError('Component IDs require material fields and one sample')
         if fields.get('normal_moments') and fields.get('geometric_normals'):raise ValueError('Component IDs with both normal extensions exceed the 32-part EXR budget')
         component_ids.validate(components,fields)
+        if 'source_content_sha256' in metadata:
+            import re
+            if not isinstance(metadata['source_content_sha256'],str) or not re.fullmatch('[0-9a-f]{64}',metadata['source_content_sha256']):raise ValueError('Invalid portable component source digest')
     return metadata
 
 

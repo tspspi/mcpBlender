@@ -1,5 +1,44 @@
 # Local validation: 0.2.0
 
+## Capture-derived complementary native foliage — 2026-11-06
+
+The structured subset source/create/inspect/remove tools select the union of
+observed first-hit leaf IDs or its complement in the guarded complete native
+inventory. Private point data retain semantic `id=leaf_index`; a private selection
+graph and private template copies preserve the exact selected persistent IDs,
+prototype mapping and world poses. Wood/shoot/bud meshes may be copied too.
+Creation preserves the original source, starts hidden and applies explicit Cycles
+ray roles. Source shader resources remain shared guarded dependencies. Object-
+dependent shader Random values can differ on a copied instancer; this is not an
+exact rendered partition or reduced template LOD.
+
+New component captures include a portable validated-source content digest.
+Selection can rebind after save/reopen while retaining the current pointer-bound
+tree hash for live edit guards. Older captures without the portable field require
+the original session or recapture. Source model/identity, native geometry validity,
+resource graph, frame, units, root placement and component inventory still bind.
+Creation verifies exact selected IDs and poses, polling cancellation/progress in
+two scene scans capped at four million instances each. Storage admission includes
+private point, template and optional structural mesh checkpoint estimates.
+
+Focused contracts, capture validation, component filtering, path containment,
+permissions and add-on packaging passed **19 tests in 9.77s**. The final real
+Blender MCP subset workflow and affected component depth workflow passed **2 tests
+in 92.83s**, with arbitrary Python execution disabled on the MCP surface. The
+104-leaf fixture selected two observed and 102 complementary leaves; a two-view
+union, aggregate pixel-budget refusal and secondary-role structural snapshot were
+also checked. Source content stayed unchanged through creation, save/reopen,
+capture-file removal and removal of 12/12/18 private datablocks.
+
+An independent saved-project Blender probe verifies actual disjoint point masks,
+complete ID coverage, shared shader-change and foreign-user refusal, supported
+root scaling/display changes, changed-source refusal and cooperative cancellation
+at final publication with exact native-ID inventory restoration. The MCP workflow
+also rejects edited modifiers and stale plan/removal guards, and replans from the
+capture after reopening. The depth regression rechecks packed pixel coverage/RGB
+and paired masks. These are small functional fixtures; full-density native/depth
+assembly, angular, lighting, wind and population qualification remain open.
+
 ## Component-filtered directional depth assets — 2026-11-06
 
 Structured depth source/create and per-view batch tools accept `component_filter`

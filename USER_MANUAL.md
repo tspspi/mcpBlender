@@ -992,6 +992,47 @@ the capture files. This operation leaves native source geometry unchanged. It
 does not remove matching native leaves, create a complete 3D partition or certify
 lighting equivalence; it selects the first visible surface from one capture view.
 
+### Native complementary leaf subsets
+
+`inspect_botanical_subset_source` reads a component-ID capture and revalidates the
+original managed tree, source resources, frame, placement and leaf inventory in
+the current scene. Supply `directory`, one or more distinct `views`, and
+`selection: OBSERVED` or `UNOBSERVED` (default). Observation means the union of
+leaf IDs at valid first-hit pixels in these views. UNOBSERVED selects its
+complement in the complete native source inventory; it does not imply physically
+invisible leaves. Invalid covered observations refuse before selection. The source leaf population
+must be visible in the current viewport for native pose verification. New
+component captures carry a content guard that survives save/reopen; older captures
+without that guard require the original live source session or recapture.
+
+Pass the same inputs, a new `subset_collection` and the returned `plan_sha256`
+as `expected_plan` to `create_botanical_subset`. The hidden snapshot has private
+point data, a selection graph and shared private copies of the leaf templates.
+It keeps the full point inventory and selects instances without dense renumbering:
+`id` equals semantic `leaf_index`. Creation checks the exact selected native persistent
+IDs, prototype mapping and world transforms against the source, with cancellation
+and progress during two scene scans bounded to four million instances each. It leaves
+source geometry and visibility unchanged. `include_structure: true` (default)
+also copies the original wood and shoot meshes; false creates leaves only.
+`render_role` uses the same explicit Cycles roles as directional depth assets.
+
+Materials and their packed dependencies remain shared and guarded; editing them
+can invalidate both the source and its subset. Copying an instancer can change
+object-dependent shader Random values. The preserved identity contract is not
+pixel equivalence across different instancer objects. No native source visibility
+is changed automatically, so showing the subset beside its source can duplicate
+geometry. Template complexity remains unchanged; this is not a leaf-template LOD,
+complete optical partition or wind-qualified representation.
+
+`inspect_botanical_subset` works after save/reopen and capture-file removal and
+returns a current `subset_sha256`. Display visibility and uniform positive root
+placement may change. Resource renames, graph/geometry/ray edits, shared shader
+changes and foreign references invalidate ownership or removal. Use a fresh guard
+as `expected_subset` with `remove_botanical_subset`. Removal preserves the source,
+shared shader resources and archive. Creation rolls back newly owned IDs on
+cooperative failure or cancellation; long operations report progress and available
+storage before checkpoint allocation.
+
 ### Optional material normal-input moments
 
 Set both `material_fields: true` and `normal_moments: true` when planning and

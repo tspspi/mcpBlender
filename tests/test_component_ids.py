@@ -43,6 +43,10 @@ def test_capture_metadata_requires_component_option_and_one_sample():
     def seal():return meta|{'capture_sha256':botany.digest(meta)}
     with pytest.raises(ValueError,match='option'):tree_capture.validate(seal(),job)
     meta['options']['component_ids']=True;assert tree_capture.validate(seal(),job)
+    meta['source_content_sha256']='a'*64;assert tree_capture.validate(seal(),job)
+    meta['source_content_sha256']='bad'
+    with pytest.raises(ValueError,match='source digest'):tree_capture.validate(seal(),job)
+    del meta['source_content_sha256']
     meta['options']['samples']=2;job['samples']=2
     with pytest.raises(ValueError,match='one sample'):tree_capture.validate(seal(),job)
 

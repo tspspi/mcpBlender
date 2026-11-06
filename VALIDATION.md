@@ -7014,3 +7014,30 @@ fresh reopen. That failure is retained as diagnostic evidence. Final contracts,
 add-on and discovery checks are separate from these native rendering checks.
 The assembled measured-depth-plus-native-complement world/front/rear comparison
 and the full angular/wind/population/mature-reference gates remain outstanding.
+
+
+### Guarded botanical display batches
+
+SOURCE trees, DEPTH assets and SUBSET assets can be switched with typed collection
+flags through MCP with Python disabled. Inspection binds producer guards,
+collection identities, scene/layer/frame and all layer/ancestor occurrences.
+Only collection hide_viewport/hide_render change. The tool reports disabled
+render layers, excluded layers, hidden ancestors, holdout and indirect-only
+settings without resetting them. Cross-scene targets and invalid ownership refuse
+before mutation. Keyed/driven targeted fields refuse when exposed by the native
+version; other object or layer settings remain outside the mutation surface.
+
+Five focused checks pass in 33.50 seconds: live Python-disabled construction and
+batch switching of a native source, leaf depth and column complement; schema and
+read-only policy tests; capability discovery; dependency-free add-on archive.
+A stale guard refuses, and an invalid later target leaves the earlier source
+unchanged. A native cancellation injected after the first target changes restores
+all collection flags and the exact display guard. Disabled render layers and
+layer exclusions change the context guard. A second-scene link refuses and
+preserves flags. Native before/after saved-file readback confirms unchanged object
+visibility/ray flags and transforms for all 21 objects, including hidden buds.
+After removing the capture files and reopening, the display state remains valid
+and a guarded restore recovers the original flags and source-fresh subset state.
+
+Retained fixture copies were byte-compared before temporary cleanup. These are
+visibility/ownership/transaction checks, not combined optical or angular gates.

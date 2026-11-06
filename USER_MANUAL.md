@@ -1041,6 +1041,39 @@ shared shader resources and archive. Creation rolls back newly owned IDs on
 cooperative failure or cancellation; long operations report progress and available
 storage before checkpoint allocation.
 
+### Switching botanical representations without Python
+
+`inspect_botanical_display` takes `targets`, a list of up to 16 distinct
+`{kind, collection}` references. `kind` is SOURCE for a managed native tree,
+DEPTH for an owned directional depth asset, or SUBSET for an owned native subset
+(including a component-column complement). It returns `display_sha256`, target
+ownership guards, collection flags and every scene/view-layer occurrence.
+
+Use that guard as `expected_display` with `configure_botanical_display`. Supply
+the same targets, adding `hide_render`, `hide_viewport`, or both to each entry.
+For example, a batch can hide SOURCE `Oak` while showing DEPTH `OakDepth` and
+SUBSET `OakComplement`. The configure tool requires scene-edit permission;
+inspection remains available under read-only policy. All targets are preflighted
+before changing any flags. Stale guards, invalid ownership, another-scene links,
+and animated/driven targeted fields refuse. Cooperative cancellation or an error
+rolls back the entire batch, including changes already applied to earlier targets.
+
+The tool changes collection-wide flags only. Individual object visibility,
+intentional hidden buds, ray roles, parent collections, layer exclusions,
+holdout and indirect-only settings remain unchanged. Context diagnostics include
+`collection_viewport_enabled`, `collection_render_enabled`, `layer_use` and
+ancestor/layer flags. These describe collection gates; they do not promise that
+an individual object is visible or participates in every ray type. Showing a
+collection does not override an excluded layer or a hidden ancestor.
+
+The guard binds the current scene, view layer, frame, collection identities,
+producer inspection guards and visibility context. Reinspect after reopening,
+changing context or editing a target. A source visibility change updates source
+freshness reports; it does not alter geometry or invalidate otherwise unchanged
+owned approximation resources. Restore source visibility before planning new
+source-bound captures/subsets. Saved display states and subsequent inspection
+or restoration work after removing the original capture files.
+
 ### Native component-column complements
 
 Set `selection: COLUMN_COMPLEMENT` and choose exactly one `views` entry with

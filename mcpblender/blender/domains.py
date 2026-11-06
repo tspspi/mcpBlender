@@ -45,6 +45,7 @@ from . import vegetation_adoption
 from . import vegetation_bake
 from . import vegetation_materials
 from . import botanical_surfaces
+from . import botanical_display
 from . import render_batches,botanical_capture,depth_assets,botanical_subsets,projected_coverage
 from . import compositing
 from . import environment
@@ -110,6 +111,7 @@ COMMANDS.update(render_batches.COMMANDS)
 COMMANDS.update(botanical_capture.COMMANDS)
 COMMANDS.update(depth_assets.COMMANDS)
 COMMANDS.update(botanical_subsets.COMMANDS)
+COMMANDS.update(botanical_display.COMMANDS)
 COMMANDS.update(projected_coverage.COMMANDS)
 COMMANDS.update(compositing.COMMANDS)
 COMMANDS.update(environment.COMMANDS)
@@ -172,6 +174,7 @@ def dispatch(command, p):
     if command in botanical_capture.COMMANDS:return botanical_capture.dispatch(command,p)
     if command in depth_assets.COMMANDS:return depth_assets.dispatch(command,p)
     if command in projected_coverage.COMMANDS:return projected_coverage.dispatch(command,p)
+    if command in botanical_display.COMMANDS:return botanical_display.dispatch(command,p)
     if command in botanical_subsets.COMMANDS:return botanical_subsets.dispatch(command,p)
     if command=='render_camera_batch':return render_batches.launch(p)
     if command in image_comparison.COMMANDS:return image_comparison.dispatch(command,p)

@@ -1,5 +1,37 @@
 # Local validation: 0.2.0
 
+## Component-filtered directional depth assets — 2026-11-06
+
+Structured depth source/create and per-view batch tools accept `component_filter`
+ALL (default), LEAVES or STRUCTURE. Non-default selection requires the guarded
+one-sample opaque component-ID capture contract. Invalid coverage, surface weight,
+nonfinite/noninteger/out-of-range covered IDs refuse before selection. Plans pin
+the source component contract and coverage-mask digest. Existing source-pixel,
+geometry, texture and work caps remain; only selected geometry and packed coverage
+change. Native source geometry remains unchanged.
+
+Focused component/capture/contract checks passed **18 tests in 17.45s**;
+existing depth geometry, paired-shadow and filter checks passed **35 tests in
+9.42s**; layer contracts and dependency-free add-on/export packaging passed
+**6 tests in 14.90s** (existing AnyIO deprecation warning). These sets overlap.
+Two isolated real Blender MCP workflows passed **2 tests in 139.00s**, with
+arbitrary Python execution disabled on the MCP surface: legacy/default selection,
+missing-ID refusal, filtered stale-plan rejection, both component selections,
+two-view batch creation, unchanged source guard and save/reopen after deleting
+capture inputs. All four additional assets were inspected and removed with eleven
+private datablocks each.
+
+The 32-pixel fixture contains 104 source leaves. Its FRONT first-hit sample sees
+two leaf pixels and 62 structural pixels: four plus 124 triangles at tile size one,
+equal to the unfiltered total. An additional component-enabled run independently
+read actual saved packed Blender buffers: the two alpha masks are disjoint and
+sum exactly to unfiltered coverage; base RGB and the other five maps are identical.
+It also checks component selection combined with a paired shadow plan; the final
+run passed **1 test in 100.38s**. This is
+small-fixture functional qualification, not dense-canopy, angular, secondary-ray,
+shadow-image or optical-equivalence acceptance. Existing approximation limits and
+brightness gates still apply.
+
 ## Durable validation progress and recovery cancellation — 2026-11-04
 
 Vegetation LOD staged verification and broker-only recovery now forward the

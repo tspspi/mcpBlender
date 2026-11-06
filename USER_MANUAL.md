@@ -968,6 +968,30 @@ not both together under the existing 32-part EXR limit. For geometry inputs,
 `geometric_normals: true` with `normal_moments: false` is sufficient. Captures
 without component IDs retain their original contracts and reports.
 
+### Component-filtered depth assets
+
+Set `component_filter: LEAVES` or `STRUCTURE` on
+`inspect_botanical_depth_source` and `create_botanical_depth_asset`, or on each
+entry in a depth-layer batch. The default `ALL` preserves existing plans.
+Filtering requires a capture made with `component_ids: true`; older captures
+must be recaptured. Covered observations must have unit opaque coverage and
+surface weight, with finite integer IDs inside the captured source inventory.
+Uncertain observations refuse before selection, including observations belonging
+to the excluded component class.
+
+The filter selects first-hit pixels for geometry and multiplies only packed
+base-map coverage. RGB, normals, roughness and the other five maps retain the
+original captured inputs. A plan pins the component contract, mask digest and
+selected/excluded pixel counts. Changing the selection requires a fresh plan
+hash. Existing geometry, texture and work caps apply; textures retain their full
+source dimensions. If a paired shadow mask is requested, its span test uses the
+selected coverage and both masks multiply the final alpha.
+
+Created assets keep their private packed maps after saving/reopening or removing
+the capture files. This operation leaves native source geometry unchanged. It
+does not remove matching native leaves, create a complete 3D partition or certify
+lighting equivalence; it selects the first visible surface from one capture view.
+
 ### Optional material normal-input moments
 
 Set both `material_fields: true` and `normal_moments: true` when planning and

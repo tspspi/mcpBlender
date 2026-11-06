@@ -72,3 +72,36 @@ def inspect_view(path,sha,geometry,threshold,value,*,cancelled=lambda:None,progr
     names=['TreeCapture.MCP_SurfaceWeight.X',*channels()]
     data=exr_scanline.decode(path,names,expected_sha256=sha,cancelled=cancelled,progress=progress)['channels']
     return measure(geometry,data[names[0]],data[names[1]],value['leaf_count'],threshold,cancelled=cancelled)
+
+
+def filter_mask(geometry,weight,ids,value,mode,threshold,*,cancelled=lambda:None):
+    """Refuse uncertain first hits before selecting structural or leaf coverage."""
+    if mode not in {'LEAVES','STRUCTURE'}:raise ValueError('Invalid component filter mode')
+    if not isinstance(value,dict):raise ValueError('Invalid component contract')
+    payload={k:v for k,v in value.items() if k!='components_sha256'}
+    count=value.get('leaf_count')
+    if (value.get('format')!=FORMAT or value.get('fields')!=FIELDS or value.get('samples')!=1
+        or value.get('offset')!=1 or value.get('structural_value')!=0
+        or type(count) is not int or not 0<=count<=250000
+        or value.get('components_sha256')!=botany.digest(payload)):
+        raise ValueError('Invalid component contract')
+    if not math.isfinite(threshold) or not 0<threshold<1:raise ValueError('Invalid component coverage threshold')
+    alpha=geometry['channels']['TreeCapture.Combined.A']
+    if len(alpha)>1048576:raise ValueError('Component filter pixel budget exceeded')
+    report=measure(geometry,weight,ids,count,threshold,cancelled=cancelled)
+    errors={'invalid_alpha':'Invalid component coverage','nonbinary_alpha':'Component filtering requires one-sample opaque coverage',
+            'invalid_surface_weight':'Invalid component surface weight','nonfinite_ids':'Component IDs must be finite',
+            'noninteger_ids':'Component IDs must be integer','out_of_range_ids':'Component IDs outside source range'}
+    for key,message in errors.items():
+        if report[key]:raise ValueError(message)
+    mask=bytearray(len(alpha));selected=0
+    for i,a in enumerate(alpha):
+        if i%8192==0:cancelled()
+        if a>threshold:
+            keep=(round(ids[i]/weight[i])>0)==(mode=='LEAVES')
+            mask[i]=keep;selected+=keep
+    import hashlib
+    return mask,{'mode':mode,'source_components_sha256':value['components_sha256'],
+                 'source_leaf_count':count,'pixels':len(alpha),'selected_pixels':selected,
+                 'excluded_covered_pixels':report['covered_pixels']-selected,
+                 'mask_sha256':hashlib.sha256(mask).hexdigest()}

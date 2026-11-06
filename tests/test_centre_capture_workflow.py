@@ -1,6 +1,7 @@
 """Existing one-sample capture: explicit first-hit data through structured MCP."""
 import asyncio,json,math,os,shutil,subprocess
 import pytest
+from fastmcp.exceptions import ToolError
 from pathlib import Path
 from test_asset_editing import assets_live,client_for,pytestmark
 from test_botanical_capture_workflow import drain_captures
@@ -70,6 +71,38 @@ def test_single_sample_native_capture_correspondence_and_depth_asset(assets_live
                 checks.append({'view':view['view'],'covered_pixels':covered,'maximum_geometric_unit_length_error':maximum})
             settings={'geometry_mode':'ADAPTIVE_DEPTH_NORMAL','plane_normal_source':'GEOMETRIC_AOV','depth_tolerance_m':.05,'max_slope':64}
             source={'directory':capture_dir,'view':'FRONT','settings':settings}
+            filtered=[];layer_assets=[]
+            if with_components:
+                pixel_source=source|{'settings':settings|{'tile_pixels':1}}
+                full=await wait(client,'inspect_botanical_depth_source',**pixel_source)
+                explicit=await wait(client,'inspect_botanical_depth_source',**pixel_source,component_filter='ALL')
+                assert explicit==full
+                counts=[]
+                for mode,name in [('LEAVES','LeafDepth'),('STRUCTURE','StructuralDepth')]:
+                    subset_source=pixel_source|{'component_filter':mode}
+                    subset=await wait(client,'inspect_botanical_depth_source',**subset_source)
+                    assert subset['component_filter']['mode']==mode and subset['component_filter']['selected_pixels']>0
+                    counts.append(subset['geometry']['triangles'])
+                    assert subset['maps'][1:]==full['maps'][1:] and subset['maps'][0]!=full['maps'][0]
+                    with pytest.raises(ToolError,match='stale'):
+                        await wait(client,'create_botanical_depth_asset',**subset_source,collection=name,expected_plan=full['plan_sha256'],accept_approximate_optics=True)
+                    subset_asset=await wait(client,'create_botanical_depth_asset',**subset_source,collection=name,expected_plan=subset['plan_sha256'],accept_approximate_optics=True)
+                    assert subset_asset['valid'] and subset_asset['packed_images']==6
+                    filtered.append(subset_asset)
+                assert sum(counts)==full['geometry']['triangles']
+                shadow_source=pixel_source|{'component_filter':'LEAVES','render_role':'SHADOW_ONLY','shadow_mask':{'receiver_view':'BACK'}}
+                shadow=await wait(client,'inspect_botanical_depth_source',**shadow_source)
+                assert shadow['component_filter']['selected_pixels']==filtered[0]['plan']['component_filter']['selected_pixels']
+                assert shadow['shadow_mask']['covered_pixels']==shadow['component_filter']['selected_pixels']
+                assert shadow['maps'][1:]==full['maps'][1:] and not shadow['ray_visibility']['visible_camera']
+                layers={'directory':capture_dir,'prefix':'ComponentLayers','layers':[{'view':'FRONT','settings':pixel_source['settings'],'component_filter':'LEAVES'},{'view':'BACK','settings':pixel_source['settings'],'component_filter':'STRUCTURE'}]}
+                layer_plan=await wait(client,'inspect_botanical_depth_layers',**layers)
+                assert [r['component_filter'] for r in layer_plan['layers']]==['LEAVES','STRUCTURE']
+                layer_created=await wait(client,'create_botanical_depth_layers',**layers,expected_plan=layer_plan['plan_sha256'],accept_approximate_optics=True)
+                assert layer_created['created_count']==2;layer_assets=layer_created['assets']
+            else:
+                with pytest.raises(ToolError,match='recapture'):
+                    await wait(client,'inspect_botanical_depth_source',**source,component_filter='LEAVES')
             proposed=await wait(client,'inspect_botanical_depth_source',**source)
             residuals=proposed['geometry']['depth_residuals']
             assert residuals['unknown_depth_pixels']==0 and residuals['measured_depth_pixels']>0
@@ -82,12 +115,26 @@ def test_single_sample_native_capture_correspondence_and_depth_asset(assets_live
             if destination:=os.environ.get('MCPBLENDER_CENTRE_CAPTURE_EVIDENCE'):
                 out=Path(destination)/'components' if with_components else Path(destination);out.mkdir(parents=True,exist_ok=True)
                 shutil.copytree(archive,out/'capture',dirs_exist_ok=True);shutil.copy2(root/'library'/blend_path,out/'centre-depth.blend')
+            if with_components:
+                # Independently read actual saved packed buffers, not only hashes
+                # computed by the planner/creator under test.
+                code='import bpy,json\nbpy.ops.wm.open_mainfile(filepath='+repr(str(root/'library'/blend_path))+',use_scripts=False)\n'
+                code+="metas=[json.loads(bpy.data.collections[n]['mcpblender_depth_asset']) for n in ['CentreDepth','LeafDepth','StructuralDepth']]\n"
+                code+="buffers=[{k:list(bpy.data.images[n].pixels[:]) for k,n in m['images'].items()} for m in metas]\n"
+                code+="full,leaves,wood=buffers\nfor key in full:\n if key!='base_coverage':assert full[key]==leaves[key]==wood[key]\n"
+                code+="a,b,c=[v['base_coverage'] for v in buffers]\nfor i in range(0,len(a),4):\n assert a[i:i+3]==b[i:i+3]==c[i:i+3]\n assert a[i+3]==b[i+3]+c[i+3]\n assert not (b[i+3] and c[i+3])\n"
+                pixels=subprocess.run(['blender','--background','--factory-startup','--disable-autoexec','--threads','2','--python-exit-code','1','--python-expr',code],capture_output=True,text=True,timeout=45)
+                assert pixels.returncode==0,pixels.stdout+pixels.stderr
             shutil.rmtree(archive)
             reopened=await wait(client,'inspect_botanical_depth_asset',collection='CentreDepth')
             assert reopened['valid'] and reopened['asset_sha256']==made['asset_sha256'] and not reopened['source_files_required']
             removed=await wait(client,'remove_botanical_depth_asset',collection='CentreDepth',expected_asset=reopened['asset_sha256'])
             assert removed['private_datablocks']==11
-            return {'capture':captured,'checks':checks,'data':data,'plan':proposed,'created':made,'reopened':reopened,'removed':removed}
+            subset_removed=[]
+            for asset in filtered+layer_assets:
+                current=await wait(client,'inspect_botanical_depth_asset',collection=asset['collection']);assert current['valid'] and not current['source_files_required']
+                deleted=await wait(client,'remove_botanical_depth_asset',collection=asset['collection'],expected_asset=current['asset_sha256']);assert deleted['private_datablocks']==11;subset_removed.append(deleted)
+            return {'capture':captured,'checks':checks,'data':data,'plan':proposed,'created':made,'reopened':reopened,'removed':removed,'filtered':filtered,'layer_assets':layer_assets,'subset_removed':subset_removed}
     proof=asyncio.run(run())
     if destination:=os.environ.get('MCPBLENDER_CENTRE_CAPTURE_EVIDENCE'):
         out=Path(destination)/'components' if with_components else Path(destination)

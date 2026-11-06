@@ -1041,6 +1041,40 @@ shared shader resources and archive. Creation rolls back newly owned IDs on
 cooperative failure or cancellation; long operations report progress and available
 storage before checkpoint allocation.
 
+### Native component-column complements
+
+Set `selection: COLUMN_COMPLEMENT` and choose exactly one `views` entry with
+`inspect_botanical_subset_source`, then pass the returned guard to
+`create_botanical_subset`. The existing source/capture/frame/units/material
+checks apply. This mode retains the complete source leaf inventory, preserving
+semantic IDs, templates and native poses. It does not select the complement of
+whole observed leaves.
+
+A private packed float32 Non-Color reference-ID image and private leaf materials
+make a fragment transparent when its native leaf ID matches the reference leaf
+ID in that projected pixel column. No averaged multisample ID, plane tolerance,
+color adjustment or light-energy change is involved. The original BSDF remains
+linked outside clipped columns. A copied instancer can change object-dependent
+shader Random inputs, so retaining the graph does not guarantee identical color. Other components and optional copied structure
+retain their original materials; original scene resources remain unchanged.
+
+The projector uses the owned root's local frame. Translation, rotation and
+positive uniform scaling move it with the geometry. The plan pins the capture
+EXR and integer grid, camera, local projector and image allocation. The private
+image and shader graph contents, including nested shader state, are guarded;
+image repacking can change the byte guard even if visible pixels are restored.
+Shader edits, image edits, foreign references or stale removal guards refuse.
+Creation rolls back new resources on cooperative failure/cancellation. Saved
+inspection/removal need no capture files. Existing whole-leaf snapshots keep
+their previous behavior and remain readable.
+
+This is a static component-column approximation: matching facets can include
+self-occluded surfaces of the same leaf. It is not a face partition, reduced
+native-template LOD, wind solution or optical certificate. Both assets start
+hidden and source visibility is unchanged. Pair it with the measured leaf-depth
+alpha only after checking identical capture, source snapshot, view and ID-grid
+provenance; showing it alongside an unchanged source duplicates geometry.
+
 ### Projected leaf coverage data
 
 Use `inspect_botanical_projected_coverage` with `reference_directory`, `view`

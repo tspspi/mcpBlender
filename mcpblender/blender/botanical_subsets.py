@@ -3,12 +3,12 @@ import json
 import uuid
 import bpy
 from mcpblender import botany,capture_data,component_ids,exr_scanline
-from . import botanical_capture as capture,botanical_foliage as foliage,botanical_trees as trees,assemblies,wind_preview,depth_assets
+from . import botanical_capture as capture,botanical_foliage as foliage,botanical_trees as trees,assemblies,wind_preview,depth_assets,subset_columns
 
 META='mcpblender_botanical_subset';OWNER='mcpblender_botanical_subset_owner'
 FORMAT='mcpblender-native-leaf-subset-v1';KEEP='mcp_subset_keep'
 POINT_STORAGE='COMPACT_SOURCE_IDS_V1'
-TABLES={'Collection':'collections','Object':'objects','Mesh':'meshes','GeometryNodeTree':'node_groups'}
+TABLES={'Collection':'collections','Object':'objects','Mesh':'meshes','GeometryNodeTree':'node_groups','Material':'materials','Image':'images'}
 COMMANDS={'inspect_botanical_subset_source','create_botanical_subset','inspect_botanical_subset','remove_botanical_subset'}
 
 
@@ -34,7 +34,9 @@ def materials_state(materials):
 def plan(p):
     from .bridge import check_cancelled,report_progress
     if bpy.context.mode!='OBJECT':raise ValueError('Native subsets require Object mode')
-    if p['selection'] not in {'OBSERVED','UNOBSERVED'} or p['render_role'] not in depth_assets.RAY_ROLES:raise ValueError('Invalid subset selection/role')
+    if p['selection'] not in {'OBSERVED','UNOBSERVED','COLUMN_COMPLEMENT'} or p['render_role'] not in depth_assets.RAY_ROLES:raise ValueError('Invalid subset selection/role')
+    column=p['selection']=='COLUMN_COMPLEMENT'
+    if column and len(p['views'])!=1:raise ValueError('COLUMN_COMPLEMENT requires exactly one capture view')
     structure_role=p.get('structure_render_role')
     if structure_role is not None and (structure_role not in depth_assets.RAY_ROLES or not p['include_structure']):raise ValueError('Valid structure_render_role requires include_structure=true')
     root,proof,meta,rows=capture_data.source({'directory':p['directory'],'views':p['views'],'max_pixels':1048576,'max_total_pixels':p['max_total_pixels']},report_progress,check_cancelled)
@@ -51,7 +53,7 @@ def plan(p):
     native_ids=roles['pm'].attributes.get('id')
     if (native_ids and (native_ids.domain!='POINT' or native_ids.data_type!='INT' or [v.value for v in native_ids.data]!=indices)) or not native_ids and indices!=list(range(len(indices))):raise ValueError('Source native IDs do not match semantic leaf indices')
     if indices and not roles['po'].visible_get():raise ValueError('Source leaf population must be visible in the viewport for native verification; source visibility was preserved')
-    observed=set();reports=[]
+    observed=set();reports=[];column_plan=None
     for view,row in rows:
         names=['TreeCapture.Combined.A','TreeCapture.MCP_SurfaceWeight.X',*component_ids.channels()]
         decoded=exr_scanline.decode(root/row['file'],names,expected_sha256=row['sha256'],cancelled=check_cancelled,progress=report_progress)
@@ -59,8 +61,11 @@ def plan(p):
         for i,keep in enumerate(mask):
             if i%8192==0:check_cancelled()
             if keep:observed.add(round(channels[names[2]][i]/channels[names[1]][i])-1)
+        if column:
+            grid=[round(channels[names[2]][i]/channels[names[1]][i]) if keep else 0 for i,keep in enumerate(mask)]
+            column_plan=subset_columns.plan(meta,view,row,grid)
         reports.append({'view':view['view'],'exr_sha256':row['sha256'],**report})
-    selected=sorted(observed if p['selection']=='OBSERVED' else set(indices)-observed)
+    selected=sorted(set(indices) if column else observed if p['selection']=='OBSERVED' else set(indices)-observed)
     if not selected and not p['include_structure']:raise ValueError('Subset would contain no geometry')
     flags={k:k in depth_assets.RAY_ROLES[p['render_role']] for k in depth_assets.RAY_FLAGS}
     mats={m for obj in [*values[2],*(v for k,v in roles.items() if k.startswith('lo') or k=='so')] for m in obj.data.materials}
@@ -74,6 +79,10 @@ def plan(p):
              'point_storage':POINT_STORAGE,'selected_leaf_count':len(selected),'selected_indices_sha256':botany.digest(selected),'selected_index_preview':selected[:16],
              'views':reports,'ray_visibility':flags,'materials':sorted(m.name for m in mats),'material_dependencies_sha256':materials_state(mats),
              'scope':'Static native first-hit leaf subset with semantic IDs and unchanged template geometry/poses. Observations are view/sample dependent, not full visibility. Shared guarded materials; new instancer object-dependent random values may differ. Source geometry/visibility unchanged; no automatic complementary visibility, template reduction, wind or optical equivalence.'}
+    if column:
+        for obj in (v for k,v in roles.items() if k.startswith('lo')):
+            for slot in obj.material_slots:subset_columns.outputs(slot.material)
+        summary['column_complement']=column_plan;summary['scope']=subset_columns.SCOPE
     if structure_role is not None:
         summary['settings']['structure_render_role']=structure_role
         summary['structure_ray_visibility']={k:k in depth_assets.RAY_ROLES[structure_role] for k in depth_assets.RAY_FLAGS}
@@ -124,7 +133,10 @@ def content(owned,root):
                 'materials':[(slot.link,slot.material.name if slot.material else None) for slot in value.material_slots],
                 'flags':{k:getattr(value,k) for k in (*depth_assets.RAY_FLAGS,'is_holdout','is_shadow_catcher','hide_select','show_instancer_for_viewport','show_instancer_for_render')},
                 'modifiers':[(m.name,m.type,assemblies.props(m),assemblies.pointers(m),assemblies.idprops(m)) for m in value.modifiers]})
-    return botany.digest({'resources':wind_preview.signature(resources,metadata_key=META),'objects':objects,'collections':collections})
+    data={'resources':wind_preview.signature(resources,metadata_key=META,packed_images=any(isinstance(v,bpy.types.Image) for v in resources)),'objects':objects,'collections':collections}
+    private_shaders={v.name:capture.shader_state(v.node_tree) for v in resources if isinstance(v,bpy.types.Material)}
+    if private_shaders:data['private_shaders']=private_shaders
+    return botany.digest(data)
 
 
 def inspect(p):
@@ -179,7 +191,7 @@ def create(p):
         from mcpblender.storage import require_space
         meshes=[v.data for k,v in roles.items() if k.startswith('lo')]
         if p['include_structure']:meshes += [v.data for v in [*values[2],roles['so']]]
-        estimate=16*1024**2+len(roles['pm'].vertices)*512+sum(len(m.vertices)*128+len(m.loops)*64 for m in meshes)
+        estimate=2*planned.get('column_complement',{}).get('decoded_image_bytes',0)+16*1024**2+len(roles['pm'].vertices)*512+sum(len(m.vertices)*128+len(m.loops)*64 for m in meshes)
         policy=_bridge.active['storage'];policy.update(estimated_bytes=estimate,estimate_kind='native_subset_checkpoint_heuristic')
         require_space(policy.get('path',_bridge.path.parent),estimate,reserve_bytes=policy.get('reserve_bytes',256*1024**2),estimate_kind=policy['estimate_kind'])
     before=set(bpy.data.user_map());success=False
@@ -204,6 +216,7 @@ def create(p):
         instance=next(n for n in group.nodes if n.bl_idname=='GeometryNodeInstanceOnPoints')
         for link in list(instance.inputs['Selection'].links):group.links.remove(link)
         instance.inputs['Selection'].default_value=True
+        if 'column_complement' in planned:subset_columns.install(p['directory'],prefix,root,prototypes,population,planned)
         objects=[population]
         if p['include_structure']:
             for i,source in enumerate([*values[2],roles['so']]):

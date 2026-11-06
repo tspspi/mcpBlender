@@ -6962,3 +6962,55 @@ small schema/policy/live/batch tests passed 4 checks in 42.77 seconds; updated
 array/UV readback plus the existing unweighted layer workflow passed 2 checks in
 121.35 seconds before the polling change. These checks establish the consumer's
 contract, not the missing complement or broader transport qualification.
+
+
+### Native component-column complement
+
+The opt-in `COLUMN_COMPLEMENT` mode retains all source instances with original
+semantic IDs and poses. Private leaf materials wrap the original BSDF in an
+exact native-component versus projected reference-ID predicate. Structural
+materials remain shared unchanged. The packed ID image, private shaders and
+source dependencies are guarded. The root-local projector follows permitted
+uniform positive placement. This mode is distinct from whole-leaf selection and
+makes no face identity, self-occlusion or optical claim.
+
+The small Python-disabled MCP fixture creates, saves, reopens and removes the
+owned complement after deleting its capture files. A native probe renders the
+actual shader predicate and ID witnesses with one sample (never averaged IDs).
+At the original placement it must match native reference first-hit leaf IDs;
+at a translated, rotated and uniformly scaled placement the projected cell and
+Boolean predicate are independently checked at actual first-hit native IDs.
+Changes at float32 geometry boundaries are counted rather than silently treated
+as stable identity. Private-shader and independently reopened packed-image edits
+must refuse removal; foreign material users block it. Injected cancellation
+while wrapping a new material must roll back the entire newly staged ID set and
+preserve the source guard. Display placement changes must remain valid.
+
+The initial probe mistakenly read `matrix_world` from the viewport-hidden root
+immediately after reopen. The resulting stale identity matrix moved the fixture
+and invalidated the comparison. It now uses the unparented root's authoritative
+`matrix_basis`; the original and moved small renders match both reference leaf
+pixels exactly. This fixture correction does not change the production shader.
+Repacking restored image pixels is not used to restore a byte-bound guard; image
+tampering is tested on a fresh independent reopen.
+
+
+The full-density public workflow passes in 128.16 seconds. It retains all
+88,704 source leaves, verifies native identities/poses during creation and
+preserves the source guard. Saved original-placement shader readback matches
+all 54,882 reference leaf pixels and exact native first-hit IDs. After translation,
+rotation and 1.6 uniform scaling, the projected-cell lookup and Boolean predicate
+remain exact at actual native hits; 25 first-hit IDs change through float32
+rasterization/traversal, leaving 54,862 matching leaf pixels. The changes are
+reported; no bit-exact pose-invariance or optical acceptance is inferred.
+Dense native guard/edit/foreign-user/cancellation probes pass, followed by MCP
+reopen/inspection/removal with the reference files deleted and source preserved.
+Retained source snapshots were byte-compared before temporary fixture cleanup.
+
+The small full lifecycle/probe passes in 24.37 seconds; the preexisting whole-leaf
+workflow also passed during the earlier diagnostic run. Its paired test failed
+only in the image-restore probe, which was corrected to test image edits on a
+fresh reopen. That failure is retained as diagnostic evidence. Final contracts,
+add-on and discovery checks are separate from these native rendering checks.
+The assembled measured-depth-plus-native-complement world/front/rear comparison
+and the full angular/wind/population/mature-reference gates remain outstanding.

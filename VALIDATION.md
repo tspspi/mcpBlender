@@ -7276,3 +7276,46 @@ reference, coverage and frozen-control inputs, set
 The test changes no asset optical-certification flag. Wider angles, independently
 shifted grids, perspective, view blending and the full far/wind/population/
 mature-reference requirements remain open.
+
+
+### Wider yaw, shifted grid and perspective observations
+
+A separate private native harness checks the reduced assembly at the anchor,
+positive/negative 22.5-degree yaw, a diagonal half-output-pixel camera shift and
+one perspective camera. All three lighting configurations stay fixed in world
+space. All 30 renders and 15 pose/light comparisons pass the unchanged image
+policies at scales 1/2/4. Six fresh anchor controls again reproduce the retained
+public static outputs exactly. Source geometry/materials, sampler and quality
+thresholds are unchanged.
+
+Framing was defined from source bounds before rendering. The anchor and shifted
+view retain orthographic span 16.657749 scene units; both wider yaw views use
+21.195322 to fit the conservative source box with 10% margin. Their far clips
+expand to approximately 43.54152. The perspective camera stays at the anchor
+location with horizontal sensor fit and a bounds-derived 54.685741 mm lens.
+All images remain 128-square at 256 samples on CPU/two threads. The yaw cases
+therefore have a different world-space pixel size; this is not a fixed-resolution
+angular sweep or a continuous 22.5-degree coverage claim.
+
+| Case | Scale-one shared luminance bias across the three lights |
+| --- | --- |
+| Yaw -22.5 degrees | -1.986414%, -2.388974%, -2.278741% |
+| Yaw +22.5 degrees | -1.984483%, -2.517729%, -2.826005% |
+| Half-pixel diagonal shift | -1.916808%, -7.891703%, -2.886120% |
+| Perspective | -2.314470%, -3.287329%, -3.148619% |
+
+Columns within each row follow world/front SUN/rear SUN. Independent readback
+recomputes every EXR comparison, verifies all file hashes and anchor bundles,
+and checks sampler/layer bindings. A separate read-only Blender verification
+reconstructs the declared angles, orbit radii, half-pixel displacement, lens and
+framing rules. All source-box corners fit the cameras, no primary raw vertices
+are outside depth clipping, and all 30 decoded image borders have zero alpha.
+Source/primary/subset restoration checks pass and the input archive SHA256 is
+unchanged. The workers have exited; evidence and verifiers remain in the ignored
+`tmp/qualification/view-domain-20261106/` directory.
+
+This extends native image observations only. It does not extend the separate
+public MCP workflow qualification beyond its five previously tested camera
+positions, nor establish a viewing cone, view blending, wind or population
+behavior. The expanded leaf count remains 2,838,528 triangles, above the intended
+far-representation budget. Further representation work is still required.

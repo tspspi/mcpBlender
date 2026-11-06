@@ -6865,3 +6865,54 @@ duplicated geometry rejects all three. No single configuration is fully accepted
 The twelve EXRs, identity/count checks and comparison proof are retained in the
 ignored `native/` directory. This establishes useful component decomposition
 while leaving rear-side/secondary transport and the full far workflow open.
+
+
+### Projected component coverage measurement
+
+The structured projected-coverage capture uses exact per-fragment native IDs
+against a fixed one-sample reference grid, with white emission/transparent data
+mattes only in an independent worker. It measures projected union area of the
+reference component while ignoring other components. Source geometry, shaders
+and visibility remain unchanged. Packed grids and snapshots support immutable
+validation after deleting the reference archive.
+
+A native analytic fixture places 256 squares of area 0.25 at the centres of
+unit orthographic pixels. One sample reports coverage 1; including that selecting
+sample at 64 samples gives approximately 0.26117. The fixed enabled subset at
+offset one gives approximately 0.24963 at 64 effective samples and 0.25012 at
+256. Merely setting the offset with the subset disabled does not skip the
+centre. Tests check actual rendered areas, not only assigned RNA properties.
+The live Python-disabled MCP fixture checks stale plans, source preservation,
+independent worker completion, immutable copied-bundle validation without the
+reference archive, and manifest tampering. Existing broker tests include the new
+command in delegation/restart coverage.
+
+Separate private full-density diagnostics explain the measurement's motivation.
+A component-column control still failed world/front brightness gates; its
+matching first-hit plane occupied only about 8.7% of matching-component visible
+fragment weight. Geometric union coverage, excluding the selecting sample,
+converged in total target mass to within 0.025% between 64 and 256 samples.
+A private weighted-primary plus retained native complement control passed the
+unchanged alpha/RGB/10% brightness gates at scales 1/2/4 under world, front and
+rear lighting. Relative brightness biases were -0.5894%, -5.6126% and +0.2513%;
+all frozen native controls matched exactly. This is evidence for one static
+captured view and configuration. The weighted-primary/complement consumer is
+not exposed by the new data-capture tool. Angular, wind, population, mature-tree
+and reduced-native-template qualification remain open.
+
+
+The full-density structured MCP check also passes against the retained private
+geometry control: 88,704 original native leaves, a 512-square FRONT reference,
+54,882 target leaf pixels and 256 effective samples. Mean per-pixel alpha error
+is 9.686e-7, maximum error 1/256; total full-frame coverage mass is 30210.51172
+versus 30210.51563 in the control. RGB equals alpha exactly. The original source
+guard is preserved. This checks the public worker against a separate observed-leaf
+snapshot implementation, rather than comparing the worker with itself. Full-frame
+mass includes small projected cell-edge contributions outside the reference leaf
+mask; consumers must explicitly retain their reference-domain mask.
+
+Focused checks: structured small capture 1 passed (40.08s, including repeat-plan
+cleanup check); dense capture 1 passed (209.67s); analytic/native sampling and
+render-job delegation/restart 6 passed (11.45s); server/storage 9 passed (28.48s,
+one existing Starlette deprecation warning). These are focused checks, not a
+fresh full-project regression or broader optical qualification.

@@ -146,6 +146,13 @@ def validate_contents(root,job_id,progress=lambda value:None,cancelled=lambda:Fa
         tree_capture.validate(capture,job)
         if saved.get('botanical_capture')!=capture:raise ValueError('Botanical capture manifest binding mismatch')
     elif 'botanical_capture' in saved:raise ValueError('Unexpected botanical capture metadata')
+    coverage=job.get('projected_coverage')
+    if coverage is not None:
+        from . import projected_coverage
+        projected_coverage.validate(coverage,job)
+        if capture is not None or saved.get('projected_coverage')!=coverage:raise ValueError('Projected coverage manifest binding mismatch')
+    elif 'projected_coverage' in saved:raise ValueError('Unexpected projected coverage metadata')
+    coverage_reports=[]
     expected={(ci,fi,fmt) for ci,_ in enumerate(job['cameras']) for fi,_ in enumerate(range(job['frame_start'],job['frame_end']+1,job['frame_step'])) for fmt in job['formats']}
     actual=set();members=[]
     for item in saved['outputs']:
@@ -162,10 +169,14 @@ def validate_contents(root,job_id,progress=lambda value:None,cancelled=lambda:Fa
             if capture.get('component_ids'):
                 from . import component_ids
                 component_ids.validate_header(header,capture['component_ids'],capture['material_fields'])
+        if coverage is not None:
+            def checkpoint():
+                if cancelled():raise InterruptedError('Projected coverage validation cancelled')
+            coverage_reports.append(projected_coverage.measure(path,item['sha256'],coverage['resolution'],progress,checkpoint))
         actual.add(key);members.append(item)
         progress({'phase':'verified render output','completed_files':len(members),'total_files':len(expected)})
     if actual!=expected or {v['path'] for v in rows if v['path'].startswith('outputs/')}!={i['file'] for i in members}:raise ValueError('Render output inventory mismatch')
-    return {'valid':True,'directory':str(root),'job_id':job_id,'outputs':members,'frames':[str(root/v['file']) for v in members if v['format']=='PNG'],'path':str(root/'manifest.json'),'source_sha256':saved['source_sha256'],**({'botanical_capture':capture} if capture is not None else {})}
+    return {'valid':True,'directory':str(root),'job_id':job_id,'outputs':members,'frames':[str(root/v['file']) for v in members if v['format']=='PNG'],'path':str(root/'manifest.json'),'source_sha256':saved['source_sha256'],**({'botanical_capture':capture} if capture is not None else {}),**({'projected_coverage':coverage,'coverage_reports':coverage_reports} if coverage is not None else {})}
 
 def request_cancel(root,owner):
     r=record(root,owner)

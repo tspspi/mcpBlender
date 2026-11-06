@@ -55,7 +55,7 @@ def test_render_recovery_and_guarded_cleanup(tmp_path):
     jobs.cleanup(root,'agent',p|{'dry_run':False});assert not root.exists()
 
 
-@pytest.mark.parametrize('command',['render_camera_batch','capture_botanical_views'])
+@pytest.mark.parametrize('command',['render_camera_batch','capture_botanical_views','capture_botanical_projected_coverage'])
 def test_broker_delegates_releases_editor_and_restores_after_restart(tmp_path,monkeypatch,command):
     path=tmp_path/'bridge.sock';broker=Broker(path)
     try:

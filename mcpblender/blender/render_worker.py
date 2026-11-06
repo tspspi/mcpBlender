@@ -60,6 +60,11 @@ def main():
         scene.render.use_file_extension=True;scene.render.threads_mode='FIXED';scene.render.threads=job['threads']
         scene.render.compositor_device='CPU'
         if hasattr(scene,'cycles'):scene.cycles.samples=job['samples'];scene.cycles.device='CPU'
+        if coverage:=job.get('projected_coverage'):
+            from mcpblender import projected_coverage
+            from mcpblender.blender.projected_coverage import install
+            projected_coverage.validate(coverage,job)
+            install(scene,coverage)
         if job['engine']=='BLENDER_EEVEE_NEXT':scene.eevee.taa_render_samples=job['samples']
         outputs=[];last=[0.]
         def stats(*values):
@@ -80,7 +85,7 @@ def main():
                     bpy.data.images['Render Result'].save_render(str(path),scene=scene)
                     outputs.append({'camera':camera,'camera_index':ci,'frame':frame,'frame_index':fi,'format':fmt,'file':name,'bytes':path.stat().st_size,'sha256':files.file_hash(path),'header':files.image_header(path)})
                 status(completed=current['completed']+1)
-        files.write_json(root/'manifest.json',{'version':1,'job_id':job['job_id'],'source_sha256':job['source_sha256'],'blender_version':bpy.app.version_string,'outputs':outputs,**({'botanical_capture':job['botanical_capture']} if 'botanical_capture' in job else {})})
+        files.write_json(root/'manifest.json',{'version':1,'job_id':job['job_id'],'source_sha256':job['source_sha256'],'blender_version':bpy.app.version_string,'outputs':outputs,**{k:job[k] for k in ('botanical_capture','projected_coverage') if k in job}})
         files.validate(root,job['owner'])
         if sum(v['bytes'] for v in files.inventory(root))>job['max_bytes']:raise ValueError('Completed render exceeds byte budget')
         status(state='succeeded',phase='complete')

@@ -461,7 +461,7 @@ class Broker:
                     if state not in TERMINAL:
                         raise ValueError("Invalid terminal state")
                     receipt=params.get('result')
-                    if row['command'] in {'render_camera_batch','capture_botanical_views'} and state=='succeeded' and isinstance(receipt,dict) and receipt.get('_external_render'):
+                    if row['command'] in {'render_camera_batch','capture_botanical_views','capture_botanical_projected_coverage'} and state=='succeeded' and isinstance(receipt,dict) and receipt.get('_external_render'):
                         binding=render_jobs.record(receipt['directory'],row['owner'])
                         if binding['operation_id']!=row['id'] or binding['id']!=receipt['render_job_id']:raise ValueError('Render delegation binding mismatch')
                         db.execute("INSERT OR REPLACE INTO metadata VALUES (?,?)",('render:'+row['id'],json.dumps({'session_id':params['session_id'],'result':receipt})))

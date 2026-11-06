@@ -1041,6 +1041,50 @@ shared shader resources and archive. Creation rolls back newly owned IDs on
 cooperative failure or cancellation; long operations report progress and available
 storage before checkpoint allocation.
 
+### Projected leaf coverage data
+
+Use `inspect_botanical_projected_coverage` with `reference_directory`, `view`
+(default FRONT) and `samples` (default 256, range 64–4096). The reference must be
+an opaque one-sample component-ID capture, at most 1024 square pixels per side,
+whose managed source tree, resources, frame, units and root placement still match.
+The plan pins the original capture and snapshot hashes, camera, exact integer
+reference-ID grid, current source guard and measurement recipe.
+
+Pass the same inputs, a new output `directory` and `expected_plan: plan_sha256`
+to `capture_botanical_projected_coverage`. Optional `threads`, `max_bytes` and
+`timeout_seconds` bound its independent CPU worker. This requires snapshot,
+library-write and application-start permissions. Use the ordinary operation and
+render-job inspection, cancellation, recovery and validation tools. Storage
+estimates and free-space updates follow the existing independent-render policy;
+editing can continue after snapshot preparation. Named-action steps cannot launch
+this independent worker.
+
+The snapshot includes a packed ID image and native geometry; subsequent rendering
+and immutable validation need neither the reference archive nor the editing
+scene. Only the isolated worker replaces materials with a white emission or
+transparent matte. A fragment contributes when its exact native component ID
+matches the fixed reference leaf ID in that pixel cell. Other components become
+transparent, so the measurement estimates projected **union** coverage of that
+leaf, ignoring occluders. It does not average or round multisample IDs.
+
+The fixed recipe uses Cycles AUTOMATIC sampling, seed zero, no adaptive sampling
+or denoising, BOX filtering at width one and a 1024 transparent-bounce data budget.
+An enabled sample subset starts at offset one, with master samples equal to
+requested effective samples plus one. This excludes the selecting centre sample,
+which otherwise biases finite area estimates upward. Zero Monte Carlo estimates
+remain zero; they are not floored because a centre hit exists.
+
+The output is one multilayer EXR32 with `ProjectedCoverage.Combined.R/G/B/A`.
+`validate_render_job` returns `projected_coverage` provenance and `coverage_reports`
+with full-frame coverage mass, zero-pixel count and white-alpha error. Small
+projected cell-edge contributions can appear outside the reference leaf mask;
+consumers must retain that domain mask explicitly. Validation checks
+finite alpha in [0,1] and premultiplied white RGB agreement within 1e-6. This data
+capture preserves original shaders, geometry and visibility. It does not yet
+change depth-asset alpha or create a matching native complement. It is specific
+to the static captured view and is not a face-visibility, optical, angular, wind
+or reduced-template certificate.
+
 ### Optional material normal-input moments
 
 Set both `material_fields: true` and `normal_moments: true` when planning and

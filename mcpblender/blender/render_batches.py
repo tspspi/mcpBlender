@@ -40,7 +40,7 @@ def launch(p,*,scene=None,snapshot_writer=None,resource_ids=None,scene_name=None
     root=Path(p['directory'])
     if root.exists() or root.is_symlink():raise FileExistsError('Render output directory already exists')
     active=_bridge.active if _bridge and _bridge.active else {}
-    if active.get('command') not in {'render_camera_batch','capture_botanical_views'} or not active.get('operation_id') or not active.get('owner'):raise RuntimeError('Independent rendering requires broker operation ownership')
+    if active.get('command') not in {'render_camera_batch','capture_botanical_views','capture_botanical_projected_coverage'} or not active.get('operation_id') or not active.get('owner'):raise RuntimeError('Independent rendering requires broker operation ownership')
     count=len(p['cameras'])*len(range(p['frame_start'],p['frame_end']+1,p['frame_step']))
     channels=4+sum(4 for layer in scene.view_layers for key in compositing.PASSES if getattr(*compositing.pass_owner(layer,key)))
     channels+=sum(4 if aov.type=='COLOR' else 1 for layer in scene.view_layers for aov in layer.aovs)

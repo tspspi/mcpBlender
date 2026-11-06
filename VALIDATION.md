@@ -6916,3 +6916,49 @@ cleanup check); dense capture 1 passed (209.67s); analytic/native sampling and
 render-job delegation/restart 6 passed (11.45s); server/storage 9 passed (28.48s,
 one existing Starlette deprecation warning). These are focused checks, not a
 fresh full-project regression or broader optical qualification.
+
+
+### Measured coverage in directional depth alpha
+
+`projected_coverage_directory` is an opt-in leaf-only depth source and per-layer
+input. Bundle/source/view/grid hashes are revalidated. The measured alpha is
+multiplied into the original masked base coverage, retaining finite Monte Carlo
+zeros and excluding values outside the reference leaf domain. Geometry, base RGB
+and the other five packed maps are unchanged. Per-layer aggregate pixel budgets
+include the additional coverage grid; final packed texture allocation stays at
+six maps. Existing assets/plans without this option retain their previous recipe.
+
+Qualification uses Python-disabled MCP capture, occupancy measurement, single
+and batch creation, followed by independent saved-image-buffer and mesh readback.
+The readback checks every RGB and auxiliary float, the exact measured alpha
+product, and actual unchanged vertex/face data. Input-view mismatches, damaged
+EXRs, stale plans and aggregate pixel overruns refuse. After removing both input
+bundles and reopening the saved project, assets must inspect and remove through
+the normal guards with the native source unchanged. This consumer alone does not
+qualify the assembled native-complement representation or wider optical gates.
+
+
+Cooperative checkpoint polling is bounded to ten broker observations per second;
+explicit progress remains immediate and refreshes cancellation state. A known
+cancellation raises at every checkpoint. The native polling test checks 100,000
+calls under a deterministic clock, preservation of work phase/counters and
+storage, operation reset, and cancellation from a real durable broker journal.
+This bounds polling overhead, not the interruptibility of a blocking Blender call.
+The change was prompted by a dense baseline intentionally cancelled after
+336 seconds in its first source inspection; one locally decoded alpha grid
+invoked 843 cancellation callbacks in about 1.7 seconds without broker I/O.
+
+
+The full-density consumer passes: 88,704 source leaves, 54,882 reference leaf
+pixels and 109,764 adaptive triangles. Native readback confirms 54,304 changed
+alpha values, exact preserved RGB/other maps, and identical actual vertices,
+faces and UVs. Masked target coverage mass is 30209.69922 pixels; one target keeps
+its zero estimate, and 0.8125 pixel mass outside the leaf domain is excluded.
+After deleting both input bundles and reopening, both assets inspect and remove
+with the source unchanged. The retained copy independently passes native ownership
+inspection and all twelve packed map hashes against the external pre-save plans.
+The dense test completes in 198.50 seconds with bounded checkpoint polling. The
+small schema/policy/live/batch tests passed 4 checks in 42.77 seconds; updated
+array/UV readback plus the existing unweighted layer workflow passed 2 checks in
+121.35 seconds before the polling change. These checks establish the consumer's
+contract, not the missing complement or broader transport qualification.

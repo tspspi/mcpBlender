@@ -1080,10 +1080,38 @@ with full-frame coverage mass, zero-pixel count and white-alpha error. Small
 projected cell-edge contributions can appear outside the reference leaf mask;
 consumers must retain that domain mask explicitly. Validation checks
 finite alpha in [0,1] and premultiplied white RGB agreement within 1e-6. This data
-capture preserves original shaders, geometry and visibility. It does not yet
-change depth-asset alpha or create a matching native complement. It is specific
+capture preserves original shaders, geometry and visibility. The capture itself leaves depth assets unchanged and does not create a matching
+native complement. It is specific
 to the static captured view and is not a face-visibility, optical, angular, wind
 or reduced-template certificate.
+
+### Using measured coverage in depth assets
+
+For a leaf-only directional depth asset, set `component_filter: LEAVES` and
+`projected_coverage_directory` to the coverage bundle when planning and creating.
+Use the same reference `directory` and `view` that produced that bundle. The
+consumer validates the immutable bundle and binds its reference metadata,
+snapshot hash, EXR hash, camera and integer ID grid to the selected source.
+Mismatched views, grids and damaged files refuse before creating owned resources.
+A supplied coverage bundle requires LEAVES; ALL and STRUCTURE refuse explicitly.
+
+Only `base_coverage` alpha is multiplied by the measured occupancy. The original
+leaf-domain mask still excludes structural/background cells, including small
+projected edge contributions outside that domain. Zero occupancy remains zero.
+Depth geometry, RGB and all five other packed maps retain their original inputs;
+no texture or geometry budget is raised. Plan provenance records the data recipe,
+input hashes, final masked-alpha hash, target coverage mass, excluded outside mass
+and zero-target count. A fresh creation plan is required.
+
+Each entry in a directional depth-layer batch accepts its own
+`projected_coverage_directory`. Coverage adds one source-resolution decoded grid
+to that layer's aggregate pixel budget, in addition to its reference and optional
+paired shadow grid. The final asset still owns six packed maps. Creation,
+save/reopen, inspection and guarded removal work after both input bundles are
+removed. Moving the asset through its existing uniform positive root placement
+remains supported. A matching native complement is still required before using
+this as the private control's assembled representation; these tools do not
+configure source visibility, certify transport or provide angular/wind support.
 
 ### Optional material normal-input moments
 

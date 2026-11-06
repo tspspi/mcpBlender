@@ -158,6 +158,8 @@ class State:
         if command == "run_action":
             return [path for step in params["steps"] for path in State.input_paths(step["command"], step["params"])]
         paths = []
+        if command in {"inspect_botanical_depth_source","create_botanical_depth_asset"} and params.get("projected_coverage_directory"):paths.append(params["projected_coverage_directory"])
+        if command in {"inspect_botanical_depth_layers","create_botanical_depth_layers"}:paths.extend(layer["projected_coverage_directory"] for layer in params["layers"] if layer.get("projected_coverage_directory"))
         if command in {"inspect_botanical_projected_coverage","capture_botanical_projected_coverage"}:paths.append(params["reference_directory"])
         if command in {"inspect_botanical_subset_source","create_botanical_subset","inspect_botanical_depth_layers","create_botanical_depth_layers","inspect_botanical_depth_source","create_botanical_depth_asset","inspect_botanical_capture_data","inspect_projected_normal_transfer","inspect_foliage_card_family_source","create_foliage_card_family"}:paths.append(params["directory"])
         if command in {"compare_png_images","compare_exr_images"}:paths.extend(params[k] for k in ("reference","candidate"))
@@ -234,6 +236,9 @@ class State:
             params['directory']=str(self.library_path(params['directory'],write=command in {'render_camera_batch','capture_botanical_views','capture_botanical_projected_coverage'},directory=True))
         if command in {"inspect_botanical_subset_source", "create_botanical_subset", "inspect_botanical_depth_layers", "create_botanical_depth_layers", "inspect_botanical_depth_source", "create_botanical_depth_asset", "inspect_foliage_card_family_source", "create_foliage_card_family", "inspect_projected_normal_transfer", "bake_textures", "validate_texture_bake", "cleanup_texture_job", "inspect_texture_job", "recover_texture_job"}:
             params["directory"] = str(self.library_path(params["directory"], write=command == "bake_textures", directory=True))
+        if command in {"inspect_botanical_depth_source","create_botanical_depth_asset","inspect_botanical_depth_layers","create_botanical_depth_layers"}:
+            for layer in (params['layers'] if 'layers' in params else [params]):
+                if layer.get('projected_coverage_directory'):layer['projected_coverage_directory']=str(self.library_path(layer['projected_coverage_directory'],directory=True))
         if command in {'inspect_texture_atlas','build_texture_atlas','inspect_vegetation_bake_adoption','adopt_vegetation_bakes'}:
             for entry in params['entries']:entry['directory']=str(self.library_path(entry['directory'],directory=True))
             if len({e['directory'] for e in params['entries']})!=len(params['entries']):raise ValueError('Input directories must resolve to distinct bundles')

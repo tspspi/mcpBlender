@@ -37,3 +37,29 @@ def measure(path,sha256,size,progress=lambda value:None,cancelled=lambda:None):
         error=max(error,*(abs(v-a) for v in rgb));mass+=a;zeros+=a==0
     if error>1e-6:raise ValueError('Projected coverage white-alpha disagreement; traversal or data profile invalid')
     return {'coverage_mass_pixels':mass,'zero_pixels':zeros,'white_alpha_max_error':error,'scope':SCOPE}
+
+
+
+def consume(directory,reference,proof,view,row,grid,mask,*,progress=lambda value:None,cancelled=lambda:None):
+    """Read a hash-bound coverage alpha grid; preserve the reference leaf domain."""
+    from pathlib import Path
+    from array import array
+    from . import render_jobs,depth_tiles
+    root=Path(directory);job=render_jobs.read_json(root/'job.json')
+    def cancel_requested():cancelled();return False
+    validated=render_jobs.validate_contents(root,job['job_id'],progress,cancel_requested)
+    value=validated.get('projected_coverage')
+    if value is None:raise ValueError('Projected coverage bundle required')
+    if value['reference']!=reference or value['reference_snapshot_sha256']!=proof['source_sha256'] or value['reference_exr_sha256']!=row['sha256'] or value['view']!=view:raise ValueError('Projected coverage reference capture/view binding mismatch')
+    if value['grid_sha256']!=botany.digest(grid) or value['target_pixels']!=sum(mask):raise ValueError('Projected coverage reference ID grid mismatch')
+    output=validated['outputs'][0];name=LAYER+'.Combined.A'
+    decoded=exr_scanline.decode(root/output['file'],[name],expected_sha256=output['sha256'],cancelled=cancelled,progress=progress)
+    pixels=decoded['channels'][name];alpha=array('f');mass=0.;outside=0.;zeros=0
+    for i,(a,keep) in enumerate(zip(pixels,mask)):
+        if i%8192==0:cancelled()
+        alpha.append(a if keep else 0.)
+        if keep:mass+=a;zeros+=a==0
+        else:outside+=a
+    return alpha,{'format':FORMAT,'plan_sha256':value['plan_sha256'],'snapshot_sha256':validated['source_sha256'],'exr_sha256':output['sha256'],
+                  'grid_sha256':value['grid_sha256'],'sampling':value['sampling'],'target_pixels':sum(mask),'target_coverage_mass_pixels':mass,'zero_target_pixels':zeros,
+                  'excluded_outside_target_mass_pixels':outside,'alpha_float32_sha256':depth_tiles.floats_sha(alpha),'decoded_source_pixels':len(alpha),'scope':SCOPE}

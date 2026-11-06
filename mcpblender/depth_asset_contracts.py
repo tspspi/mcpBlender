@@ -42,12 +42,14 @@ class Source(Model):
     directory: str
     view: View
     component_filter: Literal['ALL','LEAVES','STRUCTURE'] = Field(default='ALL',description='Select first-hit coverage using captured component_ids. LEAVES/STRUCTURE require valid one-sample opaque identity; native geometry is never edited.')
+    projected_coverage_directory: str|None = Field(default=None,min_length=1,description='Optional immutable projected-coverage bundle for this exact capture/view. Requires component_filter=LEAVES. Multiply only base-map coverage; preserve geometry and all captured PBR witnesses.')
     render_role: RenderRole = 'ALL_RAYS'
     settings: Settings = Field(default_factory=Settings)
     shadow_mask: ShadowMask|None = None
 
     @model_validator(mode='after')
     def mask_role(self):
+        if self.projected_coverage_directory is not None and self.component_filter!='LEAVES':raise ValueError('Projected coverage requires component_filter=LEAVES')
         if self.shadow_mask and (self.render_role not in MASK_ROLES or self.shadow_mask.receiver_view==self.view):raise ValueError('Paired shadow mask requires SHADOW_ONLY, DIFFUSE_SHADOW or SECONDARY and a different receiver view')
         return self
 
@@ -65,12 +67,14 @@ class Remove(Asset):
 class Layer(Model):
     view: View
     component_filter: Literal['ALL','LEAVES','STRUCTURE'] = Field(default='ALL',description='Select first-hit coverage using captured component_ids. LEAVES/STRUCTURE require valid one-sample opaque identity; native geometry is never edited.')
+    projected_coverage_directory: str|None = Field(default=None,min_length=1,description='Optional immutable projected-coverage bundle for this exact capture/view. Requires component_filter=LEAVES. Multiply only base-map coverage; preserve geometry and all captured PBR witnesses.')
     render_role: RenderRole = 'ALL_RAYS'
     settings: Settings = Field(default_factory=Settings)
     shadow_mask: ShadowMask|None = None
 
     @model_validator(mode='after')
     def mask_role(self):
+        if self.projected_coverage_directory is not None and self.component_filter!='LEAVES':raise ValueError('Projected coverage requires component_filter=LEAVES')
         if self.shadow_mask and (self.render_role not in MASK_ROLES or self.shadow_mask.receiver_view==self.view):raise ValueError('Paired shadow mask requires SHADOW_ONLY, DIFFUSE_SHADOW or SECONDARY and a different receiver view')
         return self
 

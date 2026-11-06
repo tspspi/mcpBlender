@@ -13,10 +13,12 @@ class Source(Model):
     selection: Literal['OBSERVED','UNOBSERVED'] = 'UNOBSERVED'
     include_structure: bool = True
     render_role: RenderRole = 'ALL_RAYS'
+    structure_render_role: RenderRole|None = Field(default=None,description='Optional separate role for copied wood/shoot/bud objects. Defaults to the leaf render_role. Requires include_structure=true.')
     alpha_threshold: FiniteFloat = Field(default=.001,gt=0,lt=1)
     max_total_pixels: int = Field(default=4194304,strict=True,ge=1024,le=10485760)
     @model_validator(mode='after')
     def distinct(self):
+        if self.structure_render_role is not None and not self.include_structure:raise ValueError('structure_render_role requires include_structure=true')
         if len(set(self.views))!=len(self.views):raise ValueError('Choose distinct capture views')
         return self
 

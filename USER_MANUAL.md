@@ -1015,6 +1015,11 @@ and progress during two scene scans bounded to four million instances each. It l
 source geometry and visibility unchanged. `include_structure: true` (default)
 also copies the original wood and shoot meshes; false creates leaves only.
 `render_role` uses the same explicit Cycles roles as directional depth assets.
+Optional `structure_render_role` separately sets the copied wood/shoot/bud role
+and requires `include_structure: true`; omission inherits the leaf role and keeps
+existing plans unchanged. For native wood visible to every ray plus complementary
+secondary-only leaves, use `render_role: SECONDARY` with
+`structure_render_role: ALL_RAYS`. Both sets of ray flags are guarded.
 
 Materials and their packed dependencies remain shared and guarded; editing them
 can invalidate both the source and its subset. Copying an instancer can change

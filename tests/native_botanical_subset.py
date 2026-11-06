@@ -9,6 +9,9 @@ from mcpblender.blender import botanical_subsets as subset,bridge
 bridge.check_cancelled=lambda:None
 bridge.report_progress=lambda value:None
 bpy.ops.wm.open_mainfile(filepath=str(Path(args[1]).resolve()),use_scripts=False)
+mixed=json.loads(bpy.data.collections['StructureAndOtherLeaves'][subset.META])
+for obj in bpy.data.collections['StructureAndOtherLeaves'].objects:
+    if obj.type=='MESH':assert obj.visible_camera==(obj.name!=mixed['population'])
 sets=[]
 for name in ['ObservedLeaves','OtherLeaves']:
     meta=json.loads(bpy.data.collections[name][subset.META]);points=bpy.data.objects[meta['population']].data

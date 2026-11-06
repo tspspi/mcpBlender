@@ -38,8 +38,9 @@ def test_native_subset_capture_selection_persistence_and_source_preservation(ass
                 await wait(client,'inspect_botanical_subset_source',**(source|{'views':['FRONT','BACK'],'max_total_pixels':1024}))
             union=await wait(client,'inspect_botanical_subset_source',**(source|{'views':['FRONT','BACK'],'selection':'OBSERVED'}))
             assert union['observed_leaf_count']>=plans[0]['observed_leaf_count']
-            structure_opts=source|{'include_structure':True,'selection':'UNOBSERVED','render_role':'SECONDARY'}
+            structure_opts=source|{'include_structure':True,'selection':'UNOBSERVED','render_role':'SECONDARY','structure_render_role':'ALL_RAYS'}
             structure=await wait(client,'inspect_botanical_subset_source',**structure_opts)
+            assert structure['ray_visibility']['visible_camera'] is False and structure['structure_ray_visibility']['visible_camera'] is True
             copied=await wait(client,'create_botanical_subset',**structure_opts,subset_collection='StructureAndOtherLeaves',expected_plan=structure['plan_sha256'])
             states.append(copied)
             assert (await wait(client,'inspect_botanical_tree',collection='SubsetTree'))['tree_sha256']==before['tree_sha256']

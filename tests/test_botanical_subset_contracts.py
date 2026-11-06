@@ -8,6 +8,9 @@ from mcpblender.server import build_server,State
 
 
 def test_subset_selection_limits():
+    assert Source(directory='capture').structure_render_role is None
+    assert Source(directory='capture',render_role='SECONDARY',structure_render_role='ALL_RAYS').structure_render_role=='ALL_RAYS'
+    with pytest.raises(ValueError,match='include_structure'):Source(directory='capture',include_structure=False,structure_render_role='ALL_RAYS')
     assert Source(directory='capture').selection=='UNOBSERVED'
     for patch in ({'views':['FRONT','FRONT']},{'views':[]},{'selection':'HIDDEN'},{'max_total_pixels':True},{'alpha_threshold':0},{'render_role':'CAMERA'}):
         with pytest.raises(ValueError):Source(directory='capture',**patch)

@@ -1,5 +1,19 @@
 # Local validation: 0.2.0
 
+## Separate native leaf and structural ray roles — 2026-11-06
+
+Subset planning accepts optional `structure_render_role` when copying structure.
+Omission retains prior plans and inherits the leaf role. An explicit override
+pins separate structural ray flags in the plan; creation applies them only to
+copied wood/shoot/bud objects. Both groups remain covered by the owned content
+guard. Specifying a structural role without copied structure refuses.
+
+Contracts and the real Python-disabled MCP lifecycle passed **3 tests in 63.31s**.
+The independent saved-project probe confirms secondary-only leaf population flags
+and camera-visible ALL_RAYS structural objects, alongside the existing persistence,
+refusal and rollback checks. This small fixture does not qualify full-density
+assembly or optical equivalence.
+
 ## Capture-derived complementary native foliage — 2026-11-06
 
 The structured subset source/create/inspect/remove tools select the union of

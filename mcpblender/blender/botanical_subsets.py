@@ -34,6 +34,8 @@ def plan(p):
     from .bridge import check_cancelled,report_progress
     if bpy.context.mode!='OBJECT':raise ValueError('Native subsets require Object mode')
     if p['selection'] not in {'OBSERVED','UNOBSERVED'} or p['render_role'] not in depth_assets.RAY_ROLES:raise ValueError('Invalid subset selection/role')
+    structure_role=p.get('structure_render_role')
+    if structure_role is not None and (structure_role not in depth_assets.RAY_ROLES or not p['include_structure']):raise ValueError('Valid structure_render_role requires include_structure=true')
     root,proof,meta,rows=capture_data.source({'directory':p['directory'],'views':p['views'],'max_pixels':1048576,'max_total_pixels':p['max_total_pixels']},report_progress,check_cancelled)
     contract=meta.get('component_ids')
     if not contract:raise ValueError('Subset selection requires recapture with component_ids=true')
@@ -71,6 +73,9 @@ def plan(p):
              'selected_leaf_count':len(selected),'selected_indices_sha256':botany.digest(selected),'selected_index_preview':selected[:16],
              'views':reports,'ray_visibility':flags,'materials':sorted(m.name for m in mats),'material_dependencies_sha256':materials_state(mats),
              'scope':'Static native first-hit leaf subset with semantic IDs and unchanged template geometry/poses. Observations are view/sample dependent, not full visibility. Shared guarded materials; new instancer object-dependent random values may differ. Source geometry/visibility unchanged; no automatic complementary visibility, template reduction, wind or optical equivalence.'}
+    if structure_role is not None:
+        summary['settings']['structure_render_role']=structure_role
+        summary['structure_ray_visibility']={k:k in depth_assets.RAY_ROLES[structure_role] for k in depth_assets.RAY_FLAGS}
     return values,roles,selected,summary|{'plan_sha256':botany.digest(summary)}
 
 
@@ -169,7 +174,8 @@ def create(p):
             for i,source in enumerate([*values[2],roles['so']]):
                 check_cancelled();obj=source.copy();obj.name=prefix+'-Structure'+str(i);obj.data=source.data.copy();obj.parent=root;col.objects.link(obj);objects.append(obj)
         for obj in objects:
-            for key,value in planned['ray_visibility'].items():setattr(obj,key,value)
+            flags=planned['ray_visibility'] if obj==population else planned.get('structure_ray_visibility',planned['ray_visibility'])
+            for key,value in flags.items():setattr(obj,key,value)
         bpy.context.view_layer.update()
         expected={}
         for number,item in enumerate(bpy.context.evaluated_depsgraph_get().object_instances):
